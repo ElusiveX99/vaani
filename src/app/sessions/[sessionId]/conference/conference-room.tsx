@@ -140,7 +140,7 @@ function ConferenceWorkspace({
     } catch (error) {
       console.error("Conference disconnect failed:", error);
     } finally {
-      window.location.replace(\`/sessions/\${sessionId}\`);
+      window.location.replace(`/sessions/${sessionId}`);
     }
   }
 
@@ -267,9 +267,9 @@ function ConferenceWorkspace({
                 type="button"
                 onClick={toggleParticipants}
                 aria-pressed={participantsOpen}
-                className={\`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 \${
+                className={`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 ${
                   participantsOpen ? "bg-white/20" : ""
-                }\`}
+                }`}
               >
                 Manage ({remoteParticipants.length})
               </button>
@@ -279,9 +279,9 @@ function ConferenceWorkspace({
               type="button"
               onClick={toggleChat}
               aria-pressed={chatOpen}
-              className={\`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 \${
+              className={`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 ${
                 chatOpen ? "bg-white/20" : ""
-              }\`}
+              }`}
             >
               Chat
             </button>
@@ -321,7 +321,7 @@ export default function ConferenceRoom({
     if (!removed) return;
 
     const timeout = window.setTimeout(() => {
-      window.location.replace(\`/sessions/\${sessionId}\`);
+      window.location.replace(`/sessions/${sessionId}`);
     }, 1600);
 
     return () => window.clearTimeout(timeout);
@@ -419,7 +419,7 @@ export default function ConferenceRoom({
           </p>
 
           <Link
-            href={\`/sessions/\${sessionId}\`}
+            href={`/sessions/${sessionId}`}
             className="mt-6 inline-block rounded-lg bg-white/10 px-5 py-3 text-sm transition hover:bg-white/20"
           >
             Back to session
