@@ -1,10 +1,36 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+const SIGNED_URL_LIFETIME = 6 * 60 * 60;
+
 function isValidUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value
   );
+}
+
+function json(
+  body: unknown,
+  status = 200
+) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
+  });
+}
+
+async function getAuthenticatedUser(
+  supabase: Awaited<ReturnType<typeof createClient>>
+) {
+  const { data, error } = await supabase.auth.getClaims();
+
+  if (error || typeof data?.claims?.sub !== "string") {
+    return null;
+  }
+
+  return data.claims.sub;
 }
 
 async function getLiveSession(
@@ -21,9 +47,9 @@ async function getLiveSession(
     console.error("Reader session lookup failed:", error);
 
     return {
-      response: NextResponse.json(
+      response: json(
         { error: "Unable to load the session." },
-        { status: 500 }
+        500
       ),
       session: null,
     };
@@ -31,9 +57,9 @@ async function getLiveSession(
 
   if (!session) {
     return {
-      response: NextResponse.json(
+      response: json(
         { error: "Session not found." },
-        { status: 404 }
+        404
       ),
       session: null,
     };
@@ -41,31 +67,36 @@ async function getLiveSession(
 
   if (session.status !== "live") {
     return {
-      response: NextResponse.json(
+      response: json(
         { error: "Session is not live." },
-        { status: 409 }
+        409
       ),
       session: null,
     };
   }
 
-  return { response: null, session };
+  return {
+    response: null,
+    session,
+  };
 }
 
-async function getAuthenticatedUser(
-  supabase: Awaited<ReturnType<typeof createClient>>
+async function getAcceptedMembership(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+  userId: string
 ) {
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || typeof data?.claims?.sub !== "string") {
-    return null;
-  }
-
-  return data.claims.sub;
+  return supabase
+    .from("session_members")
+    .select("role, status")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .eq("status", "accepted")
+    .maybeSingle();
 }
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: {
     params: Promise<{ sessionId: string }>;
   }
@@ -73,9 +104,9 @@ export async function GET(
   const { sessionId } = await context.params;
 
   if (!isValidUuid(sessionId)) {
-    return NextResponse.json(
+    return json(
       { error: "Invalid session ID." },
-      { status: 400 }
+      400
     );
   }
 
@@ -83,43 +114,42 @@ export async function GET(
   const userId = await getAuthenticatedUser(supabase);
 
   if (!userId) {
-    return NextResponse.json(
+    return json(
       { error: "Unauthorized." },
-      { status: 401 }
+      401
     );
   }
 
-  const { response: sessionResponse } = await getLiveSession(
-    supabase,
-    sessionId
-  );
+  const { response: sessionResponse } =
+    await getLiveSession(supabase, sessionId);
 
   if (sessionResponse) return sessionResponse;
 
   const {
     data: membership,
     error: membershipError,
-  } = await supabase
-    .from("session_members")
-    .select("role, status")
-    .eq("session_id", sessionId)
-    .eq("user_id", userId)
-    .eq("status", "accepted")
-    .maybeSingle();
+  } = await getAcceptedMembership(
+    supabase,
+    sessionId,
+    userId
+  );
 
   if (membershipError) {
-    console.error("Reader membership lookup failed:", membershipError);
+    console.error(
+      "Reader membership lookup failed:",
+      membershipError
+    );
 
-    return NextResponse.json(
+    return json(
       { error: "Unable to verify session membership." },
-      { status: 500 }
+      500
     );
   }
 
   if (!membership) {
-    return NextResponse.json(
+    return json(
       { error: "You are not an accepted member of this session." },
-      { status: 403 }
+      403
     );
   }
 
@@ -139,11 +169,14 @@ export async function GET(
     .maybeSingle();
 
   if (readerStateError) {
-    console.error("Reader state lookup failed:", readerStateError);
+    console.error(
+      "Reader state lookup failed:",
+      readerStateError
+    );
 
-    return NextResponse.json(
+    return json(
       { error: "Unable to load reader state." },
-      { status: 500 }
+      500
     );
   }
 
@@ -152,26 +185,26 @@ export async function GET(
   if (readerState?.current_document_id) {
     const {
       data,
-      error: documentError,
+      error,
     } = await supabase
       .from("session_documents")
       .select(
-        "id, title, storage_path, mime_type, size_bytes, display_order"
+        "id, title, storage_path, mime_type, size_bytes"
       )
       .eq("id", readerState.current_document_id)
       .eq("session_id", sessionId)
       .eq("is_active", true)
       .maybeSingle();
 
-    if (documentError) {
+    if (error) {
       console.error(
-        "Selected reader document lookup failed:",
-        documentError
+        "Selected document lookup failed:",
+        error
       );
 
-      return NextResponse.json(
+      return json(
         { error: "Unable to load the selected PDF." },
-        { status: 500 }
+        500
       );
     }
 
@@ -181,11 +214,11 @@ export async function GET(
   if (!document) {
     const {
       data,
-      error: documentError,
+      error,
     } = await supabase
       .from("session_documents")
       .select(
-        "id, title, storage_path, mime_type, size_bytes, display_order"
+        "id, title, storage_path, mime_type, size_bytes"
       )
       .eq("session_id", sessionId)
       .eq("is_active", true)
@@ -194,15 +227,15 @@ export async function GET(
       .limit(1)
       .maybeSingle();
 
-    if (documentError) {
+    if (error) {
       console.error(
-        "Fallback reader document lookup failed:",
-        documentError
+        "Fallback document lookup failed:",
+        error
       );
 
-      return NextResponse.json(
+      return json(
         { error: "Unable to load session documents." },
-        { status: 500 }
+        500
       );
     }
 
@@ -210,7 +243,7 @@ export async function GET(
   }
 
   if (!document) {
-    return NextResponse.json({
+    return json({
       canControl,
       document: null,
       readerState: readerState ?? null,
@@ -222,18 +255,24 @@ export async function GET(
     error: signedUrlError,
   } = await supabase.storage
     .from("session-pdfs")
-    .createSignedUrl(document.storage_path, 60 * 60);
+    .createSignedUrl(
+      document.storage_path,
+      SIGNED_URL_LIFETIME
+    );
 
   if (signedUrlError || !signedUrlData?.signedUrl) {
-    console.error("Failed to create PDF signed URL:", signedUrlError);
+    console.error(
+      "PDF signed URL creation failed:",
+      signedUrlError
+    );
 
-    return NextResponse.json(
+    return json(
       { error: "Unable to access the PDF." },
-      { status: 500 }
+      500
     );
   }
 
-  return NextResponse.json({
+  return json({
     canControl,
     document: {
       id: document.id,
@@ -260,9 +299,9 @@ export async function PATCH(
   const { sessionId } = await context.params;
 
   if (!isValidUuid(sessionId)) {
-    return NextResponse.json(
+    return json(
       { error: "Invalid session ID." },
-      { status: 400 }
+      400
     );
   }
 
@@ -270,40 +309,35 @@ export async function PATCH(
   const userId = await getAuthenticatedUser(supabase);
 
   if (!userId) {
-    return NextResponse.json(
+    return json(
       { error: "Unauthorized." },
-      { status: 401 }
+      401
     );
   }
 
-  // Reader updates are permitted only while the session is live.
-  const { response: sessionResponse } = await getLiveSession(
-    supabase,
-    sessionId
-  );
+  const { response: sessionResponse } =
+    await getLiveSession(supabase, sessionId);
 
   if (sessionResponse) return sessionResponse;
 
   const {
     data: membership,
     error: membershipError,
-  } = await supabase
-    .from("session_members")
-    .select("role, status")
-    .eq("session_id", sessionId)
-    .eq("user_id", userId)
-    .eq("status", "accepted")
-    .maybeSingle();
+  } = await getAcceptedMembership(
+    supabase,
+    sessionId,
+    userId
+  );
 
   if (membershipError) {
     console.error(
-      "Reader control membership lookup failed:",
+      "Reader membership lookup failed:",
       membershipError
     );
 
-    return NextResponse.json(
+    return json(
       { error: "Unable to verify reader permissions." },
-      { status: 500 }
+      500
     );
   }
 
@@ -314,23 +348,24 @@ export async function PATCH(
       membership.role === "in_charge"
     )
   ) {
-    return NextResponse.json(
+    return json(
       { error: "You do not have permission to control the reader." },
-      { status: 403 }
+      403
     );
   }
 
   let body: {
     documentId?: unknown;
     currentPage?: unknown;
+    expectedDocumentId?: unknown;
   };
 
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
+    return json(
       { error: "Invalid JSON body." },
-      { status: 400 }
+      400
     );
   }
 
@@ -341,16 +376,28 @@ export async function PATCH(
 
   const currentPage = body.currentPage;
 
+  const expectedDocumentId =
+    body.expectedDocumentId === undefined
+      ? null
+      : typeof body.expectedDocumentId === "string"
+        ? body.expectedDocumentId
+        : false;
+
   if (
     !documentId ||
     !isValidUuid(documentId) ||
     typeof currentPage !== "number" ||
     !Number.isSafeInteger(currentPage) ||
-    currentPage < 1
+    currentPage < 1 ||
+    expectedDocumentId === false ||
+    (
+      typeof expectedDocumentId === "string" &&
+      !isValidUuid(expectedDocumentId)
+    )
   ) {
-    return NextResponse.json(
+    return json(
       { error: "Invalid reader state." },
-      { status: 400 }
+      400
     );
   }
 
@@ -371,42 +418,93 @@ export async function PATCH(
       documentError
     );
 
-    return NextResponse.json(
+    return json(
       { error: "Unable to verify the document." },
-      { status: 500 }
+      500
     );
   }
 
   if (!document) {
-    return NextResponse.json(
+    return json(
       { error: "Document not found." },
-      { status: 404 }
+      404
     );
   }
 
-  const { error: upsertError } = await supabase
-    .from("session_reader_state")
-    .upsert(
-      {
-        session_id: sessionId,
-        current_document_id: documentId,
-        current_page: currentPage,
-        updated_by: userId,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "session_id",
-      }
-    );
+  const readerStateUpdate = {
+    current_page: currentPage,
+    updated_by: userId,
+    updated_at: new Date().toISOString(),
+  };
 
-  if (upsertError) {
-    console.error("Reader state update failed:", upsertError);
+  if (typeof expectedDocumentId === "string") {
+    // Page-only update: update only if this document is
+    // still the active document. This prevents stale requests
+    // from overwriting a newly selected document's page.
+    if (expectedDocumentId !== documentId) {
+      return json(
+        { error: "Reader document changed. Please refresh." },
+        409
+      );
+    }
 
-    return NextResponse.json(
-      { error: "Unable to update reader state." },
-      { status: 500 }
-    );
+    const {
+      data: updatedState,
+      error: updateError,
+    } = await supabase
+      .from("session_reader_state")
+      .update(readerStateUpdate)
+      .eq("session_id", sessionId)
+      .eq("current_document_id", expectedDocumentId)
+      .select("session_id")
+      .maybeSingle();
+
+    if (updateError) {
+      console.error(
+        "Reader page update failed:",
+        updateError
+      );
+
+      return json(
+        { error: "Unable to update reader state." },
+        500
+      );
+    }
+
+    if (!updatedState) {
+      return json(
+        { error: "Reader document changed. Please refresh." },
+        409
+      );
+    }
+  } else {
+    // Document selection: only the authorized manager can
+    // change the active document.
+    const { error: upsertError } = await supabase
+      .from("session_reader_state")
+      .upsert(
+        {
+          session_id: sessionId,
+          current_document_id: documentId,
+          ...readerStateUpdate,
+        },
+        {
+          onConflict: "session_id",
+        }
+      );
+
+    if (upsertError) {
+      console.error(
+        "Reader document selection failed:",
+        upsertError
+      );
+
+      return json(
+        { error: "Unable to update reader state." },
+        500
+      );
+    }
   }
 
-  return NextResponse.json({ success: true });
+  return json({ success: true });
 }

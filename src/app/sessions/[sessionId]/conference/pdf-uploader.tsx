@@ -18,12 +18,43 @@ type UploadStage =
   | "saving"
   | "switching";
 
+function isValidPreviousUpload(
+  previousUpload: tus.PreviousUpload,
+  file: File,
+  sessionId: string
+): boolean {
+  const metadata = previousUpload.metadata;
+
+  if (!metadata) return false;
+
+  if (previousUpload.size !== file.size) return false;
+
+  if (metadata.bucketName !== "session-pdfs") return false;
+
+  if (metadata.contentType !== "application/pdf") return false;
+
+  const prefix = `${sessionId}/`;
+
+  if (!metadata.objectName?.startsWith(prefix)) {
+    return false;
+  }
+
+  const filename = metadata.objectName.slice(prefix.length);
+
+  // Only accept UUID-based PDF paths belonging directly
+  // to this session, not nested or unrelated paths.
+  const uuidPdfPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/i;
+
+  return uuidPdfPattern.test(filename);
+}
+
 function uploadWithTus(
   file: File,
-  storagePath: string,
+  sessionId: string,
   accessToken: string,
   onProgress: (percentage: number) => void
-): Promise<void> {
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const publishableKey =
@@ -33,6 +64,8 @@ function uploadWithTus(
       reject(new Error("Supabase configuration is missing."));
       return;
     }
+
+    let storagePath = `${sessionId}/${crypto.randomUUID()}.pdf`;
 
     const upload = new tus.Upload(file, {
       endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
@@ -70,16 +103,40 @@ function uploadWithTus(
 
       onSuccess() {
         onProgress(100);
-        resolve();
+        resolve(storagePath);
       },
     });
 
     void (async () => {
       try {
-        const previousUploads = await upload.findPreviousUploads();
+        const previousUploads =
+          await upload.findPreviousUploads();
 
-        if (previousUploads.length > 0) {
-          upload.resumeFromPreviousUpload(previousUploads[0]);
+        // Resume only an upload that matches this file and
+        // belongs to this exact session and storage bucket.
+        const matchingUpload = previousUploads.find(
+          (previousUpload) =>
+            isValidPreviousUpload(
+              previousUpload,
+              file,
+              sessionId
+            )
+        );
+
+        if (matchingUpload) {
+          const previousObjectName =
+            matchingUpload.metadata?.objectName;
+
+          if (!previousObjectName) {
+            throw new Error(
+              "The previous upload has invalid metadata."
+            );
+          }
+
+          // Keep the original object path when resuming.
+          storagePath = previousObjectName;
+
+          upload.resumeFromPreviousUpload(matchingUpload);
         }
 
         upload.start();
@@ -146,15 +203,12 @@ export default function PdfUploader({
         throw new Error("Your session expired. Please log in again.");
       }
 
-      // Generate a unique storage path.
-      const documentId = crypto.randomUUID();
-
-      storagePath = `${sessionId}/${documentId}.pdf`;
-
       // Upload the actual PDF using resumable TUS.
-      await uploadWithTus(
+      // The function returns the exact storage path used,
+      // including the original path when an upload is resumed.
+      storagePath = await uploadWithTus(
         file,
-        storagePath,
+        sessionId,
         session.access_token,
         setProgress
       );
