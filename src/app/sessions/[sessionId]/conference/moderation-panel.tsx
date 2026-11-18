@@ -43,13 +43,13 @@ export default function ModerationPanel({
     };
   }, [open, onClose]);
 
-  if (!open || !isOrganizer) return null;
-
   const remoteParticipants = participants.filter(
     (participant) =>
       !participant.isLocal &&
       participant.attributes?.role !== "organizer"
   );
+
+  if (!open || !isOrganizer) return null;
 
   async function moderate(
     targetUserId: string,
@@ -67,6 +67,8 @@ export default function ModerationPanel({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "same-origin",
+        cache: "no-store",
         body: JSON.stringify({
           sessionId,
           targetUserId,
@@ -108,36 +110,47 @@ export default function ModerationPanel({
       }}
     >
       <aside
-        className="flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#202020] text-white shadow-2xl"
-        aria-label="Manage participants"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="participants-panel-title"
+        className="flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#1b1b1b] text-white shadow-2xl"
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4">
+        <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-4">
           <div>
-            <h2 className="text-sm font-semibold">
+            <h2
+              id="participants-panel-title"
+              className="text-base font-semibold text-white"
+            >
               Manage participants
             </h2>
 
-            <p className="mt-1 text-xs text-white/45">
+            <p className="mt-1 text-xs text-white/50">
               {remoteParticipants.length} participant
-              {remoteParticipants.length === 1 ? "" : "s"}
+              {remoteParticipants.length === 1 ? "" : "s"} connected
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-white/60 transition hover:bg-white/10 hover:text-white"
-            aria-label="Close participant management"
+            aria-label="Close participants panel"
+            className="rounded-lg px-3 py-2 text-sm text-white/65 transition hover:bg-white/10 hover:text-white"
           >
-            ×
+            Close
           </button>
-        </div>
+        </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {remoteParticipants.length === 0 ? (
-            <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-white/50">
-              No other participants are connected.
-            </p>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center">
+              <p className="text-sm font-medium text-white/80">
+                No other participants
+              </p>
+
+              <p className="mt-2 text-xs text-white/45">
+                Participants will appear here when they join.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {remoteParticipants.map((participant) => {
@@ -148,24 +161,32 @@ export default function ModerationPanel({
 
                 const trackSid = microphone?.trackSid;
 
-                return (
-                  <div
-                    key={participant.identity}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {participant.name || participant.identity}
-                      </p>
+                const participantName =
+                  participant.name || participant.identity;
 
-                      <p className="mt-1 text-xs capitalize text-white/50">
-                        {(participant.attributes?.role ||
-                          "participant"
-                        ).replace("_", " ")}
-                      </p>
+                return (
+                  <article
+                    key={participant.identity}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {participantName}
+                        </p>
+
+                        <p className="mt-1 text-xs capitalize text-white/45">
+                          {(participant.attributes?.role || "participant")
+                            .replaceAll("_", " ")}
+                        </p>
+                      </div>
+
+                      <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-medium text-emerald-300">
+                        Connected
+                      </span>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
                         disabled={!trackSid || busy !== ""}
@@ -176,32 +197,27 @@ export default function ModerationPanel({
                             trackSid
                           )
                         }
-                        className="rounded-md bg-white/10 px-3 py-2 text-xs transition hover:bg-white/20 disabled:opacity-40"
+                        className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/85 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {busy ===
-                        `${participant.identity}-mute`
+                        {busy === `${participant.identity}-mute`
                           ? "Muting..."
-                          : "Mute mic"}
+                          : "Mute microphone"}
                       </button>
 
                       <button
                         type="button"
                         disabled={busy !== ""}
                         onClick={() =>
-                          moderate(
-                            participant.identity,
-                            "remove"
-                          )
+                          moderate(participant.identity, "remove")
                         }
-                        className="rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300 transition hover:bg-red-500/25 disabled:opacity-40"
+                        className="rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {busy ===
-                        `${participant.identity}-remove`
+                        {busy === `${participant.identity}-remove`
                           ? "Removing..."
                           : "Remove"}
                       </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
@@ -209,13 +225,20 @@ export default function ModerationPanel({
 
           {message && (
             <p
-              className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/70"
               role="status"
+              aria-live="polite"
+              className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-xs text-white/75"
             >
               {message}
             </p>
           )}
         </div>
+
+        <footer className="shrink-0 border-t border-white/10 px-4 py-3">
+          <p className="text-[11px] leading-relaxed text-white/40">
+            Moderation actions affect participants in this live conference.
+          </p>
+        </footer>
       </aside>
     </div>
   );

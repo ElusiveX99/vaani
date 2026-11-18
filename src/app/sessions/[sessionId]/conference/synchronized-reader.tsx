@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useCallback,
   useEffect,
   useRef,
@@ -20,6 +21,7 @@ const PdfReader = dynamic(() => import("./pdf-reader"), {
 
 type Props = {
   sessionId: string;
+  onDocumentAvailabilityChange: (available: boolean) => void;
 };
 
 type ReaderDocument = {
@@ -40,10 +42,13 @@ type ReaderData = {
   } | null;
 };
 
-const URL_REFRESH_INTERVAL = 45 * 60 * 1000;
+// Signed URLs last six hours. Refresh with a safety margin,
+// not every time the user returns from a browser picker.
+const URL_REFRESH_INTERVAL = 5.5 * 60 * 60 * 1000;
 
-export default function SynchronizedReader({
+const SynchronizedReader = memo(function SynchronizedReader({
   sessionId,
+  onDocumentAvailabilityChange,
 }: Props) {
   const [data, setData] = useState<ReaderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,9 +71,13 @@ export default function SynchronizedReader({
 
   const documentGeneration = useRef(0);
   const loadRequestId = useRef(0);
+  const lastUrlRefreshAt = useRef(0);
 
   const loadReaderState = useCallback(
-    async (preserveLocalPage = false) => {
+    async (
+      preserveLocalPage = false,
+      refreshUrl = false
+    ) => {
       const requestId = ++loadRequestId.current;
 
       try {
@@ -92,13 +101,20 @@ export default function SynchronizedReader({
           return;
         }
 
-        const readerData = result as ReaderData;
+        const receivedData = result as ReaderData;
+        const previousData = dataRef.current;
+
+        const previousDocument =
+          previousData?.document ?? null;
+
+        const receivedDocument =
+          receivedData.document ?? null;
 
         const previousDocumentId =
-          dataRef.current?.document?.id ?? null;
+          previousDocument?.id ?? null;
 
         const nextDocumentId =
-          readerData.document?.id ?? null;
+          receivedDocument?.id ?? null;
 
         const documentChanged =
           previousDocumentId !== nextDocumentId;
@@ -111,6 +127,24 @@ export default function SynchronizedReader({
             saveTimer.current = null;
           }
         }
+
+        // Keep the existing signed URL when the selected PDF has
+        // not changed. A new URL is only needed during an expiry refresh.
+        const effectiveDocument =
+          receivedDocument &&
+          previousDocument &&
+          previousDocument.id === receivedDocument.id &&
+          !refreshUrl
+            ? {
+                ...receivedDocument,
+                url: previousDocument.url,
+              }
+            : receivedDocument;
+
+        const readerData: ReaderData = {
+          ...receivedData,
+          document: effectiveDocument,
+        };
 
         const serverPage =
           readerData.readerState?.current_page ?? 1;
@@ -127,6 +161,14 @@ export default function SynchronizedReader({
         dataRef.current = readerData;
         pageRef.current = nextPage;
         lastSavedPage.current = serverPage;
+
+        if (refreshUrl || lastUrlRefreshAt.current === 0) {
+          lastUrlRefreshAt.current = Date.now();
+        }
+
+        onDocumentAvailabilityChange(
+          Boolean(effectiveDocument)
+        );
 
         setData(readerData);
         setCurrentPage(nextPage);
@@ -150,7 +192,7 @@ export default function SynchronizedReader({
         }
       }
     },
-    [sessionId]
+    [sessionId, onDocumentAvailabilityChange]
   );
 
   useEffect(() => {
@@ -158,25 +200,28 @@ export default function SynchronizedReader({
 
     const supabase = createClient();
 
-    void Promise.resolve().then(() => {
-      if (active) {
-        void loadReaderState();
-      }
-    });
+    void loadReaderState();
 
     const handleReaderRefresh = () => {
       if (active) {
-        void loadReaderState();
+        void loadReaderState(false, false);
       }
     };
 
-    const refreshIfVisible = () => {
+    // A screen-share picker can cause visibility changes.
+    // Do not reload the PDF for those ordinary changes.
+    // Only refresh the signed URL if it is actually near expiry.
+    const refreshUrlIfNeeded = () => {
       if (
-        active &&
-        document.visibilityState === "visible"
+        !active ||
+        document.visibilityState !== "visible" ||
+        Date.now() - lastUrlRefreshAt.current <
+          URL_REFRESH_INTERVAL
       ) {
-        void loadReaderState(true);
+        return;
       }
+
+      void loadReaderState(true, true);
     };
 
     window.addEventListener(
@@ -186,12 +231,12 @@ export default function SynchronizedReader({
 
     document.addEventListener(
       "visibilitychange",
-      refreshIfVisible
+      refreshUrlIfNeeded
     );
 
     const refreshInterval = window.setInterval(
-      refreshIfVisible,
-      URL_REFRESH_INTERVAL
+      refreshUrlIfNeeded,
+      60 * 1000
     );
 
     const channel = supabase
@@ -218,7 +263,7 @@ export default function SynchronizedReader({
           if (
             newState.current_document_id !== currentDocumentId
           ) {
-            void loadReaderState();
+            void loadReaderState(false, false);
             return;
           }
 
@@ -232,6 +277,7 @@ export default function SynchronizedReader({
             return;
           }
 
+          // Do not overwrite a controller's unsaved local movement.
           if (pageRef.current !== lastSavedPage.current) {
             return;
           }
@@ -255,7 +301,7 @@ export default function SynchronizedReader({
 
       document.removeEventListener(
         "visibilitychange",
-        refreshIfVisible
+        refreshUrlIfNeeded
       );
 
       window.clearInterval(refreshInterval);
@@ -352,7 +398,7 @@ export default function SynchronizedReader({
               : "Unable to synchronize the page."
           );
         });
-    }, 500);
+    }, 350);
 
     return () => {
       if (saveTimer.current) {
@@ -360,7 +406,12 @@ export default function SynchronizedReader({
         saveTimer.current = null;
       }
     };
-  }, [currentPage, data, sessionId]);
+  }, [
+    currentPage,
+    data?.canControl,
+    data?.document?.id,
+    sessionId,
+  ]);
 
   const changePage = useCallback((page: number) => {
     if (!dataRef.current?.canControl) return;
@@ -404,22 +455,9 @@ export default function SynchronizedReader({
     );
   }
 
+  // No PDF means no reader UI at all.
   if (!data?.document) {
-    return (
-      <section className="flex h-full flex-col items-center justify-center rounded-xl border border-white/10 bg-[#1b1b1b] p-6 text-center text-white">
-        <h2 className="text-lg font-semibold">Vaani Reader</h2>
-
-        <p className="mt-2 text-sm text-white/50">
-          No document is currently selected.
-        </p>
-
-        {error && (
-          <p className="mt-3 text-sm text-red-300">
-            {error}
-          </p>
-        )}
-      </section>
-    );
+    return null;
   }
 
   return (
@@ -453,4 +491,6 @@ export default function SynchronizedReader({
       </div>
     </div>
   );
-}
+});
+
+export default SynchronizedReader;

@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
 import {
   LiveKitRoom,
@@ -12,9 +17,13 @@ import {
   useTracks,
   useRoomContext,
   useLocalParticipant,
-  useParticipants,
+  useRemoteParticipants,
 } from "@livekit/components-react";
-import { DisconnectReason, Track } from "livekit-client";
+import {
+  DisconnectReason,
+  RoomEvent,
+  Track,
+} from "livekit-client";
 import "@livekit/components-styles";
 
 import PdfUploader from "./pdf-uploader";
@@ -32,6 +41,98 @@ type Credentials = {
   participantToken: string;
 };
 
+type ControlIconName =
+  | "mic"
+  | "camera"
+  | "screen"
+  | "people"
+  | "chat"
+  | "leave";
+
+function ControlIcon({
+  name,
+}: {
+  name: ControlIconName;
+}) {
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+
+  switch (name) {
+    case "mic":
+      return (
+        <svg {...common}>
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+          <path d="M12 19v3M8 22h8" />
+        </svg>
+      );
+
+    case "camera":
+      return (
+        <svg {...common}>
+          <rect x="3" y="6" width="13" height="12" rx="2" />
+          <path d="m16 10 5-3v10l-5-3" />
+        </svg>
+      );
+
+    case "screen":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="13" rx="2" />
+          <path d="M8 21h8M12 16v5M8 9l3-3 3 3M11 6v6" />
+        </svg>
+      );
+
+    case "people":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="10" cy="7" r="4" />
+          <path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      );
+
+    case "chat":
+      return (
+        <svg {...common}>
+          <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z" />
+        </svg>
+      );
+
+    case "leave":
+      return (
+        <svg {...common}>
+          <path d="M10 17l5-5-5-5M15 12H3" />
+          <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+        </svg>
+      );
+  }
+}
+
+function ControlContent({
+  icon,
+  label,
+}: {
+  icon: ControlIconName;
+  label: string;
+}) {
+  return (
+    <span className="flex items-center justify-center gap-1.5">
+      <ControlIcon name={icon} />
+      <span className="hidden sm:inline">{label}</span>
+    </span>
+  );
+}
+
 function ConferenceWorkspace({
   sessionId,
   title,
@@ -39,22 +140,34 @@ function ConferenceWorkspace({
 }: Props) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
-  const participants = useParticipants();
+
+  const remoteParticipants = useRemoteParticipants({
+    updateOnlyOn: [
+      RoomEvent.ParticipantConnected,
+      RoomEvent.ParticipantDisconnected,
+      RoomEvent.ConnectionStateChanged,
+    ],
+  });
 
   const [chatOpen, setChatOpen] = useState(false);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [mediaError, setMediaError] = useState("");
+  const [readerAvailable, setReaderAvailable] = useState(true);
 
   const isOrganizer =
     localParticipant.attributes?.role === "organizer";
 
-  const remoteParticipants = participants.filter(
-    (participant) => !participant.isLocal
+  const handleDocumentAvailabilityChange = useCallback(
+    (available: boolean) => {
+      setReaderAvailable(available);
+    },
+    []
   );
 
-  const tracks = useTracks(
-    [
+  // Keep the track-source array stable between renders.
+  const trackSources = useMemo(
+    () => [
       {
         source: Track.Source.Camera,
         withPlaceholder: true,
@@ -64,10 +177,16 @@ function ConferenceWorkspace({
         withPlaceholder: false,
       },
     ],
-    {
-      onlySubscribed: false,
-    }
+    []
   );
+
+  const tracks = useTracks(trackSources, {
+    onlySubscribed: false,
+  });
+
+  const gridClassName = readerAvailable
+    ? "grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(240px,0.9fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1"
+    : "grid-cols-1 grid-rows-1 lg:grid-cols-1 lg:grid-rows-1";
 
   useEffect(() => {
     let unlocked = false;
@@ -125,9 +244,7 @@ function ConferenceWorkspace({
       true
     );
 
-    return () => {
-      removeListeners();
-    };
+    return removeListeners;
   }, [room]);
 
   async function leaveConference() {
@@ -158,6 +275,7 @@ function ConferenceWorkspace({
 
   function handleMediaError(error: Error) {
     console.error("LiveKit media error:", error);
+
     setMediaError(
       error.message || "Unable to access this device."
     );
@@ -198,10 +316,24 @@ function ConferenceWorkspace({
         />
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(240px,0.9fr)] gap-2 p-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1 lg:gap-3 lg:p-3">
-        <section className="min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#171717]">
-          <SynchronizedReader sessionId={sessionId} />
-        </section>
+      <div
+        className={`grid min-h-0 flex-1 gap-2 p-2 lg:gap-3 lg:p-3 ${gridClassName}`}
+      >
+        {/* Keep this component mounted so it can detect newly uploaded PDFs. */}
+        <div
+          className={
+            readerAvailable
+              ? "min-h-0 overflow-hidden"
+              : "hidden"
+          }
+        >
+          <SynchronizedReader
+            sessionId={sessionId}
+            onDocumentAvailabilityChange={
+              handleDocumentAvailabilityChange
+            }
+          />
+        </div>
 
         <section className="relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#171717]">
           <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -214,7 +346,7 @@ function ConferenceWorkspace({
           </div>
 
           {chatOpen && (
-            <div className="absolute inset-x-3 bottom-[80px] top-3 z-40 flex min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl">
+            <div className="absolute inset-x-3 bottom-[76px] top-3 z-40 flex min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl">
               <Chat className="h-full min-h-0 w-full" />
             </div>
           )}
@@ -227,25 +359,29 @@ function ConferenceWorkspace({
             />
           )}
 
-          <div className="relative z-30 flex h-[68px] shrink-0 flex-nowrap items-center justify-start gap-2 overflow-x-auto border-t border-white/10 bg-[#171717] px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="relative z-30 flex h-16 shrink-0 items-center justify-center gap-1.5 border-t border-white/10 bg-[#171717] px-2 sm:gap-2">
             <TrackToggle
               source={Track.Source.Microphone}
-              showIcon={true}
+              showIcon={false}
               onDeviceError={handleMediaError}
               onChange={() => setMediaError("")}
-              className="!min-h-10 !shrink-0 !rounded-lg !px-3 !py-2"
+              aria-label="Toggle microphone"
+              title="Microphone"
+              className="lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3"
             >
-              Mic
+              <ControlContent icon="mic" label="Mic" />
             </TrackToggle>
 
             <TrackToggle
               source={Track.Source.Camera}
-              showIcon={true}
+              showIcon={false}
               onDeviceError={handleMediaError}
               onChange={() => setMediaError("")}
-              className="!min-h-10 !shrink-0 !rounded-lg !px-3 !py-2"
+              aria-label="Toggle camera"
+              title="Camera"
+              className="lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3"
             >
-              Camera
+              <ControlContent icon="camera" label="Camera" />
             </TrackToggle>
 
             <TrackToggle
@@ -254,50 +390,64 @@ function ConferenceWorkspace({
                 audio: true,
                 selfBrowserSurface: "include",
               }}
-              showIcon={true}
+              showIcon={false}
               onDeviceError={handleMediaError}
               onChange={() => setMediaError("")}
-              className="!min-h-10 !shrink-0 !rounded-lg !px-3 !py-2"
+              aria-label="Share screen"
+              title="Share screen"
+              className="lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3"
             >
-              Share screen
+              <ControlContent icon="screen" label="Share" />
             </TrackToggle>
 
             {isOrganizer && (
               <button
                 type="button"
                 onClick={toggleParticipants}
+                aria-label={`Manage participants (${remoteParticipants.length})`}
                 aria-pressed={participantsOpen}
-                className={`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 ${
+                title="Manage participants"
+                className={`lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3 ${
                   participantsOpen ? "bg-white/20" : ""
                 }`}
               >
-                Manage ({remoteParticipants.length})
+                <ControlContent
+                  icon="people"
+                  label={`Manage (${remoteParticipants.length})`}
+                />
               </button>
             )}
 
             <button
               type="button"
               onClick={toggleChat}
+              aria-label="Toggle chat"
               aria-pressed={chatOpen}
-              className={`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 ${
+              title="Chat"
+              className={`lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3 ${
                 chatOpen ? "bg-white/20" : ""
               }`}
             >
-              Chat
+              <ControlContent icon="chat" label="Chat" />
             </button>
 
             <button
               type="button"
               onClick={leaveConference}
               disabled={leaving}
-              className="min-h-10 shrink-0 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+              aria-label="Leave conference"
+              title="Leave conference"
+              className="!flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center rounded-lg bg-red-600 !p-0 !text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50 sm:!w-auto sm:!px-3"
             >
-              {leaving ? "Leaving..." : "Leave"}
+              <ControlContent
+                icon="leave"
+                label={leaving ? "Leaving..." : "Leave"}
+              />
             </button>
           </div>
 
           {mediaError && (
-            <div className="absolute bottom-[68px] left-3 right-3 z-50 rounded-lg border border-red-400/20 bg-red-950/90 px-3 py-2 text-xs text-red-200 shadow-lg">
+            <div className="absolute bottom-[64px] left-3 right-3 z-50 rounded-lg border border-red-400/20 bg-red-950/90 px-3 py-2 text-xs text-red-200 shadow-lg">
               {mediaError}
             </div>
           )}
