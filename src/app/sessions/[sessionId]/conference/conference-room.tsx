@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -12,7 +13,6 @@ import {
   RoomAudioRenderer,
   GridLayout,
   ParticipantTile,
-  TrackToggle,
   Chat,
   useTracks,
   useRoomContext,
@@ -49,10 +49,14 @@ type ControlIconName =
   | "chat"
   | "leave";
 
+type MediaAction = "microphone" | "camera" | "screen";
+
 function ControlIcon({
   name,
+  off = false,
 }: {
   name: ControlIconName;
+  off?: boolean;
 }) {
   const common = {
     width: 18,
@@ -66,56 +70,74 @@ function ControlIcon({
     "aria-hidden": true as const,
   };
 
+  let content;
+
   switch (name) {
     case "mic":
-      return (
-        <svg {...common}>
+      content = (
+        <>
           <rect x="9" y="2" width="6" height="12" rx="3" />
           <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
           <path d="M12 19v3M8 22h8" />
-        </svg>
+        </>
       );
+      break;
 
     case "camera":
-      return (
-        <svg {...common}>
+      content = (
+        <>
           <rect x="3" y="6" width="13" height="12" rx="2" />
           <path d="m16 10 5-3v10l-5-3" />
-        </svg>
+        </>
       );
+      break;
 
     case "screen":
-      return (
-        <svg {...common}>
+      content = (
+        <>
           <rect x="3" y="3" width="18" height="13" rx="2" />
-          <path d="M8 21h8M12 16v5M8 9l3-3 3 3M11 6v6" />
-        </svg>
+          <path d="M8 21h8M12 16v5" />
+        </>
       );
+      break;
 
     case "people":
-      return (
-        <svg {...common}>
+      content = (
+        <>
           <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="10" cy="7" r="4" />
           <path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
+        </>
       );
+      break;
 
     case "chat":
-      return (
-        <svg {...common}>
-          <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z" />
-        </svg>
+      content = (
+        <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z" />
       );
+      break;
 
     case "leave":
-      return (
-        <svg {...common}>
+      content = (
+        <>
           <path d="M10 17l5-5-5-5M15 12H3" />
           <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
-        </svg>
+        </>
       );
+      break;
   }
+
+  return (
+    <svg {...common}>
+      {content}
+      {off && (
+        <path
+          d="M3 3l18 18"
+          strokeWidth="2.4"
+        />
+      )}
+    </svg>
+  );
 }
 
 function ControlContent({
@@ -133,13 +155,123 @@ function ControlContent({
   );
 }
 
+function getMediaErrorMessage(
+  error: unknown,
+  action: MediaAction
+) {
+  const name =
+    error instanceof Error ? error.name : "";
+
+  const message =
+    error instanceof Error ? error.message : "";
+
+  if (
+    name === "NotAllowedError" ||
+    name === "SecurityError"
+  ) {
+    if (action === "microphone") {
+      return "Microphone access was denied. Check your browser and device permissions, then try again.";
+    }
+
+    if (action === "camera") {
+      return "Camera access was denied. Check your browser and device permissions, then try again.";
+    }
+
+    return "Screen sharing was blocked or canceled by the browser.";
+  }
+
+  if (name === "NotFoundError") {
+    return action === "microphone"
+      ? "No microphone was found on this device."
+      : "No camera was found on this device.";
+  }
+
+  if (name === "NotReadableError") {
+    return action === "microphone"
+      ? "The microphone is unavailable or being used by another application."
+      : "The camera is unavailable or being used by another application.";
+  }
+
+  if (name === "NotReadableError") {
+    return "The selected device could not be opened.";
+  }
+
+  if (message) {
+    return message;
+  }
+
+  return `Unable to enable ${action}. Please try again.`;
+}
+
+function MediaButton({
+  icon,
+  label,
+  enabled,
+  busy,
+  disabled,
+  offIsError = false,
+  activeClassName,
+  title,
+  onClick,
+}: {
+  icon: ControlIconName;
+  label: string;
+  enabled: boolean;
+  busy: boolean;
+  disabled: boolean;
+  offIsError?: boolean;
+  activeClassName?: string;
+  title: string;
+  onClick: () => void;
+}) {
+  const appearance =
+    offIsError && !enabled
+      ? "bg-red-600 text-white hover:bg-red-500"
+      : enabled
+        ? activeClassName ??
+          "bg-white/10 text-white hover:bg-white/20"
+        : "bg-white/10 text-white hover:bg-white/20";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={title}
+      aria-pressed={enabled}
+      title={title}
+      className={`flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:px-3 ${appearance}`}
+    >
+      {busy ? (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+      ) : (
+        <span className="flex items-center justify-center gap-1.5">
+          <ControlIcon
+            name={icon}
+            off={offIsError && !enabled}
+          />
+          <span className="hidden sm:inline">
+            {label}
+          </span>
+        </span>
+      )}
+    </button>
+  );
+}
+
 function ConferenceWorkspace({
   sessionId,
   title,
   canManageDocuments,
 }: Props) {
   const room = useRoomContext();
-  const { localParticipant } = useLocalParticipant();
+
+  const {
+    localParticipant,
+    isMicrophoneEnabled,
+    isCameraEnabled,
+    isScreenShareEnabled,
+  } = useLocalParticipant();
 
   const remoteParticipants = useRemoteParticipants({
     updateOnlyOn: [
@@ -150,22 +282,27 @@ function ConferenceWorkspace({
   });
 
   const [chatOpen, setChatOpen] = useState(false);
-  const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [participantsOpen, setParticipantsOpen] =
+    useState(false);
+
   const [leaving, setLeaving] = useState(false);
   const [mediaError, setMediaError] = useState("");
-  const [readerAvailable, setReaderAvailable] = useState(true);
+  const [mediaBusy, setMediaBusy] =
+    useState<MediaAction | null>(null);
+
+  const [readerAvailable, setReaderAvailable] =
+    useState(true);
+
+  const mediaActionLock = useRef(false);
 
   const isOrganizer =
     localParticipant.attributes?.role === "organizer";
 
-  const handleDocumentAvailabilityChange = useCallback(
-    (available: boolean) => {
+  const handleDocumentAvailabilityChange =
+    useCallback((available: boolean) => {
       setReaderAvailable(available);
-    },
-    []
-  );
+    }, []);
 
-  // Keep the track-source array stable between renders.
   const trackSources = useMemo(
     () => [
       {
@@ -185,9 +322,10 @@ function ConferenceWorkspace({
   });
 
   const gridClassName = readerAvailable
-    ? "grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(240px,0.9fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1"
-    : "grid-cols-1 grid-rows-1 lg:grid-cols-1 lg:grid-rows-1";
+    ? "grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(220px,0.9fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1"
+    : "grid-cols-1 grid-rows-1";
 
+  // Unlock remote audio after a real user interaction.
   useEffect(() => {
     let unlocked = false;
     let pending = false;
@@ -198,6 +336,7 @@ function ConferenceWorkspace({
         handleUserInteraction,
         true
       );
+
       window.removeEventListener(
         "keydown",
         handleUserInteraction,
@@ -211,9 +350,8 @@ function ConferenceWorkspace({
       pending = true;
 
       try {
-        const result = room.startAudio();
-
-        void result
+        void room
+          .startAudio()
           .then(() => {
             unlocked = true;
             removeListeners();
@@ -238,6 +376,7 @@ function ConferenceWorkspace({
       handleUserInteraction,
       true
     );
+
     window.addEventListener(
       "keydown",
       handleUserInteraction,
@@ -247,6 +386,108 @@ function ConferenceWorkspace({
     return removeListeners;
   }, [room]);
 
+  const runMediaAction = useCallback(
+    async (
+      action: MediaAction,
+      callback: () => Promise<unknown>
+    ) => {
+      if (mediaActionLock.current) return;
+
+      mediaActionLock.current = true;
+      setMediaBusy(action);
+      setMediaError("");
+
+      try {
+        await callback();
+      } catch (error) {
+        console.error(
+          `Vaani ${action} error:`,
+          error
+        );
+
+        setMediaError(
+          getMediaErrorMessage(error, action)
+        );
+      } finally {
+        mediaActionLock.current = false;
+        setMediaBusy(null);
+      }
+    },
+    []
+  );
+
+  const toggleMicrophone = useCallback(() => {
+    void runMediaAction("microphone", async () => {
+      if (
+        !isMicrophoneEnabled &&
+        !navigator.mediaDevices?.getUserMedia
+      ) {
+        throw new Error(
+          "This browser does not support microphone access."
+        );
+      }
+
+      await localParticipant.setMicrophoneEnabled(
+        !isMicrophoneEnabled
+      );
+    });
+  }, [
+    runMediaAction,
+    localParticipant,
+    isMicrophoneEnabled,
+  ]);
+
+  const toggleCamera = useCallback(() => {
+    void runMediaAction("camera", async () => {
+      if (
+        !isCameraEnabled &&
+        !navigator.mediaDevices?.getUserMedia
+      ) {
+        throw new Error(
+          "This browser does not support camera access."
+        );
+      }
+
+      await localParticipant.setCameraEnabled(
+        !isCameraEnabled
+      );
+    });
+  }, [
+    runMediaAction,
+    localParticipant,
+    isCameraEnabled,
+  ]);
+
+  const toggleScreenShare = useCallback(() => {
+    void runMediaAction("screen", async () => {
+      if (isScreenShareEnabled) {
+        await localParticipant.setScreenShareEnabled(
+          false
+        );
+        return;
+      }
+
+      if (
+        !window.isSecureContext ||
+        typeof navigator.mediaDevices?.getDisplayMedia !==
+          "function"
+      ) {
+        throw new Error(
+          "Screen sharing is not supported by this browser on this device. Use Vaani on a supported desktop browser to present your screen."
+        );
+      }
+
+      await localParticipant.setScreenShareEnabled(
+        true,
+        { audio: false }
+      );
+    });
+  }, [
+    runMediaAction,
+    localParticipant,
+    isScreenShareEnabled,
+  ]);
+
   async function leaveConference() {
     if (leaving) return;
 
@@ -255,30 +496,25 @@ function ConferenceWorkspace({
     try {
       await room.disconnect();
     } catch (error) {
-      console.error("Conference disconnect failed:", error);
+      console.error(
+        "Conference disconnect failed:",
+        error
+      );
     } finally {
-      window.location.replace(`/sessions/${sessionId}`);
+      window.location.replace(
+        `/sessions/${sessionId}`
+      );
     }
   }
 
   function toggleChat() {
     setParticipantsOpen(false);
     setChatOpen((current) => !current);
-    setMediaError("");
   }
 
   function toggleParticipants() {
     setChatOpen(false);
     setParticipantsOpen((current) => !current);
-    setMediaError("");
-  }
-
-  function handleMediaError(error: Error) {
-    console.error("LiveKit media error:", error);
-
-    setMediaError(
-      error.message || "Unable to access this device."
-    );
   }
 
   return (
@@ -319,7 +555,6 @@ function ConferenceWorkspace({
       <div
         className={`grid min-h-0 flex-1 gap-2 p-2 lg:gap-3 lg:p-3 ${gridClassName}`}
       >
-        {/* Keep this component mounted so it can detect newly uploaded PDFs. */}
         <div
           className={
             readerAvailable
@@ -355,50 +590,57 @@ function ConferenceWorkspace({
             <ModerationPanel
               sessionId={sessionId}
               open={participantsOpen}
-              onClose={() => setParticipantsOpen(false)}
+              onClose={() =>
+                setParticipantsOpen(false)
+              }
             />
           )}
 
           <div className="relative z-30 flex h-16 shrink-0 items-center justify-center gap-1.5 border-t border-white/10 bg-[#171717] px-2 sm:gap-2">
-            <TrackToggle
-              source={Track.Source.Microphone}
-              showIcon={false}
-              onDeviceError={handleMediaError}
-              onChange={() => setMediaError("")}
-              aria-label="Toggle microphone"
-              title="Microphone"
-              className="lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3"
-            >
-              <ControlContent icon="mic" label="Mic" />
-            </TrackToggle>
+            <MediaButton
+              icon="mic"
+              label="Mic"
+              enabled={isMicrophoneEnabled}
+              offIsError
+              busy={mediaBusy === "microphone"}
+              disabled={mediaBusy !== null}
+              title={
+                isMicrophoneEnabled
+                  ? "Turn microphone off"
+                  : "Turn microphone on"
+              }
+              onClick={toggleMicrophone}
+            />
 
-            <TrackToggle
-              source={Track.Source.Camera}
-              showIcon={false}
-              onDeviceError={handleMediaError}
-              onChange={() => setMediaError("")}
-              aria-label="Toggle camera"
-              title="Camera"
-              className="lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3"
-            >
-              <ControlContent icon="camera" label="Camera" />
-            </TrackToggle>
+            <MediaButton
+              icon="camera"
+              label="Camera"
+              enabled={isCameraEnabled}
+              offIsError
+              busy={mediaBusy === "camera"}
+              disabled={mediaBusy !== null}
+              title={
+                isCameraEnabled
+                  ? "Turn camera off"
+                  : "Turn camera on"
+              }
+              onClick={toggleCamera}
+            />
 
-            <TrackToggle
-              source={Track.Source.ScreenShare}
-              captureOptions={{
-                audio: true,
-                selfBrowserSurface: "include",
-              }}
-              showIcon={false}
-              onDeviceError={handleMediaError}
-              onChange={() => setMediaError("")}
-              aria-label="Share screen"
-              title="Share screen"
-              className="lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3"
-            >
-              <ControlContent icon="screen" label="Share" />
-            </TrackToggle>
+            <MediaButton
+              icon="screen"
+              label="Present"
+              enabled={isScreenShareEnabled}
+              activeClassName="bg-blue-600 text-white hover:bg-blue-500"
+              busy={mediaBusy === "screen"}
+              disabled={mediaBusy !== null}
+              title={
+                isScreenShareEnabled
+                  ? "Stop presenting"
+                  : "Present screen"
+              }
+              onClick={toggleScreenShare}
+            />
 
             {isOrganizer && (
               <button
@@ -407,8 +649,10 @@ function ConferenceWorkspace({
                 aria-label={`Manage participants (${remoteParticipants.length})`}
                 aria-pressed={participantsOpen}
                 title="Manage participants"
-                className={`lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3 ${
-                  participantsOpen ? "bg-white/20" : ""
+                className={`flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:w-auto sm:px-3 ${
+                  participantsOpen
+                    ? "bg-white/20"
+                    : "bg-white/10"
                 }`}
               >
                 <ControlContent
@@ -424,11 +668,16 @@ function ConferenceWorkspace({
               aria-label="Toggle chat"
               aria-pressed={chatOpen}
               title="Chat"
-              className={`lk-button !flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center !rounded-lg !p-0 !text-xs sm:!w-auto sm:!px-3 ${
-                chatOpen ? "bg-white/20" : ""
+              className={`flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:w-auto sm:px-3 ${
+                chatOpen
+                  ? "bg-white/20"
+                  : "bg-white/10"
               }`}
             >
-              <ControlContent icon="chat" label="Chat" />
+              <ControlContent
+                icon="chat"
+                label="Chat"
+              />
             </button>
 
             <button
@@ -437,7 +686,7 @@ function ConferenceWorkspace({
               disabled={leaving}
               aria-label="Leave conference"
               title="Leave conference"
-              className="!flex !h-10 !w-10 !min-h-10 !shrink-0 !items-center !justify-center rounded-lg bg-red-600 !p-0 !text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50 sm:!w-auto sm:!px-3"
+              className="flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 px-0 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:px-3"
             >
               <ControlContent
                 icon="leave"
@@ -447,8 +696,23 @@ function ConferenceWorkspace({
           </div>
 
           {mediaError && (
-            <div className="absolute bottom-[64px] left-3 right-3 z-50 rounded-lg border border-red-400/20 bg-red-950/90 px-3 py-2 text-xs text-red-200 shadow-lg">
-              {mediaError}
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="absolute bottom-[76px] left-2 right-2 z-50 flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-950/95 px-3 py-3 text-xs leading-relaxed text-red-100 shadow-xl sm:left-4 sm:right-4"
+            >
+              <p className="min-w-0 flex-1">
+                {mediaError}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setMediaError("")}
+                aria-label="Dismiss error"
+                className="shrink-0 rounded px-1 text-base leading-none text-red-200 hover:bg-white/10"
+              >
+                ×
+              </button>
             </div>
           )}
         </section>
@@ -464,6 +728,7 @@ export default function ConferenceRoom({
 }: Props) {
   const [credentials, setCredentials] =
     useState<Credentials | null>(null);
+
   const [error, setError] = useState("");
   const [removed, setRemoved] = useState(false);
 
@@ -471,7 +736,9 @@ export default function ConferenceRoom({
     if (!removed) return;
 
     const timeout = window.setTimeout(() => {
-      window.location.replace(`/sessions/${sessionId}`);
+      window.location.replace(
+        `/sessions/${sessionId}`
+      );
     }, 1600);
 
     return () => window.clearTimeout(timeout);
@@ -482,21 +749,25 @@ export default function ConferenceRoom({
 
     async function connect() {
       try {
-        const response = await fetch("/api/livekit/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ sessionId }),
-          signal: controller.signal,
-          cache: "no-store",
-        });
+        const response = await fetch(
+          "/api/livekit/token",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sessionId }),
+            signal: controller.signal,
+            cache: "no-store",
+          }
+        );
 
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(
-            data.error || "Unable to join conference."
+            data.error ||
+              "Unable to join conference."
           );
         }
 
@@ -504,7 +775,9 @@ export default function ConferenceRoom({
           typeof data.serverUrl !== "string" ||
           typeof data.participantToken !== "string"
         ) {
-          throw new Error("Invalid conference credentials.");
+          throw new Error(
+            "Invalid conference credentials."
+          );
         }
 
         setCredentials({
@@ -594,21 +867,32 @@ export default function ConferenceRoom({
   }
 
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-[#111111] text-white">
+    <main className="flex h-screen h-[100dvh] flex-col overflow-hidden bg-[#111111] text-white">
       <LiveKitRoom
         serverUrl={credentials.serverUrl}
         token={credentials.participantToken}
         connect={true}
         audio={false}
         video={false}
+        options={{
+          adaptiveStream: true,
+          dynacast: true,
+        }}
         onDisconnected={(reason) => {
-          if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+          if (
+            reason ===
+            DisconnectReason.PARTICIPANT_REMOVED
+          ) {
             setRemoved(true);
           }
         }}
-        onError={(liveKitError) =>
-          setError(liveKitError.message)
-        }
+        onError={(liveKitError) => {
+          console.error(
+            "LiveKit room error:",
+            liveKitError
+          );
+          setError(liveKitError.message);
+        }}
         data-lk-theme="default"
         style={{
           flex: "1 1 0%",
