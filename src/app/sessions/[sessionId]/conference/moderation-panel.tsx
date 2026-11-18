@@ -56,7 +56,7 @@ export default function ModerationPanel({
     action: "remove" | "mute",
     trackSid?: string
   ) {
-    const key = \`\${targetUserId}-\${action}\`;
+    const key = `${targetUserId}-${action}`;
 
     setBusy(key);
     setMessage("");
@@ -179,7 +179,7 @@ export default function ModerationPanel({
                         className="rounded-md bg-white/10 px-3 py-2 text-xs transition hover:bg-white/20 disabled:opacity-40"
                       >
                         {busy ===
-                        \`\${participant.identity}-mute\`
+                        `${participant.identity}-mute`
                           ? "Muting..."
                           : "Mute mic"}
                       </button>
@@ -196,7 +196,7 @@ export default function ModerationPanel({
                         className="rounded-md bg-red-500/15 px-3 py-2 text-xs text-red-300 transition hover:bg-red-500/25 disabled:opacity-40"
                       >
                         {busy ===
-                        \`\${participant.identity}-remove\`
+                        `${participant.identity}-remove`
                           ? "Removing..."
                           : "Remove"}
                       </button>
