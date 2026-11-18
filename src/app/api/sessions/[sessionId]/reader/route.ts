@@ -2,9 +2,66 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 function isValidUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value
   );
+}
+
+async function getLiveSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string
+) {
+  const { data: session, error } = await supabase
+    .from("sessions")
+    .select("id, status")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Reader session lookup failed:", error);
+
+    return {
+      response: NextResponse.json(
+        { error: "Unable to load the session." },
+        { status: 500 }
+      ),
+      session: null,
+    };
+  }
+
+  if (!session) {
+    return {
+      response: NextResponse.json(
+        { error: "Session not found." },
+        { status: 404 }
+      ),
+      session: null,
+    };
+  }
+
+  if (session.status !== "live") {
+    return {
+      response: NextResponse.json(
+        { error: "Session is not live." },
+        { status: 409 }
+      ),
+      session: null,
+    };
+  }
+
+  return { response: null, session };
+}
+
+async function getAuthenticatedUser(
+  supabase: Awaited<ReturnType<typeof createClient>>
+) {
+  const { data, error } = await supabase.auth.getClaims();
+
+  if (error || typeof data?.claims?.sub !== "string") {
+    return null;
+  }
+
+  return data.claims.sub;
 }
 
 export async function GET(
@@ -23,52 +80,21 @@ export async function GET(
   }
 
   const supabase = await createClient();
+  const userId = await getAuthenticatedUser(supabase);
 
-  const {
-    data: claimsData,
-    error: claimsError,
-  } = await supabase.auth.getClaims();
-
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!userId) {
     return NextResponse.json(
       { error: "Unauthorized." },
       { status: 401 }
     );
   }
 
-  const userId = claimsData.claims.sub;
+  const { response: sessionResponse } = await getLiveSession(
+    supabase,
+    sessionId
+  );
 
-  const {
-    data: session,
-    error: sessionError,
-  } = await supabase
-    .from("sessions")
-    .select("id, status")
-    .eq("id", sessionId)
-    .maybeSingle();
-
-  if (sessionError) {
-    console.error("Reader session lookup failed:", sessionError);
-
-    return NextResponse.json(
-      { error: "Unable to load the session." },
-      { status: 500 }
-    );
-  }
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Session not found." },
-      { status: 404 }
-    );
-  }
-
-  if (session.status !== "live") {
-    return NextResponse.json(
-      { error: "Session is not live." },
-      { status: 409 }
-    );
-  }
+  if (sessionResponse) return sessionResponse;
 
   const {
     data: membership,
@@ -138,7 +164,10 @@ export async function GET(
       .maybeSingle();
 
     if (documentError) {
-      console.error("Selected reader document lookup failed:", documentError);
+      console.error(
+        "Selected reader document lookup failed:",
+        documentError
+      );
 
       return NextResponse.json(
         { error: "Unable to load the selected PDF." },
@@ -160,17 +189,16 @@ export async function GET(
       )
       .eq("session_id", sessionId)
       .eq("is_active", true)
-      .order("display_order", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: true,
-      })
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (documentError) {
-      console.error("Fallback reader document lookup failed:", documentError);
+      console.error(
+        "Fallback reader document lookup failed:",
+        documentError
+      );
 
       return NextResponse.json(
         { error: "Unable to load session documents." },
@@ -194,16 +222,10 @@ export async function GET(
     error: signedUrlError,
   } = await supabase.storage
     .from("session-pdfs")
-    .createSignedUrl(
-      document.storage_path,
-      60 * 60
-    );
+    .createSignedUrl(document.storage_path, 60 * 60);
 
   if (signedUrlError || !signedUrlData?.signedUrl) {
-    console.error(
-      "Failed to create PDF signed URL:",
-      signedUrlError
-    );
+    console.error("Failed to create PDF signed URL:", signedUrlError);
 
     return NextResponse.json(
       { error: "Unable to access the PDF." },
@@ -245,20 +267,22 @@ export async function PATCH(
   }
 
   const supabase = await createClient();
+  const userId = await getAuthenticatedUser(supabase);
 
-  const {
-    data: claimsData,
-    error: claimsError,
-  } = await supabase.auth.getClaims();
-
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!userId) {
     return NextResponse.json(
       { error: "Unauthorized." },
       { status: 401 }
     );
   }
 
-  const userId = claimsData.claims.sub;
+  // Reader updates are permitted only while the session is live.
+  const { response: sessionResponse } = await getLiveSession(
+    supabase,
+    sessionId
+  );
+
+  if (sessionResponse) return sessionResponse;
 
   const {
     data: membership,
@@ -272,7 +296,10 @@ export async function PATCH(
     .maybeSingle();
 
   if (membershipError) {
-    console.error("Reader control membership lookup failed:", membershipError);
+    console.error(
+      "Reader control membership lookup failed:",
+      membershipError
+    );
 
     return NextResponse.json(
       { error: "Unable to verify reader permissions." },
@@ -339,7 +366,10 @@ export async function PATCH(
     .maybeSingle();
 
   if (documentError) {
-    console.error("Reader document validation failed:", documentError);
+    console.error(
+      "Reader document validation failed:",
+      documentError
+    );
 
     return NextResponse.json(
       { error: "Unable to verify the document." },
@@ -378,7 +408,5 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json({
-    success: true,
-  });
+  return NextResponse.json({ success: true });
 }
