@@ -11,8 +11,10 @@ import {
   Chat,
   useTracks,
   useRoomContext,
+  useLocalParticipant,
+  useParticipants,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { DisconnectReason, Track } from "livekit-client";
 import "@livekit/components-styles";
 
 import PdfUploader from "./pdf-uploader";
@@ -36,12 +38,37 @@ function ConferenceWorkspace({
   canManageDocuments,
 }: Props) {
   const room = useRoomContext();
+  const { localParticipant } = useLocalParticipant();
+  const participants = useParticipants();
 
   const [chatOpen, setChatOpen] = useState(false);
+  const [participantsOpen, setParticipantsOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [mediaError, setMediaError] = useState("");
 
-  // Handle browser autoplay restrictions without displaying
-  // a separate Enable audio button.
+  const isOrganizer =
+    localParticipant.attributes?.role === "organizer";
+
+  const remoteParticipants = participants.filter(
+    (participant) => !participant.isLocal
+  );
+
+  const tracks = useTracks(
+    [
+      {
+        source: Track.Source.Camera,
+        withPlaceholder: true,
+      },
+      {
+        source: Track.Source.ScreenShare,
+        withPlaceholder: false,
+      },
+    ],
+    {
+      onlySubscribed: false,
+    }
+  );
+
   useEffect(() => {
     let unlocked = false;
     let pending = false;
@@ -52,7 +79,6 @@ function ConferenceWorkspace({
         handleUserInteraction,
         true
       );
-
       window.removeEventListener(
         "keydown",
         handleUserInteraction,
@@ -73,10 +99,7 @@ function ConferenceWorkspace({
             unlocked = true;
             removeListeners();
           })
-          .catch(() => {
-            // Browser autoplay restrictions may require
-            // another user interaction.
-          })
+          .catch(() => {})
           .finally(() => {
             pending = false;
           });
@@ -89,17 +112,13 @@ function ConferenceWorkspace({
       attemptAudioUnlock();
     }
 
-    // First attempt: works automatically when the browser
-    // already permits audio playback.
     attemptAudioUnlock();
 
-    // Fallback: retry on the user's first interaction.
     window.addEventListener(
       "pointerdown",
       handleUserInteraction,
       true
     );
-
     window.addEventListener(
       "keydown",
       handleUserInteraction,
@@ -111,22 +130,6 @@ function ConferenceWorkspace({
     };
   }, [room]);
 
-  const tracks = useTracks(
-    [
-      {
-        source: Track.Source.Camera,
-        withPlaceholder: true,
-      },
-      {
-        source: Track.Source.ScreenShare,
-        withPlaceholder: false,
-      },
-    ],
-    {
-      onlySubscribed: false,
-    }
-  );
-
   async function leaveConference() {
     if (leaving) return;
 
@@ -137,8 +140,27 @@ function ConferenceWorkspace({
     } catch (error) {
       console.error("Conference disconnect failed:", error);
     } finally {
-      window.location.replace(`/sessions/${sessionId}`);
+      window.location.replace(\`/sessions/\${sessionId}\`);
     }
+  }
+
+  function toggleChat() {
+    setParticipantsOpen(false);
+    setChatOpen((current) => !current);
+    setMediaError("");
+  }
+
+  function toggleParticipants() {
+    setChatOpen(false);
+    setParticipantsOpen((current) => !current);
+    setMediaError("");
+  }
+
+  function handleMediaError(error: Error) {
+    console.error("LiveKit media error:", error);
+    setMediaError(
+      error.message || "Unable to access this device."
+    );
   }
 
   return (
@@ -150,7 +172,8 @@ function ConferenceWorkspace({
           </h1>
 
           <p className="text-xs text-white/50">
-            Vaani Conference
+            {remoteParticipants.length + 1} participant
+            {remoteParticipants.length === 0 ? "" : "s"} connected
           </p>
         </div>
 
@@ -184,25 +207,33 @@ function ConferenceWorkspace({
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <GridLayout
               tracks={tracks}
-              className="h-full w-full"
+              className="h-full min-h-0 w-full"
             >
               <ParticipantTile />
             </GridLayout>
           </div>
 
           {chatOpen && (
-            <div className="absolute inset-x-3 bottom-[76px] top-3 z-40 overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl">
-              <Chat />
+            <div className="absolute inset-x-3 bottom-[80px] top-3 z-40 flex min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl">
+              <Chat className="h-full min-h-0 w-full" />
             </div>
           )}
 
-          <ModerationPanel sessionId={sessionId} />
+          {participantsOpen && isOrganizer && (
+            <ModerationPanel
+              sessionId={sessionId}
+              open={participantsOpen}
+              onClose={() => setParticipantsOpen(false)}
+            />
+          )}
 
-          <div className="relative z-30 flex min-h-[68px] shrink-0 flex-wrap items-center justify-center gap-2 border-t border-white/10 bg-[#171717] px-3 py-3">
+          <div className="relative z-30 flex h-[68px] shrink-0 flex-nowrap items-center justify-start gap-2 overflow-x-auto border-t border-white/10 bg-[#171717] px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <TrackToggle
               source={Track.Source.Microphone}
               showIcon={true}
-              className="!min-h-10 !rounded-lg !px-3 !py-2"
+              onDeviceError={handleMediaError}
+              onChange={() => setMediaError("")}
+              className="!min-h-10 !shrink-0 !rounded-lg !px-3 !py-2"
             >
               Mic
             </TrackToggle>
@@ -210,7 +241,9 @@ function ConferenceWorkspace({
             <TrackToggle
               source={Track.Source.Camera}
               showIcon={true}
-              className="!min-h-10 !rounded-lg !px-3 !py-2"
+              onDeviceError={handleMediaError}
+              onChange={() => setMediaError("")}
+              className="!min-h-10 !shrink-0 !rounded-lg !px-3 !py-2"
             >
               Camera
             </TrackToggle>
@@ -222,18 +255,33 @@ function ConferenceWorkspace({
                 selfBrowserSurface: "include",
               }}
               showIcon={true}
-              className="!min-h-10 !rounded-lg !px-3 !py-2"
+              onDeviceError={handleMediaError}
+              onChange={() => setMediaError("")}
+              className="!min-h-10 !shrink-0 !rounded-lg !px-3 !py-2"
             >
               Share screen
             </TrackToggle>
 
+            {isOrganizer && (
+              <button
+                type="button"
+                onClick={toggleParticipants}
+                aria-pressed={participantsOpen}
+                className={\`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 \${
+                  participantsOpen ? "bg-white/20" : ""
+                }\`}
+              >
+                Manage ({remoteParticipants.length})
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => setChatOpen((current) => !current)}
+              onClick={toggleChat}
               aria-pressed={chatOpen}
-              className={`lk-button min-h-10 rounded-lg px-3 py-2 ${
+              className={\`lk-button min-h-10 shrink-0 rounded-lg px-3 py-2 \${
                 chatOpen ? "bg-white/20" : ""
-              }`}
+              }\`}
             >
               Chat
             </button>
@@ -242,11 +290,17 @@ function ConferenceWorkspace({
               type="button"
               onClick={leaveConference}
               disabled={leaving}
-              className="min-h-10 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+              className="min-h-10 shrink-0 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
             >
               {leaving ? "Leaving..." : "Leave"}
             </button>
           </div>
+
+          {mediaError && (
+            <div className="absolute bottom-[68px] left-3 right-3 z-50 rounded-lg border border-red-400/20 bg-red-950/90 px-3 py-2 text-xs text-red-200 shadow-lg">
+              {mediaError}
+            </div>
+          )}
         </section>
       </div>
     </div>
@@ -260,8 +314,18 @@ export default function ConferenceRoom({
 }: Props) {
   const [credentials, setCredentials] =
     useState<Credentials | null>(null);
-
   const [error, setError] = useState("");
+  const [removed, setRemoved] = useState(false);
+
+  useEffect(() => {
+    if (!removed) return;
+
+    const timeout = window.setTimeout(() => {
+      window.location.replace(\`/sessions/\${sessionId}\`);
+    }, 1600);
+
+    return () => window.clearTimeout(timeout);
+  }, [removed, sessionId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -318,6 +382,30 @@ export default function ConferenceRoom({
     return () => controller.abort();
   }, [sessionId]);
 
+  if (removed) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#111111] px-5 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#171717] p-6 text-center shadow-2xl">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-300">
+            <span className="text-xl">×</span>
+          </div>
+
+          <h1 className="mt-4 text-lg font-semibold">
+            You were removed from the conference
+          </h1>
+
+          <p className="mt-2 text-sm text-white/50">
+            The organizer removed you from this session.
+          </p>
+
+          <p className="mt-4 text-xs text-white/35">
+            Returning to the session page...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   if (error) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#111111] px-5 text-white">
@@ -331,7 +419,7 @@ export default function ConferenceRoom({
           </p>
 
           <Link
-            href={`/sessions/${sessionId}`}
+            href={\`/sessions/\${sessionId}\`}
             className="mt-6 inline-block rounded-lg bg-white/10 px-5 py-3 text-sm transition hover:bg-white/20"
           >
             Back to session
@@ -363,6 +451,11 @@ export default function ConferenceRoom({
         connect={true}
         audio={false}
         video={false}
+        onDisconnected={(reason) => {
+          if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+            setRemoved(true);
+          }
+        }}
         onError={(liveKitError) =>
           setError(liveKitError.message)
         }
