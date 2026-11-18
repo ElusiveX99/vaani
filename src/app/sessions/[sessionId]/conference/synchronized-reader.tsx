@@ -158,7 +158,11 @@ export default function SynchronizedReader({
 
     const supabase = createClient();
 
-    void loadReaderState();
+    void Promise.resolve().then(() => {
+      if (active) {
+        void loadReaderState();
+      }
+    });
 
     const handleReaderRefresh = () => {
       if (active) {
@@ -442,7 +446,6 @@ export default function SynchronizedReader({
         <PdfReader
           key={data.document.id}
           documentUrl={data.document.url}
-          documentSizeBytes={data.document.sizeBytes}
           currentPage={currentPage}
           canControl={data.canControl}
           onPageChange={changePage}

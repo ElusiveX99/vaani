@@ -23,7 +23,6 @@ pdfjs.GlobalWorkerOptions.workerSrc =
 
 type Props = {
   documentUrl: string;
-  documentSizeBytes: number;
   currentPage: number;
   canControl: boolean;
   onPageChange: (page: number) => void;
@@ -38,7 +37,6 @@ const PDF_OPTIONS = {
 
 export default function PdfReader({
   documentUrl,
-  documentSizeBytes,
   currentPage,
   canControl,
   onPageChange,
@@ -64,8 +62,16 @@ export default function PdfReader({
   const [containerHeight, setContainerHeight] =
     useState(700);
 
-  const [inputPage, setInputPage] =
-    useState(String(currentPage));
+  const [inputDraft, setInputDraft] =
+    useState<{
+      basedOnPage: number;
+      value: string;
+    } | null>(null);
+
+  const inputPage =
+    inputDraft?.basedOnPage === currentPage
+      ? inputDraft.value
+      : String(currentPage);
 
   const [error, setError] =
     useState("");
@@ -140,10 +146,6 @@ export default function PdfReader({
         lastReportedPage.current =
           page;
 
-        setInputPage(
-          String(page)
-        );
-
         const top =
           (page - 1) *
           rowHeight;
@@ -204,10 +206,6 @@ export default function PdfReader({
         lastReportedPage.current =
           page;
 
-        setInputPage(
-          String(page)
-        );
-
         onPageChange(page);
       }
     }, [
@@ -218,10 +216,6 @@ export default function PdfReader({
     ]);
 
   useEffect(() => {
-    setInputPage(
-      String(currentPage)
-    );
-
     if (
       currentPage !==
         lastReportedPage.current &&
@@ -397,14 +391,12 @@ export default function PdfReader({
         page
       )
     ) {
-      setInputPage(
-        String(currentPage)
-      );
-
+      setInputDraft(null);
       return;
     }
 
     jumpToPage(page);
+    setInputDraft(null);
   }
 
   return (
@@ -453,9 +445,10 @@ export default function PdfReader({
                 !numPages
               }
               onChange={event =>
-                setInputPage(
-                  event.target.value
-                )
+                setInputDraft({
+                  basedOnPage: currentPage,
+                  value: event.target.value,
+                })
               }
               onKeyDown={event => {
                 if (
@@ -473,9 +466,7 @@ export default function PdfReader({
             />
 
             <span className="text-white/50">
-              /{" "}
-              {numPages ||
-                "—"}
+              / {numPages || "—"}
             </span>
           </div>
 

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -202,12 +203,12 @@ async function SessionContent({ params, searchParams }: PageProps) {
       <div className="mx-auto max-w-4xl">
 
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <a
+          <Link
             href="/sessions"
             className="text-sm font-medium text-stone-600 hover:text-stone-900"
           >
             ← Back to sessions
-          </a>
+          </Link>
 
           <span className="text-sm font-semibold tracking-wide text-emerald-800">
             VAANI
@@ -469,12 +470,12 @@ async function SessionContent({ params, searchParams }: PageProps) {
                   The conference room is ready.
                 </p>
 
-                <a
+                <Link
                   href={`/sessions/${session.id}/conference`}
                   className="mt-4 inline-flex rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
                 >
                   Enter conference
-                </a>
+                </Link>
               </div>
             )}
 
