@@ -3,19 +3,39 @@
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
-  const supabase = createClient();
+export default function LoginPage({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const [authReady, setAuthReady] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (data.session) {
+        router.replace("/home");
+      } else {
+        setAuthReady(true);
+      }
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace("/home");
+    });
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [router, supabase]);
 
   async function handleEmailAuth(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -77,6 +97,10 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : "Google sign-in failed.");
       setLoading(false);
     }
+  }
+
+  if (!authReady) {
+    return <main className="grid min-h-screen place-items-center bg-[var(--background)]"><span className="text-sm text-[var(--muted)]">Loading…</span></main>;
   }
 
   return (

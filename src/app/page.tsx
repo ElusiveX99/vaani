@@ -3,10 +3,10 @@ import Link from "next/link";
 const gatherings = [
   { title: "Chaturasi Ji gaayan", detail: "Shared singing" },
   { title: "Pada gaayan", detail: "Padas sung together" },
-  { title: "Vaani reading", detail: "Follow the same page during a gathering" },
+  { title: "Vaani reading", detail: "Read together during a gathering" },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
       <header className="site-header relative z-20">
@@ -16,7 +16,7 @@ export default function LandingPage() {
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/login" className="nav-link">Sign in</Link>
-            <Link href="/login" className="button-primary !min-h-10 !px-5 !py-2 text-xs sm:text-sm">Continue</Link>
+            <Link href="/signup" className="button-primary !min-h-10 !px-5 !py-2 text-xs sm:text-sm">Create account</Link>
           </div>
         </nav>
       </header>
@@ -26,15 +26,14 @@ export default function LandingPage() {
           <div className="max-w-2xl">
             <p className="eyebrow">Radha Vallabh Sampradaya</p>
             <h1 className="font-display mt-6 max-w-xl text-5xl leading-[1.04] text-[var(--plum)] sm:text-6xl lg:text-7xl">
-              Chaturasi Ji gaayan, together.
+              Chaturasi Ji gaayan.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
-              Vaani brings Sakhis together for pada gaayan, shared Vaani reading, and conversation.
+              A place for Sakhis to gather for pada gaayan, Vaani reading, and conversation.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/login" className="button-primary">Enter Vaani</Link>
-              <a href="#gatherings" className="button-secondary">Our gatherings</a>
-            </div>
+            <a href="#gatherings" className="mt-8 inline-flex text-sm font-semibold text-[var(--plum)] underline decoration-[var(--gold)] underline-offset-4">
+              Explore gatherings
+            </a>
           </div>
 
           <div aria-hidden="true" className="relative mx-auto hidden aspect-[5/4] w-full max-w-[480px] items-center justify-center md:flex">
@@ -53,7 +52,7 @@ export default function LandingPage() {
         <div className="page-shell">
           <div className="max-w-xl">
             <p className="eyebrow">Radha Vallabh Sampradaya</p>
-            <h2 className="font-display mt-3 text-4xl text-[var(--plum)] sm:text-5xl">What we gather for</h2>
+            <h2 className="font-display mt-3 text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h2>
           </div>
           <div className="mt-9 grid gap-3 md:grid-cols-3">
             {gatherings.map((item) => (

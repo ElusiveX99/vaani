@@ -75,14 +75,11 @@ async function HomeContent() {
               Welcome back, {name.split(" ")[0]}.
             </h1>
           </div>
-          <Link href="/sessions" className="button-primary self-start sm:self-auto">Browse gatherings</Link>
+          
         </section>
 
         <section className="mt-9">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-3xl text-[var(--plum)]">Your gatherings</h2>
-            <Link href="/sessions" className="text-sm font-semibold text-[var(--plum)] hover:underline">View all</Link>
-          </div>
+          <h2 className="font-display text-3xl text-[var(--plum)]">Your gatherings</h2>
 
           {relevantSessions.length > 0 ? (
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -108,19 +105,19 @@ async function HomeContent() {
           ) : (
             <div className="surface-card mt-5 p-7">
               <p className="text-sm text-[var(--muted)]">There are no current gatherings to show.</p>
-              <Link href="/sessions" className="button-secondary mt-4">Browse gatherings</Link>
+              <Link href="/sessions#discover-sessions" className="button-secondary mt-4">Find a session</Link>
             </div>
           )}
         </section>
 
         <section className="mt-10 grid gap-3 sm:grid-cols-2">
-          <Link href="/sessions" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
-            <h2 className="font-display text-2xl text-[var(--plum)]">Gatherings</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Join a session or organize one.</p>
+          <Link href="/sessions#discover-sessions" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
+            <h2 className="font-display text-2xl text-[var(--plum)]">Join a session</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Browse gatherings open to members.</p>
           </Link>
-          <Link href="/account" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
-            <h2 className="font-display text-2xl text-[var(--plum)]">Profile</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Update your name and photo.</p>
+          <Link href="/sessions?create=1#create-session" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
+            <h2 className="font-display text-2xl text-[var(--plum)]">Host a gathering</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Create a session and invite members.</p>
           </Link>
         </section>
       </div>

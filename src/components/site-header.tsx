@@ -13,10 +13,9 @@ type Props = {
 const links = [
   { href: "/home", label: "Home" },
   { href: "/sessions", label: "Gatherings" },
-  { href: "/account", label: "Profile" },
 ];
 
-export default function SiteHeader({ name, email, avatarUrl }: Props) {
+export default function SiteHeader({ name, avatarUrl }: Props) {
   const pathname = usePathname();
 
   return (
@@ -44,27 +43,14 @@ export default function SiteHeader({ name, email, avatarUrl }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <details className="profile-menu">
-            <summary aria-label="Open profile menu">
-              <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
-              <span className="hidden max-w-32 truncate text-sm font-medium text-[var(--ink)] sm:block">{name}</span>
-              <span aria-hidden="true" className="text-xs text-[var(--muted)]">⌄</span>
-            </summary>
-            <div className="profile-dropdown">
-              <div className="border-b border-[var(--line)] px-4 py-3">
-                <p className="truncate text-sm font-semibold text-[var(--ink)]">{name}</p>
-                <p className="truncate text-xs text-[var(--muted)]">{email}</p>
-              </div>
-              {links.map((link) => (
-                <Link key={link.href} href={link.href} className="profile-dropdown-link">{link.label}</Link>
-              ))}
-            </div>
-          </details>
+          <Link href="/account" className="button-secondary !min-h-9 !gap-2 !px-3 !py-1.5 text-xs sm:!min-h-10 sm:!px-4 sm:!py-2 sm:text-sm">
+            <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
+            <span>Manage account</span>
+          </Link>
           <details className="mobile-nav md:hidden">
             <summary aria-label="Open navigation"><span aria-hidden="true" className="text-lg">☰</span></summary>
             <div className="mobile-nav-panel">
               {links.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
-              <Link href="/">Vaani home</Link>
             </div>
           </details>
         </div>

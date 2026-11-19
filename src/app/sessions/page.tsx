@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -17,6 +16,7 @@ type SessionsPageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
+    create?: string;
   }>;
 };
 
@@ -221,7 +221,7 @@ function SessionSection({
   emptyMessage: string;
 }) {
   return (
-    <section className="mt-10">
+    <section id={title === "Discover sessions" ? "discover-sessions" : undefined} className="mt-10">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-[var(--ink)]">
           {title}
@@ -345,7 +345,6 @@ async function SessionsContent({
       <div className="page-shell py-8 sm:py-10">
         <header className="mb-8 pt-2">
           <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">Sessions for gaayan and shared reading.</p>
         </header>
 
         {params.success && successMessages[params.success] && (
@@ -416,15 +415,12 @@ async function SessionsContent({
         )}
 
         <section className="mt-14 border-t border-[var(--line)] pt-9">
-          <details className="group surface-card">
+          <details id="create-session" open={params.create === "1"} className="group surface-card">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6">
               <div>
                 <h2 className="text-xl font-semibold">
-                  Organize a session
+                  Host a gathering
                 </h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  Set up a gathering and invite its members.
-                </p>
               </div>
 
               <span className="text-2xl text-[var(--muted)] transition-transform group-open:rotate-45">

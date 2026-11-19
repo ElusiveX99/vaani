@@ -219,15 +219,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
       <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-8 sm:py-10">
 
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <Link
-            href="/sessions"
-            className="text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)]"
-          >
-            ← Back to sessions
-          </Link>
 
-        </header>
 
         {paramsData.success &&
           successMessages[paramsData.success] && (

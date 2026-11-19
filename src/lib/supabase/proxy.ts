@@ -36,7 +36,20 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh and verify the authentication token.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+
+  // Keep the public landing page out of the way for authenticated members.
+  if (request.nextUrl.pathname === "/" && typeof data?.claims?.sub === "string") {
+    const destination = request.nextUrl.clone();
+    destination.pathname = "/home";
+    destination.search = "";
+
+    const redirectResponse = NextResponse.redirect(destination);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
 
   return supabaseResponse;
 }
