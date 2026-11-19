@@ -21,6 +21,7 @@ type Message = {
   sender_id: string;
   body: string;
   created_at: string;
+  pending?: boolean;
 };
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -105,7 +106,22 @@ export default function PersistentChat({
 
         if (!active) return;
 
-        setMessages((data ?? []) as Message[]);
+        // Merge the history snapshot with any Realtime messages that
+        // arrived while the request was in flight.
+        setMessages((previous) => {
+          const merged = new Map<string, Message>();
+          for (const message of (data ?? []) as Message[]) {
+            merged.set(message.id, message);
+          }
+          for (const message of previous) {
+            merged.set(message.id, message);
+          }
+          return [...merged.values()].sort(
+            (a, b) =>
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime()
+          );
+        });
         shouldScrollRef.current = true;
       } catch (err) {
         if (!active) return;
@@ -201,56 +217,60 @@ export default function PersistentChat({
       window.cancelAnimationFrame(frame);
   }, [messages.length, open]);
 
-  async function sendMessage(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const body = input.trim();
+    if (!body || sending || !currentUserId) return;
 
-    if (
-      !body ||
-      sending ||
-      !currentUserId
-    ) {
-      return;
-    }
+    const temporaryId = "pending-" + crypto.randomUUID();
+    const optimisticMessage: Message = {
+      id: temporaryId,
+      session_id: sessionId,
+      sender_id: currentUserId,
+      body: body.slice(0, MAX_MESSAGE_LENGTH),
+      created_at: new Date().toISOString(),
+      pending: true,
+    };
 
+    // Render immediately for the sender; do not depend on Realtime echo.
+    setMessages((previous) => [...previous, optimisticMessage]);
+    setInput("");
     setSending(true);
     setError("");
+    shouldScrollRef.current = true;
 
     try {
       const supabase = createClient();
+      const { data, error: insertError } = await supabase
+        .from("session_messages")
+        .insert({
+          session_id: sessionId,
+          sender_id: currentUserId,
+          body: optimisticMessage.body,
+        })
+        .select("id, session_id, sender_id, body, created_at")
+        .single();
 
-      const { error: insertError } =
-        await supabase
-          .from("session_messages")
-          .insert({
-            session_id: sessionId,
-            sender_id: currentUserId,
-            body: body.slice(
-              0,
-              MAX_MESSAGE_LENGTH
-            ),
-          });
+      if (insertError) throw insertError;
+      const savedMessage = data as Message;
 
-      if (insertError) {
-        throw insertError;
-      }
-
-      setInput("");
-      shouldScrollRef.current = true;
+      // Realtime may arrive before this response; deduplicate by DB ID.
+      setMessages((previous) => {
+        const withoutTemporary = previous.filter(
+          (message) => message.id !== temporaryId
+        );
+        if (withoutTemporary.some((message) => message.id === savedMessage.id)) {
+          return withoutTemporary;
+        }
+        return [...withoutTemporary, savedMessage].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      });
     } catch (err) {
-      console.error(
-        "Unable to send session chat message:",
-        err
-      );
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to send message."
-      );
+      console.error("Unable to send session chat message:", err);
+      setMessages((previous) => previous.filter((message) => message.id !== temporaryId));
+      setInput(body);
+      setError(err instanceof Error ? err.message : "Unable to send message.");
     } finally {
       setSending(false);
     }
