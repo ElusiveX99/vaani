@@ -103,7 +103,7 @@ function getAvailablePageWidth(
     MIN_PAGE_WIDTH,
     Math.min(
       MAX_PAGE_WIDTH,
-      container.clientWidth - 24
+      Math.round(container.clientWidth - 24)
     )
   );
 }
@@ -125,16 +125,14 @@ export default function PdfReader({
 
   const [numPages, setNumPages] = useState(0);
 
-  const [pageWidth, setPageWidth] =
-    useState(700);
-
-  const [pageAspectRatio, setPageAspectRatio] =
-    useState(990 / 700);
+  const [pageWidth, setPageWidth] = useState(0);
+  const [pageAspectRatio, setPageAspectRatio] = useState(0);
+  const [hasMeasuredContainer, setHasMeasuredContainer] = useState(false);
+  const [pageMetricsReady, setPageMetricsReady] = useState(false);
 
   const [scrollTop, setScrollTop] = useState(0);
 
-  const [containerHeight, setContainerHeight] =
-    useState(700);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const [devicePixelRatio, setDevicePixelRatio] =
     useState(1);
@@ -287,7 +285,12 @@ export default function PdfReader({
   useEffect(() => {
     const container = containerRef.current;
 
-    if (!container || !numPages) return;
+    if (
+      !container ||
+      !numPages ||
+      !hasMeasuredContainer ||
+      !pageMetricsReady
+    ) return;
 
     const previousRowHeight =
       lastAppliedRowHeight.current;
@@ -374,6 +377,8 @@ export default function PdfReader({
     currentPage,
     numPages,
     rowHeight,
+    hasMeasuredContainer,
+    pageMetricsReady,
   ]);
 
   // Measure the reader container.
@@ -397,6 +402,7 @@ export default function PdfReader({
           ? previous
           : container.clientHeight
       );
+      setHasMeasuredContainer(true);
     };
 
     updateSize();
@@ -432,9 +438,8 @@ export default function PdfReader({
       const isSmallScreen =
         window.innerWidth < 640;
 
-      const limit = isSmallScreen
-        ? 1.25
-        : 1.5;
+      // Keep canvases crisp on high-density displays without unbounded memory use.
+      const limit = 2;
 
       const nextRatio = Math.min(
         window.devicePixelRatio || 1,
@@ -484,6 +489,7 @@ export default function PdfReader({
         setPageAspectRatio(
           viewport.height / viewport.width
         );
+        setPageMetricsReady(true);
       }
 
       const container = containerRef.current;
@@ -616,6 +622,7 @@ export default function PdfReader({
         className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-2 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]"
       >
         <Document
+          key={documentUrl}
           file={documentUrl}
           options={PDF_OPTIONS}
           onLoadSuccess={handleDocumentLoad}
@@ -642,7 +649,7 @@ export default function PdfReader({
           />
 
           <div className="flex flex-col items-center">
-            {renderedPages.map((pageNumber) => (
+            {hasMeasuredContainer && pageMetricsReady && renderedPages.map((pageNumber) => (
               <VirtualPdfPage
                 key={pageNumber}
                 pageNumber={pageNumber}
