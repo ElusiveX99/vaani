@@ -13,7 +13,6 @@ import {
   RoomAudioRenderer,
   GridLayout,
   ParticipantTile,
-  Chat,
   useTracks,
   useRoomContext,
   useLocalParticipant,
@@ -28,6 +27,7 @@ import "@livekit/components-styles";
 
 import PdfUploader from "./pdf-uploader";
 import ModerationPanel from "./moderation-panel";
+import PersistentChat from "./persistent-chat";
 import SynchronizedReader from "./synchronized-reader";
 
 type Props = {
@@ -49,7 +49,10 @@ type ControlIconName =
   | "chat"
   | "leave";
 
-type MediaAction = "microphone" | "camera" | "screen";
+type MediaAction =
+  | "microphone"
+  | "camera"
+  | "screen";
 
 function ControlIcon({
   name,
@@ -76,7 +79,13 @@ function ControlIcon({
     case "mic":
       content = (
         <>
-          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <rect
+            x="9"
+            y="2"
+            width="6"
+            height="12"
+            rx="3"
+          />
           <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
           <path d="M12 19v3M8 22h8" />
         </>
@@ -86,7 +95,13 @@ function ControlIcon({
     case "camera":
       content = (
         <>
-          <rect x="3" y="6" width="13" height="12" rx="2" />
+          <rect
+            x="3"
+            y="6"
+            width="13"
+            height="12"
+            rx="2"
+          />
           <path d="m16 10 5-3v10l-5-3" />
         </>
       );
@@ -95,7 +110,13 @@ function ControlIcon({
     case "screen":
       content = (
         <>
-          <rect x="3" y="3" width="18" height="13" rx="2" />
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="13"
+            rx="2"
+          />
           <path d="M8 21h8M12 16v5" />
         </>
       );
@@ -130,6 +151,7 @@ function ControlIcon({
   return (
     <svg {...common}>
       {content}
+
       {off && (
         <path
           d="M3 3l18 18"
@@ -150,7 +172,9 @@ function ControlContent({
   return (
     <span className="flex items-center justify-center gap-1.5">
       <ControlIcon name={icon} />
-      <span className="hidden sm:inline">{label}</span>
+      <span className="hidden sm:inline">
+        {label}
+      </span>
     </span>
   );
 }
@@ -160,10 +184,14 @@ function getMediaErrorMessage(
   action: MediaAction
 ) {
   const name =
-    error instanceof Error ? error.name : "";
+    error instanceof Error
+      ? error.name
+      : "";
 
   const message =
-    error instanceof Error ? error.message : "";
+    error instanceof Error
+      ? error.message
+      : "";
 
   if (
     name === "NotAllowedError" ||
@@ -181,19 +209,27 @@ function getMediaErrorMessage(
   }
 
   if (name === "NotFoundError") {
-    return action === "microphone"
-      ? "No microphone was found on this device."
-      : "No camera was found on this device.";
+    if (action === "microphone") {
+      return "No microphone was found on this device.";
+    }
+
+    if (action === "camera") {
+      return "No camera was found on this device.";
+    }
+
+    return "No display was available for screen sharing.";
   }
 
   if (name === "NotReadableError") {
-    return action === "microphone"
-      ? "The microphone is unavailable or being used by another application."
-      : "The camera is unavailable or being used by another application.";
-  }
+    if (action === "microphone") {
+      return "The microphone is unavailable or being used by another application.";
+    }
 
-  if (name === "NotReadableError") {
-    return "The selected device could not be opened.";
+    if (action === "camera") {
+      return "The camera is unavailable or being used by another application.";
+    }
+
+    return "The selected display could not be shared.";
   }
 
   if (message) {
@@ -248,8 +284,12 @@ function MediaButton({
         <span className="flex items-center justify-center gap-1.5">
           <ControlIcon
             name={icon}
-            off={offIsError && !enabled}
+            off={
+              offIsError &&
+              !enabled
+            }
           />
+
           <span className="hidden sm:inline">
             {label}
           </span>
@@ -273,59 +313,87 @@ function ConferenceWorkspace({
     isScreenShareEnabled,
   } = useLocalParticipant();
 
-  const remoteParticipants = useRemoteParticipants({
-    updateOnlyOn: [
-      RoomEvent.ParticipantConnected,
-      RoomEvent.ParticipantDisconnected,
-      RoomEvent.ConnectionStateChanged,
-    ],
-  });
+  const remoteParticipants =
+    useRemoteParticipants({
+      updateOnlyOn: [
+        RoomEvent.ParticipantConnected,
+        RoomEvent.ParticipantDisconnected,
+        RoomEvent.ConnectionStateChanged,
+      ],
+    });
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [participantsOpen, setParticipantsOpen] =
+  const [chatOpen, setChatOpen] =
     useState(false);
 
-  const [leaving, setLeaving] = useState(false);
-  const [mediaError, setMediaError] = useState("");
+  const [
+    chatUnreadCount,
+    setChatUnreadCount,
+  ] = useState(0);
+
+  const [
+    participantsOpen,
+    setParticipantsOpen,
+  ] = useState(false);
+
+  const [leaving, setLeaving] =
+    useState(false);
+
+  const [mediaError, setMediaError] =
+    useState("");
+
   const [mediaBusy, setMediaBusy] =
     useState<MediaAction | null>(null);
 
-  const [readerAvailable, setReaderAvailable] =
-    useState(true);
+  const [
+    readerAvailable,
+    setReaderAvailable,
+  ] = useState(true);
 
-  const mediaActionLock = useRef(false);
+  const mediaActionLock =
+    useRef(false);
 
   const isOrganizer =
-    localParticipant.attributes?.role === "organizer";
+    localParticipant.attributes?.role ===
+    "organizer";
 
   const handleDocumentAvailabilityChange =
-    useCallback((available: boolean) => {
-      setReaderAvailable(available);
-    }, []);
+    useCallback(
+      (available: boolean) => {
+        setReaderAvailable(
+          available
+        );
+      },
+      []
+    );
 
   const trackSources = useMemo(
     () => [
       {
-        source: Track.Source.Camera,
+        source:
+          Track.Source.Camera,
         withPlaceholder: true,
       },
       {
-        source: Track.Source.ScreenShare,
+        source:
+          Track.Source.ScreenShare,
         withPlaceholder: false,
       },
     ],
     []
   );
 
-  const tracks = useTracks(trackSources, {
-    onlySubscribed: false,
-  });
+  const tracks = useTracks(
+    trackSources,
+    {
+      onlySubscribed: false,
+    }
+  );
 
-  const gridClassName = readerAvailable
-    ? "grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(220px,0.9fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1"
-    : "grid-cols-1 grid-rows-1";
+  const gridClassName =
+    readerAvailable
+      ? "grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(220px,0.9fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1"
+      : "grid-cols-1 grid-rows-1";
 
-  // Unlock remote audio after a real user interaction.
   useEffect(() => {
     let unlocked = false;
     let pending = false;
@@ -345,7 +413,12 @@ function ConferenceWorkspace({
     }
 
     function attemptAudioUnlock() {
-      if (unlocked || pending) return;
+      if (
+        unlocked ||
+        pending
+      ) {
+        return;
+      }
 
       pending = true;
 
@@ -386,110 +459,145 @@ function ConferenceWorkspace({
     return removeListeners;
   }, [room]);
 
-  const runMediaAction = useCallback(
-    async (
-      action: MediaAction,
-      callback: () => Promise<unknown>
-    ) => {
-      if (mediaActionLock.current) return;
+  const runMediaAction =
+    useCallback(
+      async (
+        action: MediaAction,
+        callback: () => Promise<unknown>
+      ) => {
+        if (
+          mediaActionLock.current
+        ) {
+          return;
+        }
 
-      mediaActionLock.current = true;
-      setMediaBusy(action);
-      setMediaError("");
+        mediaActionLock.current =
+          true;
 
-      try {
-        await callback();
-      } catch (error) {
-        console.error(
-          `Vaani ${action} error:`,
-          error
-        );
+        setMediaBusy(action);
+        setMediaError("");
 
-        setMediaError(
-          getMediaErrorMessage(error, action)
-        );
-      } finally {
-        mediaActionLock.current = false;
-        setMediaBusy(null);
-      }
-    },
-    []
-  );
+        try {
+          await callback();
+        } catch (error) {
+          console.error(
+            `Vaani ${action} error:`,
+            error
+          );
 
-  const toggleMicrophone = useCallback(() => {
-    void runMediaAction("microphone", async () => {
-      if (
-        !isMicrophoneEnabled &&
-        !navigator.mediaDevices?.getUserMedia
-      ) {
-        throw new Error(
-          "This browser does not support microphone access."
-        );
-      }
+          setMediaError(
+            getMediaErrorMessage(
+              error,
+              action
+            )
+          );
+        } finally {
+          mediaActionLock.current =
+            false;
 
-      await localParticipant.setMicrophoneEnabled(
-        !isMicrophoneEnabled
+          setMediaBusy(null);
+        }
+      },
+      []
+    );
+
+  const toggleMicrophone =
+    useCallback(() => {
+      void runMediaAction(
+        "microphone",
+        async () => {
+          if (
+            !isMicrophoneEnabled &&
+            !navigator.mediaDevices
+              ?.getUserMedia
+          ) {
+            throw new Error(
+              "This browser does not support microphone access."
+            );
+          }
+
+          await localParticipant.setMicrophoneEnabled(
+            !isMicrophoneEnabled
+          );
+        }
       );
-    });
-  }, [
-    runMediaAction,
-    localParticipant,
-    isMicrophoneEnabled,
-  ]);
+    }, [
+      runMediaAction,
+      localParticipant,
+      isMicrophoneEnabled,
+    ]);
 
-  const toggleCamera = useCallback(() => {
-    void runMediaAction("camera", async () => {
-      if (
-        !isCameraEnabled &&
-        !navigator.mediaDevices?.getUserMedia
-      ) {
-        throw new Error(
-          "This browser does not support camera access."
-        );
-      }
+  const toggleCamera =
+    useCallback(() => {
+      void runMediaAction(
+        "camera",
+        async () => {
+          if (
+            !isCameraEnabled &&
+            !navigator.mediaDevices
+              ?.getUserMedia
+          ) {
+            throw new Error(
+              "This browser does not support camera access."
+            );
+          }
 
-      await localParticipant.setCameraEnabled(
-        !isCameraEnabled
+          await localParticipant.setCameraEnabled(
+            !isCameraEnabled
+          );
+        }
       );
-    });
-  }, [
-    runMediaAction,
-    localParticipant,
-    isCameraEnabled,
-  ]);
+    }, [
+      runMediaAction,
+      localParticipant,
+      isCameraEnabled,
+    ]);
 
-  const toggleScreenShare = useCallback(() => {
-    void runMediaAction("screen", async () => {
-      if (isScreenShareEnabled) {
-        await localParticipant.setScreenShareEnabled(
-          false
-        );
-        return;
-      }
+  const toggleScreenShare =
+    useCallback(() => {
+      void runMediaAction(
+        "screen",
+        async () => {
+          if (
+            isScreenShareEnabled
+          ) {
+            await localParticipant.setScreenShareEnabled(
+              false
+            );
 
-      if (
-        !window.isSecureContext ||
-        typeof navigator.mediaDevices?.getDisplayMedia !==
-          "function"
-      ) {
-        throw new Error(
-          "Screen sharing is not supported by this browser on this device. Use Vaani on a supported desktop browser to present your screen."
-        );
-      }
+            return;
+          }
 
-      await localParticipant.setScreenShareEnabled(
-        true,
-        { audio: false }
+          if (
+            !window.isSecureContext ||
+            typeof navigator
+              .mediaDevices
+              ?.getDisplayMedia !==
+              "function"
+          ) {
+            throw new Error(
+              "Screen sharing is not supported by this browser on this device. Use Vaani on a supported desktop browser to present your screen."
+            );
+          }
+
+          await localParticipant.setScreenShareEnabled(
+            true,
+            {
+              audio: false,
+            }
+          );
+        }
       );
-    });
-  }, [
-    runMediaAction,
-    localParticipant,
-    isScreenShareEnabled,
-  ]);
+    }, [
+      runMediaAction,
+      localParticipant,
+      isScreenShareEnabled,
+    ]);
 
   async function leaveConference() {
-    if (leaving) return;
+    if (leaving) {
+      return;
+    }
 
     setLeaving(true);
 
@@ -508,13 +616,21 @@ function ConferenceWorkspace({
   }
 
   function toggleChat() {
-    setParticipantsOpen(false);
-    setChatOpen((current) => !current);
+    setParticipantsOpen(
+      false
+    );
+
+    setChatOpen(
+      (current) => !current
+    );
   }
 
   function toggleParticipants() {
     setChatOpen(false);
-    setParticipantsOpen((current) => !current);
+
+    setParticipantsOpen(
+      (current) => !current
+    );
   }
 
   return (
@@ -526,18 +642,28 @@ function ConferenceWorkspace({
           </h1>
 
           <p className="text-xs text-white/50">
-            {remoteParticipants.length + 1} participant
-            {remoteParticipants.length === 0 ? "" : "s"} connected
+            {remoteParticipants.length +
+              1}{" "}
+            participant
+            {remoteParticipants.length ===
+            0
+              ? ""
+              : "s"}{" "}
+            connected
           </p>
         </div>
 
         <button
           type="button"
-          onClick={leaveConference}
+          onClick={
+            leaveConference
+          }
           disabled={leaving}
           className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/80 transition hover:bg-white/10 disabled:opacity-50"
         >
-          {leaving ? "Leaving..." : "Leave conference"}
+          {leaving
+            ? "Leaving..."
+            : "Leave conference"}
         </button>
       </header>
 
@@ -547,8 +673,12 @@ function ConferenceWorkspace({
         </span>
 
         <PdfUploader
-          sessionId={sessionId}
-          canManage={canManageDocuments}
+          sessionId={
+            sessionId
+          }
+          canManage={
+            canManageDocuments
+          }
         />
       </div>
 
@@ -563,7 +693,9 @@ function ConferenceWorkspace({
           }
         >
           <SynchronizedReader
-            sessionId={sessionId}
+            sessionId={
+              sessionId
+            }
             onDocumentAvailabilityChange={
               handleDocumentAvailabilityChange
             }
@@ -573,81 +705,130 @@ function ConferenceWorkspace({
         <section className="relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#171717]">
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <GridLayout
-              tracks={tracks}
+              tracks={
+                tracks
+              }
               className="h-full min-h-0 w-full"
             >
               <ParticipantTile />
             </GridLayout>
           </div>
 
-          {chatOpen && (
-            <div className="absolute inset-x-3 bottom-[76px] top-3 z-40 flex min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl">
-              <Chat className="h-full min-h-0 w-full" />
-            </div>
-          )}
+          <PersistentChat
+            sessionId={
+              sessionId
+            }
+            open={
+              chatOpen
+            }
+            onUnreadChange={
+              setChatUnreadCount
+            }
+          />
 
-          {participantsOpen && isOrganizer && (
-            <ModerationPanel
-              sessionId={sessionId}
-              open={participantsOpen}
-              onClose={() =>
-                setParticipantsOpen(false)
-              }
-            />
-          )}
+          {participantsOpen &&
+            isOrganizer && (
+              <ModerationPanel
+                sessionId={
+                  sessionId
+                }
+                open={
+                  participantsOpen
+                }
+                onClose={() =>
+                  setParticipantsOpen(
+                    false
+                  )
+                }
+              />
+            )}
 
           <div className="relative z-30 flex h-16 shrink-0 items-center justify-center gap-1.5 border-t border-white/10 bg-[#171717] px-2 sm:gap-2">
             <MediaButton
               icon="mic"
               label="Mic"
-              enabled={isMicrophoneEnabled}
+              enabled={
+                isMicrophoneEnabled
+              }
               offIsError
-              busy={mediaBusy === "microphone"}
-              disabled={mediaBusy !== null}
+              busy={
+                mediaBusy ===
+                "microphone"
+              }
+              disabled={
+                mediaBusy !==
+                null
+              }
               title={
                 isMicrophoneEnabled
                   ? "Turn microphone off"
                   : "Turn microphone on"
               }
-              onClick={toggleMicrophone}
+              onClick={
+                toggleMicrophone
+              }
             />
 
             <MediaButton
               icon="camera"
               label="Camera"
-              enabled={isCameraEnabled}
+              enabled={
+                isCameraEnabled
+              }
               offIsError
-              busy={mediaBusy === "camera"}
-              disabled={mediaBusy !== null}
+              busy={
+                mediaBusy ===
+                "camera"
+              }
+              disabled={
+                mediaBusy !==
+                null
+              }
               title={
                 isCameraEnabled
                   ? "Turn camera off"
                   : "Turn camera on"
               }
-              onClick={toggleCamera}
+              onClick={
+                toggleCamera
+              }
             />
 
             <MediaButton
               icon="screen"
               label="Present"
-              enabled={isScreenShareEnabled}
+              enabled={
+                isScreenShareEnabled
+              }
               activeClassName="bg-blue-600 text-white hover:bg-blue-500"
-              busy={mediaBusy === "screen"}
-              disabled={mediaBusy !== null}
+              busy={
+                mediaBusy ===
+                "screen"
+              }
+              disabled={
+                mediaBusy !==
+                null
+              }
               title={
                 isScreenShareEnabled
                   ? "Stop presenting"
                   : "Present screen"
               }
-              onClick={toggleScreenShare}
+              onClick={
+                toggleScreenShare
+              }
             />
 
             {isOrganizer && (
               <button
                 type="button"
-                onClick={toggleParticipants}
+                onClick={
+                  toggleParticipants
+                }
                 aria-label={`Manage participants (${remoteParticipants.length})`}
-                aria-pressed={participantsOpen}
+                aria-pressed={
+                  participantsOpen
+                }
                 title="Manage participants"
                 className={`flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:w-auto sm:px-3 ${
                   participantsOpen
@@ -664,11 +845,20 @@ function ConferenceWorkspace({
 
             <button
               type="button"
-              onClick={toggleChat}
-              aria-label="Toggle chat"
-              aria-pressed={chatOpen}
+              onClick={
+                toggleChat
+              }
+              aria-label={
+                chatUnreadCount >
+                0
+                  ? `Chat, ${chatUnreadCount} unread messages`
+                  : "Toggle chat"
+              }
+              aria-pressed={
+                chatOpen
+              }
               title="Chat"
-              className={`flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:w-auto sm:px-3 ${
+              className={`relative flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:w-auto sm:px-3 ${
                 chatOpen
                   ? "bg-white/20"
                   : "bg-white/10"
@@ -678,19 +868,38 @@ function ConferenceWorkspace({
                 icon="chat"
                 label="Chat"
               />
+
+              {chatUnreadCount >
+                0 &&
+                !chatOpen && (
+                  <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold leading-4 text-white">
+                    {chatUnreadCount >
+                    99
+                      ? "99+"
+                      : chatUnreadCount}
+                  </span>
+                )}
             </button>
 
             <button
               type="button"
-              onClick={leaveConference}
-              disabled={leaving}
+              onClick={
+                leaveConference
+              }
+              disabled={
+                leaving
+              }
               aria-label="Leave conference"
               title="Leave conference"
               className="flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 px-0 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:px-3"
             >
               <ControlContent
                 icon="leave"
-                label={leaving ? "Leaving..." : "Leave"}
+                label={
+                  leaving
+                    ? "Leaving..."
+                    : "Leave"
+                }
               />
             </button>
           </div>
@@ -707,7 +916,11 @@ function ConferenceWorkspace({
 
               <button
                 type="button"
-                onClick={() => setMediaError("")}
+                onClick={() =>
+                  setMediaError(
+                    ""
+                  )
+                }
                 aria-label="Dismiss error"
                 className="shrink-0 rounded px-1 text-base leading-none text-red-200 hover:bg-white/10"
               >
@@ -726,43 +939,70 @@ export default function ConferenceRoom({
   title,
   canManageDocuments,
 }: Props) {
-  const [credentials, setCredentials] =
-    useState<Credentials | null>(null);
+  const [
+    credentials,
+    setCredentials,
+  ] = useState<Credentials | null>(
+    null
+  );
 
-  const [error, setError] = useState("");
-  const [removed, setRemoved] = useState(false);
+  const [error, setError] =
+    useState("");
+
+  const [removed, setRemoved] =
+    useState(false);
 
   useEffect(() => {
-    if (!removed) return;
+    if (!removed) {
+      return;
+    }
 
-    const timeout = window.setTimeout(() => {
-      window.location.replace(
-        `/sessions/${sessionId}`
+    const timeout =
+      window.setTimeout(() => {
+        window.location.replace(
+          `/sessions/${sessionId}`
+        );
+      }, 1600);
+
+    return () =>
+      window.clearTimeout(
+        timeout
       );
-    }, 1600);
-
-    return () => window.clearTimeout(timeout);
-  }, [removed, sessionId]);
+  }, [
+    removed,
+    sessionId,
+  ]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
     async function connect() {
       try {
-        const response = await fetch(
-          "/api/livekit/token",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ sessionId }),
-            signal: controller.signal,
-            cache: "no-store",
-          }
-        );
+        const response =
+          await fetch(
+            "/api/livekit/token",
+            {
+              method:
+                "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify(
+                {
+                  sessionId,
+                }
+              ),
+              signal:
+                controller.signal,
+              cache:
+                "no-store",
+            }
+          );
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
         if (!response.ok) {
           throw new Error(
@@ -772,8 +1012,10 @@ export default function ConferenceRoom({
         }
 
         if (
-          typeof data.serverUrl !== "string" ||
-          typeof data.participantToken !== "string"
+          typeof data.serverUrl !==
+            "string" ||
+          typeof data.participantToken !==
+            "string"
         ) {
           throw new Error(
             "Invalid conference credentials."
@@ -781,13 +1023,18 @@ export default function ConferenceRoom({
         }
 
         setCredentials({
-          serverUrl: data.serverUrl,
-          participantToken: data.participantToken,
+          serverUrl:
+            data.serverUrl,
+          participantToken:
+            data.participantToken,
         });
-      } catch (err) {
+      } catch (
+        err
+      ) {
         if (
           err instanceof Error &&
-          err.name === "AbortError"
+          err.name ===
+            "AbortError"
         ) {
           return;
         }
@@ -802,7 +1049,8 @@ export default function ConferenceRoom({
 
     void connect();
 
-    return () => controller.abort();
+    return () =>
+      controller.abort();
   }, [sessionId]);
 
   if (removed) {
@@ -810,7 +1058,9 @@ export default function ConferenceRoom({
       <main className="flex min-h-screen items-center justify-center bg-[#111111] px-5 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#171717] p-6 text-center shadow-2xl">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-300">
-            <span className="text-xl">×</span>
+            <span className="text-xl">
+              ×
+            </span>
           </div>
 
           <h1 className="mt-4 text-lg font-semibold">
@@ -869,43 +1119,68 @@ export default function ConferenceRoom({
   return (
     <main className="flex h-screen h-[100dvh] flex-col overflow-hidden bg-[#111111] text-white">
       <LiveKitRoom
-        serverUrl={credentials.serverUrl}
-        token={credentials.participantToken}
-        connect={true}
+        serverUrl={
+          credentials.serverUrl
+        }
+        token={
+          credentials.participantToken
+        }
+        connect
         audio={false}
         video={false}
         options={{
-          adaptiveStream: true,
-          dynacast: true,
+          adaptiveStream:
+            true,
+          dynacast:
+            true,
         }}
-        onDisconnected={(reason) => {
+        onDisconnected={(
+          reason
+        ) => {
           if (
             reason ===
             DisconnectReason.PARTICIPANT_REMOVED
           ) {
-            setRemoved(true);
+            setRemoved(
+              true
+            );
           }
         }}
-        onError={(liveKitError) => {
+        onError={(
+          liveKitError
+        ) => {
           console.error(
             "LiveKit room error:",
             liveKitError
           );
-          setError(liveKitError.message);
+
+          setError(
+            liveKitError.message
+          );
         }}
         data-lk-theme="default"
         style={{
           flex: "1 1 0%",
-          minHeight: 0,
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
+          minHeight:
+            0,
+          width:
+            "100%",
+          display:
+            "flex",
+          flexDirection:
+            "column",
         }}
       >
         <ConferenceWorkspace
-          sessionId={sessionId}
-          title={title}
-          canManageDocuments={canManageDocuments}
+          sessionId={
+            sessionId
+          }
+          title={
+            title
+          }
+          canManageDocuments={
+            canManageDocuments
+          }
         />
 
         <RoomAudioRenderer />
