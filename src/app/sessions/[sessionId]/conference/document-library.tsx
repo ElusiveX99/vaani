@@ -14,7 +14,8 @@ type DocumentItem = {
 
 export default function DocumentLibrary({
   sessionId,
-}: { sessionId: string }) {
+  canControlReader,
+}: { sessionId: string; canControlReader: boolean }) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +44,9 @@ export default function DocumentLibrary({
   useEffect(() => {
     let active = true;
     const supabase = createClient();
-    void load();
+    const initialLoad = window.setTimeout(() => {
+      if (active) void load();
+    }, 0);
 
     const refresh = () => {
       if (active) void load();
@@ -67,6 +70,7 @@ export default function DocumentLibrary({
 
     return () => {
       active = false;
+      window.clearTimeout(initialLoad);
       void supabase.removeChannel(channel);
     };
   }, [sessionId, load]);
@@ -86,7 +90,8 @@ export default function DocumentLibrary({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to update the reader.");
       setActiveDocumentId(documentId);
-      setNotice(documentId ? "Document opened for everyone." : "The shared reader is now hidden.");
+      setNotice(documentId ? "PDF opened." : "Viewer closed.");
+      window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update the reader.");
@@ -110,7 +115,8 @@ export default function DocumentLibrary({
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to delete the PDF.");
-      setNotice("PDF permanently deleted.");
+      setNotice("PDF deleted.");
+      window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to delete the PDF.");
@@ -127,7 +133,7 @@ export default function DocumentLibrary({
   return (
     <details className="min-w-0 rounded-lg border border-white/10 bg-[#202020] text-white">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
-        <span className="min-w-0 truncate text-xs font-medium">Session PDF library</span>
+        <span className="min-w-0 truncate text-xs font-medium">PDF library</span>
         <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/65">{documents.length} files</span>
       </summary>
       <div className="max-h-72 space-y-2 overflow-y-auto border-t border-white/10 p-3">
@@ -147,7 +153,7 @@ export default function DocumentLibrary({
                   {isActive && <p className="mt-1 text-[10px] font-medium text-emerald-300">Currently shared</p>}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {isActive ? (
+                  {canControlReader && (isActive ? (
                     <button type="button" disabled={busyId !== null} onClick={() => void updateActiveDocument(null)} className="rounded-md bg-white/10 px-2.5 py-1.5 text-[10px] font-medium hover:bg-white/15 disabled:opacity-40">
                       {busyId === "none" ? "Working..." : "Remove from viewer"}
                     </button>
@@ -155,7 +161,7 @@ export default function DocumentLibrary({
                     <button type="button" disabled={busyId !== null} onClick={() => void updateActiveDocument(document.id)} className="rounded-md bg-blue-600 px-2.5 py-1.5 text-[10px] font-medium text-white hover:bg-blue-500 disabled:opacity-40">
                       {busy ? "Opening..." : "Open for everyone"}
                     </button>
-                  )}
+                  ))}
                   <button type="button" disabled={busyId !== null} onClick={() => void deleteDocument(document)} className="rounded-md bg-red-500/10 px-2.5 py-1.5 text-[10px] font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-40">
                     {busy ? "Working..." : "Delete"}
                   </button>

@@ -148,6 +148,7 @@ export default function PdfReader({
   } | null>(null);
 
   const [error, setError] = useState("");
+  const [controlsVisible, setControlsVisible] = useState(false);
 
   const pageHeight =
     pageWidth * pageAspectRatio;
@@ -551,76 +552,61 @@ export default function PdfReader({
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#1b1b1b] text-white">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-3">
-        <div>
-          <h2 className="text-sm font-semibold">
-            Vaani Reader
-          </h2>
-
-          <p className="text-xs text-white/50">
-            {numPages
-              ? `${numPages} pages`
-              : "Loading document"}
-          </p>
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-xs font-medium">PDF</span>
+          <span className="shrink-0 text-[11px] tabular-nums text-white/45">
+            {numPages ? `${currentPage} / ${numPages}` : "Loading"}
+          </span>
         </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {controlsVisible && (
+            <>
+              <button
+                type="button"
+                disabled={!canControl || currentPage <= 1 || !numPages}
+                onClick={() => jumpToPage(currentPage - 1)}
+                aria-label="Previous page"
+                className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs hover:bg-white/20 disabled:opacity-30"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1 text-xs">
+                <input
+                  type="number"
+                  min={1}
+                  max={numPages || undefined}
+                  value={inputPage}
+                  disabled={!canControl || !numPages}
+                  onChange={(event) => setInputDraft({ basedOnPage: currentPage, value: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") submitPageJump();
+                  }}
+                  className="w-12 rounded-md border border-white/15 bg-white/10 px-1.5 py-1.5 text-center text-white outline-none focus:border-white/40 disabled:opacity-50"
+                  aria-label="Go to page"
+                />
+                <span className="text-white/40">/ {numPages || "—"}</span>
+              </div>
+              <button
+                type="button"
+                disabled={!canControl || !numPages || currentPage >= numPages}
+                onClick={() => jumpToPage(currentPage + 1)}
+                aria-label="Next page"
+                className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs hover:bg-white/20 disabled:opacity-30"
+              >
+                Next
+              </button>
+            </>
+          )}
           <button
             type="button"
-            disabled={
-              !canControl ||
-              currentPage <= 1 ||
-              !numPages
-            }
-            onClick={() =>
-              jumpToPage(currentPage - 1)
-            }
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm hover:bg-white/20 disabled:opacity-30"
+            onClick={() => setControlsVisible((visible) => !visible)}
+            aria-expanded={controlsVisible}
+            aria-label={controlsVisible ? "Hide PDF controls" : "Show PDF controls"}
+            title={controlsVisible ? "Hide controls" : "Show controls"}
+            className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs text-white/80 hover:bg-white/20"
           >
-            Previous
-          </button>
-
-          <div className="flex items-center gap-1 text-xs">
-            <input
-              type="number"
-              min={1}
-              max={numPages || undefined}
-              value={inputPage}
-              disabled={!canControl || !numPages}
-              onChange={(event) => {
-                setInputDraft({
-                  basedOnPage: currentPage,
-                  value: event.target.value,
-                });
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  submitPageJump();
-                }
-              }}
-              onBlur={submitPageJump}
-              className="w-14 rounded-md border border-white/15 bg-white/10 px-2 py-2 text-center text-white outline-none focus:border-white/40 disabled:opacity-50"
-              aria-label="Go to page"
-            />
-
-            <span className="text-white/50">
-              / {numPages || "—"}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            disabled={
-              !canControl ||
-              !numPages ||
-              currentPage >= numPages
-            }
-            onClick={() =>
-              jumpToPage(currentPage + 1)
-            }
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm hover:bg-white/20 disabled:opacity-30"
-          >
-            Next
+            {controlsVisible ? "Done" : "⋯"}
           </button>
         </div>
       </header>
@@ -689,11 +675,7 @@ export default function PdfReader({
         </Document>
       </div>
 
-      {!canControl && (
-        <p className="shrink-0 border-t border-white/10 px-4 py-2 text-center text-xs text-white/50">
-          The session in-charge controls synchronized navigation. You can still read at your own pace.
-        </p>
-      )}
+
     </section>
   );
 }

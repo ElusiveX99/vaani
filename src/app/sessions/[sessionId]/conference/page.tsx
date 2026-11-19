@@ -19,6 +19,7 @@ type Session = {
 type Membership = {
   role: string;
   status: string;
+  can_control_reader: boolean;
 };
 
 function ConferenceLoading() {
@@ -58,7 +59,7 @@ async function ConferenceContent({ params }: PageProps) {
 
   const { data: membershipData } = await supabase
     .from("session_members")
-    .select("role, status")
+    .select("role, status, can_control_reader")
     .eq("session_id", session.id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -78,11 +79,17 @@ async function ConferenceContent({ params }: PageProps) {
     membership.role === "in_charge" ||
     membership.role === "admin";
 
+  const canControlReader =
+    membership.role === "organizer" ||
+    membership.role === "in_charge" ||
+    (membership.role === "admin" && membership.can_control_reader === true);
+
   return (
     <ConferenceRoom
       sessionId={session.id}
       title={session.title}
       canManageDocuments={canManageDocuments}
+      canControlReader={canControlReader}
     />
   );
 }

@@ -36,6 +36,7 @@ type Props = {
   sessionId: string;
   title: string;
   canManageDocuments: boolean;
+  canControlReader: boolean;
 };
 
 type Credentials = {
@@ -305,6 +306,7 @@ function ConferenceWorkspace({
   sessionId,
   title,
   canManageDocuments,
+  canControlReader,
 }: Props) {
   const room = useRoomContext();
 
@@ -702,33 +704,25 @@ function ConferenceWorkspace({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={
-            leaveConference
-          }
-          disabled={leaving}
-          className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-white/80 transition hover:bg-white/10 disabled:opacity-50"
-        >
-          {leaving
-            ? "Leaving..."
-            : "Leave conference"}
-        </button>
       </header>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#171717] px-4 py-2">
-        <span className="text-xs font-medium text-white/70">
-          Session workspace
-        </span>
-
-        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
-          <DocumentLibrary sessionId={sessionId} />
-          <PdfUploader
-            sessionId={sessionId}
-            canManage={canManageDocuments}
-          />
+      {canManageDocuments && (
+        <div className="relative z-40 flex shrink-0 justify-end border-b border-white/10 bg-[#171717] px-3 py-1.5 sm:px-4">
+          <details className="group relative">
+            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/85 transition hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+              <span>Workspace</span>
+              <span className="text-white/45 transition group-open:rotate-180">⌄</span>
+            </summary>
+            <div className="absolute right-0 top-full mt-2 flex w-[min(92vw,24rem)] flex-col gap-2 rounded-xl border border-white/10 bg-[#202020] p-3 shadow-2xl">
+              <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
+              <PdfUploader
+                sessionId={sessionId}
+                canManage={canManageDocuments}
+              />
+            </div>
+          </details>
         </div>
-      </div>
+      )}
 
       <div
         className={`grid min-h-0 flex-1 gap-2 p-2 lg:gap-3 lg:p-3 ${gridClassName}`}
@@ -987,6 +981,7 @@ export default function ConferenceRoom({
   sessionId,
   title,
   canManageDocuments,
+  canControlReader,
 }: Props) {
   const [
     credentials,
@@ -1229,6 +1224,9 @@ export default function ConferenceRoom({
           }
           canManageDocuments={
             canManageDocuments
+          }
+          canControlReader={
+            canControlReader
           }
         />
 

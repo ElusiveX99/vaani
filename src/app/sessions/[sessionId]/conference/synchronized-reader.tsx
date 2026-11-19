@@ -478,7 +478,7 @@ const SynchronizedReader = memo(
         void supabase.removeChannel(channel);
         void supabase.removeChannel(membershipChannel);
       };
-    }, [sessionId, loadReaderState]);
+    }, [sessionId, loadReaderState, localParticipant.identity]);
 
     // Persist only the active reader controller's position.
     useEffect(() => {
@@ -878,27 +878,20 @@ const SynchronizedReader = memo(
           </p>
 
           <div className="flex items-center gap-2">
-          <span className="shrink-0 text-xs text-white/40">
-            {syncStatus === "syncing" &&
-              "Syncing..."}
-            {syncStatus === "synced" &&
-              "Synchronized"}
-            {syncStatus === "local" &&
-              "Local reading position"}
-            {syncStatus === "error" &&
-              "Sync failed"}
-          </span>
-          {data.canRequestControl && !data.canControl && (
-            <button
-              type="button"
-              onClick={() => void claimReaderControl()}
-              className="shrink-0 rounded-md bg-white/10 px-2.5 py-1.5 text-[10px] font-medium text-white/80 hover:bg-white/20"
-            >
-              {data.canReclaimControl
-                ? "Take control"
-                : "Request control"}
-            </button>
-          )}
+            <span
+              title={syncStatus === "error" ? "Sync failed" : syncStatus === "syncing" ? "Syncing" : syncStatus === "local" ? "Local reading position" : "Synchronized"}
+              aria-label={syncStatus}
+              className={`h-1.5 w-1.5 rounded-full ${syncStatus === "error" ? "bg-red-400" : syncStatus === "syncing" ? "bg-amber-300" : syncStatus === "local" ? "bg-white/30" : "bg-emerald-400"}`}
+            />
+            {data.canRequestControl && !data.canControl && (
+              <button
+                type="button"
+                onClick={() => void claimReaderControl()}
+                className="shrink-0 rounded-md bg-white/10 px-2.5 py-1.5 text-[10px] font-medium text-white/80 hover:bg-white/20"
+              >
+                {data.canReclaimControl ? "Take control" : "Request control"}
+              </button>
+            )}
           </div>
         </div>
 

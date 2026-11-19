@@ -28,7 +28,7 @@ async function getContext(sessionId: string) {
 
   const { data: membership, error } = await supabase
     .from("session_members")
-    .select("role, status")
+    .select("role, status, can_control_reader")
     .eq("session_id", sessionId)
     .eq("user_id", userId)
     .eq("status", "accepted")
@@ -43,7 +43,7 @@ async function getContext(sessionId: string) {
     return { response: json({ error: "You cannot manage this session library." }, 403) };
   }
 
-  return { supabase, userId };
+  return { supabase, userId, membership };
 }
 
 export async function GET(
@@ -121,19 +121,58 @@ export async function PATCH(
     if (!document) return json({ error: "Document not found." }, 404);
   }
 
-  const { error: updateError } = await auth.supabase
+  const canControlReader =
+    auth.membership.role === "organizer" ||
+    auth.membership.role === "in_charge" ||
+    (auth.membership.role === "admin" && auth.membership.can_control_reader === true);
+
+  if (!canControlReader) {
+    return json({ error: "You do not have permission to control the shared reader." }, 403);
+  }
+
+  const { data: lease, error: leaseError } = await auth.supabase
     .from("session_reader_state")
-    .upsert({
-      session_id: sessionId,
+    .select("controller_user_id, controller_expires_at, controller_epoch")
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
+  if (leaseError) {
+    console.error("Reader lease lookup failed before document selection:", leaseError);
+    return json({ error: "Unable to verify reader control." }, 500);
+  }
+
+  if (
+    !lease ||
+    lease.controller_user_id !== auth.userId ||
+    !lease.controller_expires_at ||
+    new Date(lease.controller_expires_at).getTime() <= Date.now()
+  ) {
+    return json({ error: "Claim reader control before selecting a document." }, 409);
+  }
+
+  const { data: updatedState, error: updateError } = await auth.supabase
+    .from("session_reader_state")
+    .update({
       current_document_id: body.documentId,
       current_page: 1,
+      current_offset: 0,
       updated_by: auth.userId,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "session_id" });
+    })
+    .eq("session_id", sessionId)
+    .eq("controller_user_id", auth.userId)
+    .eq("controller_epoch", lease.controller_epoch)
+    .gt("controller_expires_at", new Date().toISOString())
+    .select("session_id")
+    .maybeSingle();
 
   if (updateError) {
     console.error("Reader document selection failed:", updateError);
     return json({ error: "Unable to update the active document." }, 500);
+  }
+
+  if (!updatedState) {
+    return json({ error: "Reader control changed. Claim control again before selecting a document." }, 409);
   }
 
   return json({ success: true, activeDocumentId: body.documentId });
@@ -183,13 +222,15 @@ export async function DELETE(
   if (wasActive) {
     const { error: detachError } = await auth.supabase
       .from("session_reader_state")
-      .upsert({
-        session_id: sessionId,
+      .update({
         current_document_id: null,
         current_page: 1,
+        current_offset: 0,
         updated_by: auth.userId,
         updated_at: new Date().toISOString(),
-      }, { onConflict: "session_id" });
+      })
+      .eq("session_id", sessionId)
+      .eq("current_document_id", document.id);
 
     if (detachError) {
       console.error("Could not detach document before deletion:", detachError);
@@ -203,15 +244,6 @@ export async function DELETE(
 
   if (storageError) {
     console.error("PDF storage deletion failed:", storageError);
-    if (wasActive) {
-      await auth.supabase.from("session_reader_state").upsert({
-        session_id: sessionId,
-        current_document_id: document.id,
-        current_page: 1,
-        updated_by: auth.userId,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "session_id" });
-    }
     return json({ error: "The PDF could not be deleted from storage." }, 500);
   }
 
@@ -224,6 +256,25 @@ export async function DELETE(
   if (deleteError) {
     console.error("PDF metadata deletion failed after storage removal:", deleteError);
     return json({ error: "The PDF file was removed, but its library record could not be deleted. Contact support before retrying." }, 500);
+  }
+
+  // A controller could have selected this document while storage deletion
+  // was in progress. Clear it again after the metadata row is gone.
+  const { error: finalDetachError } = await auth.supabase
+    .from("session_reader_state")
+    .update({
+      current_document_id: null,
+      current_page: 1,
+      current_offset: 0,
+      updated_by: auth.userId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("session_id", sessionId)
+    .eq("current_document_id", document.id);
+
+  if (finalDetachError) {
+    console.error("Could not clear the deleted document from reader state:", finalDetachError);
+    return json({ error: "The PDF was deleted, but the shared reader state could not be refreshed. Please refresh the conference." }, 500);
   }
 
   return json({ success: true, removedActiveDocument: wasActive });

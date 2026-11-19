@@ -408,10 +408,9 @@ export async function PATCH(
         !Number.isFinite(body.currentOffset) ||
         body.currentOffset < 0 ||
         body.currentOffset > 1)) ||
-    (body.controllerEpoch !== undefined &&
-      (typeof body.controllerEpoch !== "number" ||
-        !Number.isSafeInteger(body.controllerEpoch) ||
-        body.controllerEpoch < 0)) ||
+    (typeof body.controllerEpoch !== "number" ||
+      !Number.isSafeInteger(body.controllerEpoch) ||
+      body.controllerEpoch < 0) ||
     expectedDocumentId === false ||
     (
       typeof expectedDocumentId === "string" &&
@@ -440,8 +439,7 @@ export async function PATCH(
     lease.controller_user_id !== userId ||
     !lease.controller_expires_at ||
     new Date(lease.controller_expires_at).getTime() <= Date.now() ||
-    (typeof body.controllerEpoch === "number" &&
-      body.controllerEpoch !== lease.controller_epoch)
+    body.controllerEpoch !== lease.controller_epoch
   ) {
     return json(
       { error: "Reader control has changed. Claim control again before continuing." },
@@ -533,30 +531,41 @@ export async function PATCH(
       );
     }
   } else {
-    // Document selection: only the authorized manager can
-    // change the active document.
-    const { error: upsertError } = await supabase
+    // Document selection is a shared-reader action. Use a conditional
+    // update so an expired or replaced controller cannot overwrite the
+    // new controller's selection after the earlier lease lookup.
+    const {
+      data: updatedState,
+      error: updateError,
+    } = await supabase
       .from("session_reader_state")
-      .upsert(
-        {
-          session_id: sessionId,
-          current_document_id: documentId,
-          ...readerStateUpdate,
-        },
-        {
-          onConflict: "session_id",
-        }
-      );
+      .update({
+        current_document_id: documentId,
+        ...readerStateUpdate,
+      })
+      .eq("session_id", sessionId)
+      .eq("controller_user_id", userId)
+      .eq("controller_epoch", lease.controller_epoch)
+      .gt("controller_expires_at", new Date().toISOString())
+      .select("session_id")
+      .maybeSingle();
 
-    if (upsertError) {
+    if (updateError) {
       console.error(
         "Reader document selection failed:",
-        upsertError
+        updateError
       );
 
       return json(
         { error: "Unable to update reader state." },
         500
+      );
+    }
+
+    if (!updatedState) {
+      return json(
+        { error: "Reader control changed. Claim control again before selecting a document." },
+        409
       );
     }
   }

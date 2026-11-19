@@ -38,6 +38,7 @@ export default function PersistentChat({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -55,9 +56,13 @@ export default function PersistentChat({
   useEffect(() => {
     openRef.current = open;
 
-    if (open) {
+    if (!open) return;
+
+    const frame = window.requestAnimationFrame(() => {
       setUnreadCount(0);
-    }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [open]);
 
   useEffect(() => {
@@ -133,8 +138,10 @@ export default function PersistentChat({
         currentUserIdRef.current = user.id;
         setCurrentUserId(user.id);
 
-        // Establish the live subscription before fetching history so no
-        // message can fall into the gap between the snapshot and subscription.
+        // History and sending must work even if the Realtime websocket
+        // or publication is unavailable.
+        await loadMessages();
+
         channel = supabase
           .channel(`session-chat-${sessionId}`)
           .on(
@@ -152,10 +159,16 @@ export default function PersistentChat({
           .subscribe((status) => {
             if (!active) return;
             if (status === "SUBSCRIBED") {
+              setConnectionStatus("");
               void loadMessages();
-            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-              setError("Live chat connection interrupted. Reconnecting...");
-              setLoading(false);
+            } else if (
+              status === "CHANNEL_ERROR" ||
+              status === "TIMED_OUT" ||
+              status === "CLOSED"
+            ) {
+              setConnectionStatus("Live updates paused");
+            } else if (status === "JOINING") {
+              setConnectionStatus("Connecting...");
             }
           });
       } catch (err) {
@@ -168,9 +181,20 @@ export default function PersistentChat({
 
     void initialize();
 
+    // Poll as a fallback and to recover messages missed during websocket drops.
+    const poll = window.setInterval(() => {
+      if (active && document.visibilityState === "visible") void loadMessages();
+    }, 5000);
+    const handleVisibility = () => {
+      if (active && document.visibilityState === "visible") void loadMessages();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       active = false;
       historyRequest += 1;
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (channel) void supabase.removeChannel(channel);
     };
   }, [sessionId]);
@@ -280,9 +304,6 @@ export default function PersistentChat({
             Session chat
           </p>
 
-          <p className="text-[11px] text-white/40">
-            Messages are saved for this session
-          </p>
         </div>
 
         {unreadCount > 0 && !open && (
@@ -369,12 +390,13 @@ export default function PersistentChat({
         )}
       </div>
 
-      {error && (
+      {(error || connectionStatus) && (
         <p
-          role="alert"
-          className="shrink-0 border-t border-red-400/10 bg-red-950/40 px-3 py-2 text-[11px] text-red-200"
+          role={error ? "alert" : "status"}
+          className={`shrink-0 border-t px-3 py-1.5 text-[10px] ${error ? "border-red-400/10 bg-red-950/40 text-red-200" : "border-white/5 text-white/35"}`}
         >
-          {error}
+          {error || connectionStatus}
+          {!error && connectionStatus && " · Messages refresh automatically"}
         </p>
       )}
 
