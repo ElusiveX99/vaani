@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import SessionMembers from "./session-members";
 
 import {
   joinCommunitySession,
@@ -158,7 +159,11 @@ async function SessionContent({ params, searchParams }: PageProps) {
       ownMembership.status === "declined" ||
       ownMembership.status === "removed");
 
-  const canManage = isOrganizer || isInCharge;
+  const isAdmin =
+    ownMembership?.role === "admin" &&
+    ownMembership.status === "accepted";
+
+  const canManage = isOrganizer || isInCharge || isAdmin;
 
   let members: Membership[] = [];
   let profiles: Profile[] = [];
@@ -356,6 +361,12 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </span>
             )}
 
+            {isAdmin && (
+              <span className="text-sm font-medium text-blue-800">
+                You are a session admin.
+              </span>
+            )}
+
             {/* Invitation controls */}
 
             {isInvited && (
@@ -507,68 +518,15 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </div>
         </section>
 
-        {/* Members */}
-
         {(isAccepted || canManage) && (
-          <section className="mt-7 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold">
-                  Session members
-                </h2>
-
-                <p className="mt-1 text-sm text-stone-600">
-                  Members and their current session roles.
-                </p>
-              </div>
-
-              <span className="text-sm text-stone-500">
-                {acceptedCount} accepted
-              </span>
-            </div>
-
-            {members.length === 0 ? (
-              <p className="mt-6 text-sm text-stone-600">
-                No member information is currently available.
-              </p>
-            ) : (
-              <div className="mt-5 divide-y divide-stone-100">
-                {members.map((member) => (
-                  <div
-                    key={member.user_id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-4"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-stone-900">
-                        {profileMap.get(member.user_id) ??
-                          "Vaani member"}
-
-                        {member.user_id === userId
-                          ? " (You)"
-                          : ""}
-                      </p>
-
-                      <p className="mt-1 text-xs capitalize text-stone-500">
-                        {member.role.replace("_", " ")}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
-                        member.status === "accepted"
-                          ? "bg-emerald-50 text-emerald-800"
-                          : "bg-amber-50 text-amber-800"
-                      }`}
-                    >
-                      {member.status === "accepted"
-                        ? "Accepted"
-                        : "Invited"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <SessionMembers
+            sessionId={session.id}
+            currentUserId={userId}
+            initialMembers={members.map((member) => ({
+              ...member,
+              display_name: profileMap.get(member.user_id) ?? "Vaani member",
+            }))}
+          />
         )}
 
         {/* Session information */}

@@ -1,31 +1,80 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  useLocalParticipant,
-  useParticipants,
-} from "@livekit/components-react";
+import { useParticipants } from "@livekit/components-react";
 import { Track } from "livekit-client";
+import { createClient } from "@/lib/supabase/client";
 
 type Props = {
   sessionId: string;
   open: boolean;
+  localRole: string;
   onClose: () => void;
 };
 
 export default function ModerationPanel({
   sessionId,
   open,
+  localRole,
   onClose,
 }: Props) {
   const participants = useParticipants();
-  const { localParticipant } = useLocalParticipant();
 
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
+  const [memberRoles, setMemberRoles] = useState<Record<string, string>>({});
+  const [readerAccess, setReaderAccess] = useState<Record<string, boolean>>({});
 
-  const isOrganizer =
-    localParticipant.attributes?.role === "organizer";
+  const isOrganizer = localRole === "organizer";
+  const canManageParticipants =
+    isOrganizer || localRole === "in_charge" || localRole === "admin";
+
+  useEffect(() => {
+    if (!open) return;
+
+    let active = true;
+    const supabase = createClient();
+
+    const refreshRoles = async () => {
+      const { data, error } = await supabase
+        .from("session_members")
+        .select("user_id, role, can_control_reader")
+        .eq("session_id", sessionId)
+        .eq("status", "accepted");
+
+      if (!active || error) return;
+
+      const next: Record<string, string> = {};
+      const access: Record<string, boolean> = {};
+      for (const member of data ?? []) {
+        next[member.user_id] = member.role;
+        access[member.user_id] = member.can_control_reader === true;
+      }
+      setMemberRoles(next);
+      setReaderAccess(access);
+    };
+
+    void refreshRoles();
+
+    const channel = supabase
+      .channel(`session-member-roles-${sessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_members",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        () => void refreshRoles()
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [open, sessionId]);
 
   useEffect(() => {
     if (!open) return;
@@ -49,7 +98,7 @@ export default function ModerationPanel({
       participant.attributes?.role !== "organizer"
   );
 
-  if (!open || !isOrganizer) return null;
+  if (!open || !canManageParticipants) return null;
 
   async function moderate(
     targetUserId: string,
@@ -94,6 +143,49 @@ export default function ModerationPanel({
           ? error.message
           : "Moderation action failed."
       );
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function setAdmin(targetUserId: string, makeAdmin: boolean) {
+    setBusy(`${targetUserId}-role`);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/members/admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        body: JSON.stringify({ targetUserId, makeAdmin }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Role update failed.");
+      setMessage(makeAdmin ? "Session admin assigned." : "Session admin removed.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Role update failed.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function updateReaderAccess(targetUserId: string, enabled: boolean) {
+    setBusy(`${targetUserId}-reader`);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/members/reader-control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        body: JSON.stringify({ targetUserId, enabled }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Reader access update failed.");
+      setReaderAccess((previous) => ({ ...previous, [targetUserId]: enabled }));
+      setMessage(enabled ? "Shared reader control granted." : "Shared reader control revoked.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Reader access update failed.");
     } finally {
       setBusy("");
     }
@@ -160,6 +252,15 @@ export default function ModerationPanel({
                   );
 
                 const trackSid = microphone?.trackSid;
+                const targetRole =
+                  memberRoles[participant.identity] ??
+                  participant.attributes?.role ??
+                  "participant";
+                const canModerateTarget =
+                  isOrganizer || targetRole === "participant";
+                const canChangeAdminRole =
+                  isOrganizer &&
+                  (targetRole === "participant" || targetRole === "admin");
 
                 const participantName =
                   participant.name || participant.identity;
@@ -189,7 +290,7 @@ export default function ModerationPanel({
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={!trackSid || busy !== ""}
+                        disabled={!trackSid || busy !== "" || !canModerateTarget}
                         onClick={() =>
                           moderate(
                             participant.identity,
@@ -206,7 +307,7 @@ export default function ModerationPanel({
 
                       <button
                         type="button"
-                        disabled={busy !== ""}
+                        disabled={busy !== "" || !canModerateTarget}
                         onClick={() =>
                           moderate(participant.identity, "remove")
                         }
@@ -216,6 +317,46 @@ export default function ModerationPanel({
                           ? "Removing..."
                           : "Remove"}
                       </button>
+
+                      {canChangeAdminRole && (
+                        <button
+                          type="button"
+                          disabled={busy !== ""}
+                          onClick={() =>
+                            setAdmin(
+                              participant.identity,
+                              targetRole !== "admin"
+                            )
+                          }
+                          className="rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-200 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {busy === `${participant.identity}-role`
+                            ? "Updating..."
+                            : targetRole === "admin"
+                              ? "Remove admin"
+                              : "Make admin"}
+                        </button>
+                      )}
+
+                      {isOrganizer && targetRole === "admin" && (
+                        <button
+                          type="button"
+                          disabled={busy !== ""}
+                          onClick={() =>
+                            updateReaderAccess(
+                              participant.identity,
+                              !readerAccess[participant.identity]
+                            )
+                          }
+                          className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {busy === `${participant.identity}-reader`
+                            ? "Updating..."
+                            : readerAccess[participant.identity]
+                              ? "Revoke reader control"
+                              : "Allow reader control"}
+                        </button>
+                      )}
                     </div>
                   </article>
                 );

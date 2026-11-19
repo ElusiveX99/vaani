@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import CreateSessionForm from "./create-session-form";
 
 import {
   createSession,
@@ -437,70 +438,7 @@ async function SessionsContent({
             </summary>
 
             <div className="border-t border-stone-200 p-6">
-              <form action={createSession} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="title"
-                    className="mb-2 block text-sm font-medium"
-                  >
-                    Session title
-                  </label>
-                  <input
-                    id="title"
-                    name="title"
-                    required
-                    maxLength={120}
-                    placeholder="Enter a session title"
-                    className="w-full rounded-lg border border-stone-300 px-4 py-3 outline-none focus:border-emerald-700"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="description"
-                    className="mb-2 block text-sm font-medium"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    maxLength={2000}
-                    rows={3}
-                    placeholder="What will this session be about?"
-                    className="w-full resize-y rounded-lg border border-stone-300 px-4 py-3 outline-none focus:border-emerald-700"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="access_type"
-                    className="mb-2 block text-sm font-medium"
-                  >
-                    Who can join?
-                  </label>
-                  <select
-                    id="access_type"
-                    name="access_type"
-                    defaultValue="community"
-                    className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 outline-none focus:border-emerald-700"
-                  >
-                    <option value="community">
-                      All Vaani members
-                    </option>
-                    <option value="invitation_only">
-                      Invitation only
-                    </option>
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  className="rounded-lg bg-stone-900 px-6 py-3 text-sm font-medium text-white hover:bg-stone-700"
-                >
-                  Create session
-                </button>
-              </form>
+              <CreateSessionForm action={createSession} />
             </div>
           </details>
         </section>

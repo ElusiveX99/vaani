@@ -88,7 +88,7 @@ async function getAcceptedMembership(
 ) {
   return supabase
     .from("session_members")
-    .select("role, status")
+    .select("role, status, can_control_reader")
     .eq("session_id", sessionId)
     .eq("user_id", userId)
     .eq("status", "accepted")
@@ -153,17 +153,13 @@ export async function GET(
     );
   }
 
-  const canControl =
-    membership.role === "organizer" ||
-    membership.role === "in_charge";
-
   const {
     data: readerState,
     error: readerStateError,
   } = await supabase
     .from("session_reader_state")
     .select(
-      "session_id, current_document_id, current_page, updated_by, updated_at"
+      "session_id, current_document_id, current_page, current_offset, controller_user_id, controller_expires_at, controller_epoch, updated_by, updated_at"
     )
     .eq("session_id", sessionId)
     .maybeSingle();
@@ -179,6 +175,17 @@ export async function GET(
       500
     );
   }
+
+  const canRequestControl =
+    membership.role === "organizer" ||
+    membership.role === "in_charge" ||
+    (membership.role === "admin" && membership.can_control_reader === true);
+  const canReclaimControl = membership.role === "organizer";
+
+  const canControl =
+    readerState?.controller_user_id === userId &&
+    typeof readerState.controller_expires_at === "string" &&
+    new Date(readerState.controller_expires_at).getTime() > Date.now();
 
   let document = null;
 
@@ -211,7 +218,7 @@ export async function GET(
     document = data;
   }
 
-  if (!document) {
+  if (!readerState) {
     const {
       data,
       error,
@@ -245,6 +252,8 @@ export async function GET(
   if (!document) {
     return json({
       canControl,
+      canRequestControl,
+      canReclaimControl,
       document: null,
       readerState: readerState ?? null,
     });
@@ -274,6 +283,8 @@ export async function GET(
 
   return json({
     canControl,
+    canRequestControl,
+    canReclaimControl,
     document: {
       id: document.id,
       title: document.title,
@@ -345,7 +356,8 @@ export async function PATCH(
     !membership ||
     !(
       membership.role === "organizer" ||
-      membership.role === "in_charge"
+      membership.role === "in_charge" ||
+      (membership.role === "admin" && membership.can_control_reader === true)
     )
   ) {
     return json(
@@ -358,6 +370,8 @@ export async function PATCH(
     documentId?: unknown;
     currentPage?: unknown;
     expectedDocumentId?: unknown;
+    currentOffset?: unknown;
+    controllerEpoch?: unknown;
   };
 
   try {
@@ -389,6 +403,15 @@ export async function PATCH(
     typeof currentPage !== "number" ||
     !Number.isSafeInteger(currentPage) ||
     currentPage < 1 ||
+    (body.currentOffset !== undefined &&
+      (typeof body.currentOffset !== "number" ||
+        !Number.isFinite(body.currentOffset) ||
+        body.currentOffset < 0 ||
+        body.currentOffset > 1)) ||
+    (body.controllerEpoch !== undefined &&
+      (typeof body.controllerEpoch !== "number" ||
+        !Number.isSafeInteger(body.controllerEpoch) ||
+        body.controllerEpoch < 0)) ||
     expectedDocumentId === false ||
     (
       typeof expectedDocumentId === "string" &&
@@ -398,6 +421,31 @@ export async function PATCH(
     return json(
       { error: "Invalid reader state." },
       400
+    );
+  }
+
+  const { data: lease, error: leaseError } = await supabase
+    .from("session_reader_state")
+    .select("controller_user_id, controller_expires_at, controller_epoch")
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
+  if (leaseError) {
+    console.error("Reader control lease lookup failed:", leaseError);
+    return json({ error: "Unable to verify reader control." }, 500);
+  }
+
+  if (
+    !lease ||
+    lease.controller_user_id !== userId ||
+    !lease.controller_expires_at ||
+    new Date(lease.controller_expires_at).getTime() <= Date.now() ||
+    (typeof body.controllerEpoch === "number" &&
+      body.controllerEpoch !== lease.controller_epoch)
+  ) {
+    return json(
+      { error: "Reader control has changed. Claim control again before continuing." },
+      409
     );
   }
 
@@ -431,8 +479,12 @@ export async function PATCH(
     );
   }
 
+  const currentOffset =
+    typeof body.currentOffset === "number" ? body.currentOffset : 0;
+
   const readerStateUpdate = {
     current_page: currentPage,
+    current_offset: currentOffset,
     updated_by: userId,
     updated_at: new Date().toISOString(),
   };
@@ -456,6 +508,9 @@ export async function PATCH(
       .update(readerStateUpdate)
       .eq("session_id", sessionId)
       .eq("current_document_id", expectedDocumentId)
+      .eq("controller_user_id", userId)
+      .eq("controller_epoch", lease.controller_epoch)
+      .gt("controller_expires_at", new Date().toISOString())
       .select("session_id")
       .maybeSingle();
 

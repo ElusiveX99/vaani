@@ -253,7 +253,7 @@ export default function PdfUploader({
       setMessage("Opening the new document for everyone...");
 
       const response = await fetch(
-        `/api/sessions/${sessionId}/reader`,
+        `/api/sessions/${sessionId}/documents`,
         {
           method: "PATCH",
           headers: {
@@ -263,7 +263,6 @@ export default function PdfUploader({
           cache: "no-store",
           body: JSON.stringify({
             documentId: document.id,
-            currentPage: 1,
           }),
         }
       );

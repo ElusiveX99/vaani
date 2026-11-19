@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
+import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
+import { RoomEvent } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 
 const PdfReader = dynamic(
@@ -39,10 +41,16 @@ type ReaderDocument = {
 
 type ReaderData = {
   canControl: boolean;
+  canRequestControl: boolean;
+  canReclaimControl: boolean;
   document: ReaderDocument | null;
   readerState: {
     current_document_id?: string | null;
     current_page?: number;
+    current_offset?: number;
+    controller_user_id?: string | null;
+    controller_expires_at?: string | null;
+    controller_epoch?: number;
     updated_at?: string | null;
   } | null;
 };
@@ -70,6 +78,11 @@ const SynchronizedReader = memo(
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
+    const [currentOffset, setCurrentOffset] = useState(0);
+    const [controlMessage, setControlMessage] = useState("");
+
+    const room = useRoomContext();
+    const { localParticipant } = useLocalParticipant();
 
     const [syncStatus, setSyncStatus] =
       useState<SyncStatus>("idle");
@@ -77,7 +90,15 @@ const SynchronizedReader = memo(
     const dataRef = useRef<ReaderData | null>(null);
 
     const pageRef = useRef(1);
+    const offsetRef = useRef(0);
     const lastSavedPage = useRef(1);
+    const lastSavedOffset = useRef(0);
+    const controllerUserIdRef = useRef<string | null>(null);
+    const controllerEpochRef = useRef(0);
+    const lastBroadcastAt = useRef(0);
+    const broadcastSequence = useRef(0);
+    const lastRemoteSequence = useRef(0);
+    const claimInFlight = useRef(false);
 
     const saveTimer =
       useRef<ReturnType<typeof setTimeout> | null>(
@@ -180,19 +201,44 @@ const SynchronizedReader = memo(
               ? rawServerPage
               : 1;
 
+          const rawServerOffset =
+            readerData.readerState?.current_offset;
+
+          const serverOffset =
+            typeof rawServerOffset === "number" &&
+            Number.isFinite(rawServerOffset)
+              ? Math.min(1, Math.max(0, rawServerOffset))
+              : 0;
+
           const keepLocalPage =
             preserveLocalPage &&
             !documentChanged &&
-            pageRef.current !==
-              lastSavedPage.current;
+            (pageRef.current !== lastSavedPage.current ||
+              offsetRef.current !== lastSavedOffset.current);
 
           const nextPage = keepLocalPage
             ? pageRef.current
             : serverPage;
 
+          const nextOffset = keepLocalPage
+            ? offsetRef.current
+            : serverOffset;
+
+          const controllerId =
+            readerData.readerState?.controller_user_id ?? null;
+          const controllerEpoch =
+            readerData.readerState?.controller_epoch ?? 0;
+
+          if (controllerEpochRef.current !== controllerEpoch) {
+            lastRemoteSequence.current = 0;
+          }
+          controllerUserIdRef.current = controllerId;
+          controllerEpochRef.current = controllerEpoch;
           dataRef.current = readerData;
           pageRef.current = nextPage;
+          offsetRef.current = nextOffset;
           lastSavedPage.current = serverPage;
+          lastSavedOffset.current = serverOffset;
 
           if (
             refreshUrl ||
@@ -207,6 +253,7 @@ const SynchronizedReader = memo(
 
           setData(readerData);
           setCurrentPage(nextPage);
+          setCurrentOffset(nextOffset);
 
           setSyncStatus(
             keepLocalPage
@@ -285,6 +332,22 @@ const SynchronizedReader = memo(
           60 * 1000
         );
 
+      const membershipChannel = supabase
+        .channel(`reader-membership-${sessionId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "session_members",
+            filter: `session_id=eq.${sessionId}`,
+          },
+          () => {
+            if (active) void loadReaderState(true, false);
+          }
+        )
+        .subscribe();
+
       const channel = supabase
         .channel(`reader-state-${sessionId}`)
         .on(
@@ -301,6 +364,11 @@ const SynchronizedReader = memo(
             const newState = payload.new as {
               current_document_id?: string | null;
               current_page?: number;
+              current_offset?: number;
+              controller_user_id?: string | null;
+              controller_expires_at?: string | null;
+              controller_epoch?: number;
+              updated_at?: string | null;
             };
 
             const currentDocumentId =
@@ -325,24 +393,59 @@ const SynchronizedReader = memo(
               return;
             }
 
-            const controllerHasPendingChange =
-              dataRef.current?.canControl === true &&
-              pageRef.current !==
-                lastSavedPage.current;
+            const remoteOffset =
+              typeof newState.current_offset === "number"
+                ? Math.min(1, Math.max(0, newState.current_offset))
+                : 0;
 
-            if (controllerHasPendingChange) {
-              return;
+            const controllerId = newState.controller_user_id ?? null;
+            const controllerEpoch = newState.controller_epoch ?? 0;
+            const controllerChanged =
+              controllerId !== controllerUserIdRef.current ||
+              controllerEpoch !== controllerEpochRef.current;
+
+            const controllerHasPendingChange =
+              !controllerChanged &&
+              dataRef.current?.canControl === true &&
+              (pageRef.current !== lastSavedPage.current ||
+                offsetRef.current !== lastSavedOffset.current);
+
+            if (controllerHasPendingChange) return;
+
+            if (controllerEpochRef.current !== controllerEpoch) {
+              lastRemoteSequence.current = 0;
+            }
+            const leaseActive =
+              Boolean(newState.controller_expires_at) &&
+              new Date(newState.controller_expires_at as string).getTime() > Date.now();
+
+            const nextData = dataRef.current
+              ? {
+                  ...dataRef.current,
+                  canControl:
+                    controllerId === localParticipant.identity && leaseActive,
+                  readerState: {
+                    ...dataRef.current.readerState,
+                    ...newState,
+                  },
+                }
+              : null;
+
+            controllerUserIdRef.current = controllerId;
+            controllerEpochRef.current = controllerEpoch;
+
+            if (nextData) {
+              dataRef.current = nextData;
+              setData(nextData);
             }
 
             pageRef.current = remotePage;
+            offsetRef.current = remoteOffset;
             lastSavedPage.current = remotePage;
+            lastSavedOffset.current = remoteOffset;
 
-            setCurrentPage((previous) =>
-              previous === remotePage
-                ? previous
-                : remotePage
-            );
-
+            setCurrentPage(remotePage);
+            setCurrentOffset(remoteOffset);
             setSyncStatus("synced");
             setError("");
           }
@@ -373,10 +476,11 @@ const SynchronizedReader = memo(
         loadRequestId.current += 1;
 
         void supabase.removeChannel(channel);
+        void supabase.removeChannel(membershipChannel);
       };
     }, [sessionId, loadReaderState]);
 
-    // Persist only organizer/in-charge navigation.
+    // Persist only the active reader controller's position.
     useEffect(() => {
       const documentId = data?.document?.id;
 
@@ -385,13 +489,16 @@ const SynchronizedReader = memo(
       }
 
       const pageToSave = currentPage;
+      const offsetToSave = currentOffset;
+      const controllerEpoch = controllerEpochRef.current;
       const generation =
         documentGeneration.current;
 
       pageRef.current = pageToSave;
 
       if (
-        pageToSave === lastSavedPage.current
+        pageToSave === lastSavedPage.current &&
+        offsetToSave === lastSavedOffset.current
       ) {
         return;
       }
@@ -431,6 +538,8 @@ const SynchronizedReader = memo(
                   documentId,
                   expectedDocumentId: documentId,
                   currentPage: pageToSave,
+                  currentOffset: offsetToSave,
+                  controllerEpoch,
                 }),
               }
             );
@@ -452,9 +561,11 @@ const SynchronizedReader = memo(
             }
 
             lastSavedPage.current = pageToSave;
+            lastSavedOffset.current = offsetToSave;
 
             if (
-              pageRef.current === pageToSave
+              pageRef.current === pageToSave &&
+              offsetRef.current === offsetToSave
             ) {
               setSyncStatus("synced");
               setError("");
@@ -486,6 +597,7 @@ const SynchronizedReader = memo(
       };
     }, [
       currentPage,
+      currentOffset,
       data?.canControl,
       data?.document?.id,
       sessionId,
@@ -493,31 +605,236 @@ const SynchronizedReader = memo(
 
     // Everyone updates their local reading position.
     // Only the controller's position is saved remotely.
-    const changePage = useCallback(
-      (page: number) => {
+    const changePosition = useCallback(
+      (page: number, offset: number) => {
         if (!dataRef.current) return;
+        if (!Number.isSafeInteger(page) || page < 1) return;
 
-        if (
-          !Number.isSafeInteger(page) ||
-          page < 1 ||
-          page === pageRef.current
-        ) {
+        const safeOffset = Math.min(1, Math.max(0, offset));
+        pageRef.current = page;
+        offsetRef.current = safeOffset;
+        setCurrentPage(page);
+        setCurrentOffset(safeOffset);
+        setError("");
+
+        if (dataRef.current.canControl) {
+          const now = Date.now();
+          if (now - lastBroadcastAt.current >= 50) {
+            lastBroadcastAt.current = now;
+            const documentId = dataRef.current.document?.id;
+            if (documentId) {
+              const packet = {
+                type: "vaani-reader-position",
+                sessionId,
+                documentId,
+                senderId: localParticipant.identity,
+                epoch: controllerEpochRef.current,
+                sequence: Date.now() * 1000 + (++broadcastSequence.current % 1000),
+                page,
+                offset: safeOffset,
+              };
+
+              void room.localParticipant.publishData(
+                new TextEncoder().encode(JSON.stringify(packet)),
+                { reliable: false, topic: "vaani-reader-position" }
+              ).catch((publishError) => {
+                console.error("Reader position broadcast failed:", publishError);
+              });
+            }
+          }
+        }
+
+        setSyncStatus(dataRef.current.canControl ? "syncing" : "local");
+      },
+      [room, sessionId, localParticipant.identity]
+    );
+
+    const changePage = useCallback(
+      (page: number) => changePosition(page, offsetRef.current),
+      [changePosition]
+    );
+
+    const claimReaderControl = useCallback(async () => {
+      if (claimInFlight.current) return;
+      claimInFlight.current = true;
+      setControlMessage("");
+
+      try {
+        const response = await fetch(
+          `/api/sessions/${sessionId}/reader/control`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            cache: "no-store",
+            body: JSON.stringify({ action: "claim" }),
+          }
+        );
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Unable to claim reader control.");
+        }
+
+        if (!result.granted) {
+          setControlMessage("Another assigned member currently controls the shared reader.");
           return;
         }
 
-        pageRef.current = page;
-
-        setCurrentPage(page);
-        setError("");
-
-        setSyncStatus(
-          dataRef.current.canControl
-            ? "syncing"
-            : "local"
+        setControlMessage("You now control the shared reader.");
+        await loadReaderState(true, false);
+      } catch (err) {
+        setControlMessage(
+          err instanceof Error ? err.message : "Unable to claim reader control."
         );
-      },
-      []
-    );
+      } finally {
+        claimInFlight.current = false;
+      }
+    }, [sessionId, loadReaderState]);
+
+    // Automatically acquire an unclaimed or expired reader.
+    useEffect(() => {
+      if (!data?.canRequestControl || data.canControl) return;
+
+      const controllerId = data.readerState?.controller_user_id ?? null;
+      const expiry = data.readerState?.controller_expires_at
+        ? new Date(data.readerState.controller_expires_at).getTime()
+        : 0;
+
+      if (!controllerId || expiry <= Date.now()) {
+        void claimReaderControl();
+      }
+    }, [
+      data?.canRequestControl,
+      data?.canControl,
+      data?.readerState?.controller_user_id,
+      data?.readerState?.controller_expires_at,
+      claimReaderControl,
+    ]);
+
+    // Renew the controller lease before it expires. If the lease was
+    // lost, reload the authoritative state instead of continuing to publish.
+    useEffect(() => {
+      if (!data?.canControl) return;
+
+      const renew = async () => {
+        try {
+          const response = await fetch(
+            `/api/sessions/${sessionId}/reader/control`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              cache: "no-store",
+              body: JSON.stringify({ action: "claim" }),
+            }
+          );
+          const result = await response.json();
+
+          if (!response.ok || !result.granted) {
+            await loadReaderState(true, false);
+            return;
+          }
+
+          const nextData = dataRef.current;
+          if (!nextData) return;
+
+          const nextReaderState = {
+            ...nextData.readerState,
+            controller_user_id: result.active_controller_id,
+            controller_expires_at: result.lease_expires_at,
+            controller_epoch: result.epoch,
+          };
+
+          const updated = { ...nextData, readerState: nextReaderState };
+          dataRef.current = updated;
+          controllerUserIdRef.current = result.active_controller_id;
+          controllerEpochRef.current = result.epoch;
+          setData(updated);
+        } catch {
+          // A later heartbeat or Realtime state update will reconcile the lease.
+        }
+      };
+
+      const timer = window.setInterval(() => void renew(), 7000);
+      return () => window.clearInterval(timer);
+    }, [data?.canControl, sessionId, loadReaderState]);
+
+    // Release cleanly on unmount; an interrupted connection is recovered
+    // automatically when the short lease expires.
+    useEffect(() => {
+      if (!data?.canControl) return;
+      return () => {
+        void fetch(`/api/sessions/${sessionId}/reader/control`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          keepalive: true,
+          body: JSON.stringify({ action: "release" }),
+        }).catch(() => {});
+      };
+    }, [data?.canControl, sessionId]);
+
+    // Apply high-frequency LiveKit positions from the current controller.
+    useEffect(() => {
+      const handleData = (
+        payload: Uint8Array,
+        _participant?: unknown,
+        _kind?: unknown,
+        topic?: string
+      ) => {
+        if (topic !== "vaani-reader-position" || dataRef.current?.canControl) return;
+
+        const leaseExpiry = dataRef.current?.readerState?.controller_expires_at;
+        if (
+          !leaseExpiry ||
+          new Date(leaseExpiry).getTime() <= Date.now()
+        ) return;
+
+        try {
+          const packet = JSON.parse(new TextDecoder().decode(payload)) as {
+            type?: string;
+            sessionId?: string;
+            documentId?: string;
+            senderId?: string;
+            epoch?: number;
+            sequence?: number;
+            page?: number;
+            offset?: number;
+          };
+
+          if (
+            packet.type !== "vaani-reader-position" ||
+            packet.sessionId !== sessionId ||
+            packet.documentId !== dataRef.current?.document?.id ||
+            packet.senderId !== controllerUserIdRef.current ||
+            packet.epoch !== controllerEpochRef.current ||
+            typeof packet.sequence !== "number" ||
+            packet.sequence <= lastRemoteSequence.current ||
+            !Number.isSafeInteger(packet.page) ||
+            typeof packet.page !== "number" ||
+            packet.page < 1 ||
+            typeof packet.offset !== "number" ||
+            !Number.isFinite(packet.offset)
+          ) return;
+
+          const offset = Math.min(1, Math.max(0, packet.offset));
+          lastRemoteSequence.current = packet.sequence;
+          pageRef.current = packet.page;
+          offsetRef.current = offset;
+          setCurrentPage(packet.page);
+          setCurrentOffset(offset);
+          setSyncStatus("synced");
+        } catch {
+          // Ignore malformed or stale data packets.
+        }
+      };
+
+      room.on(RoomEvent.DataReceived, handleData);
+      return () => {
+        room.off(RoomEvent.DataReceived, handleData);
+      };
+    }, [room, sessionId]);
 
     if (loading) {
       return (
@@ -560,6 +877,7 @@ const SynchronizedReader = memo(
             {data.document.title}
           </p>
 
+          <div className="flex items-center gap-2">
           <span className="shrink-0 text-xs text-white/40">
             {syncStatus === "syncing" &&
               "Syncing..."}
@@ -570,7 +888,25 @@ const SynchronizedReader = memo(
             {syncStatus === "error" &&
               "Sync failed"}
           </span>
+          {data.canRequestControl && !data.canControl && (
+            <button
+              type="button"
+              onClick={() => void claimReaderControl()}
+              className="shrink-0 rounded-md bg-white/10 px-2.5 py-1.5 text-[10px] font-medium text-white/80 hover:bg-white/20"
+            >
+              {data.canReclaimControl
+                ? "Take control"
+                : "Request control"}
+            </button>
+          )}
+          </div>
         </div>
+
+        {controlMessage && (
+          <p className="shrink-0 text-xs text-white/55" role="status">
+            {controlMessage}
+          </p>
+        )}
 
         {error && (
           <p
@@ -586,8 +922,10 @@ const SynchronizedReader = memo(
             key={data.document.id}
             documentUrl={data.document.url}
             currentPage={currentPage}
+            currentOffset={currentOffset}
             canControl={data.canControl}
             onPageChange={changePage}
+            onPositionChange={changePosition}
           />
         </div>
       </div>

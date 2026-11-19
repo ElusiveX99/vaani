@@ -23,8 +23,10 @@ pdfjs.GlobalWorkerOptions.workerSrc =
 type Props = {
   documentUrl: string;
   currentPage: number;
+  currentOffset: number;
   canControl: boolean;
   onPageChange: (page: number) => void;
+  onPositionChange: (page: number, offset: number) => void;
 };
 
 type PdfDocument = {
@@ -111,14 +113,17 @@ function getAvailablePageWidth(
 export default function PdfReader({
   documentUrl,
   currentPage,
+  currentOffset,
   canControl,
   onPageChange,
+  onPositionChange,
 }: Props) {
   const containerRef =
     useRef<HTMLDivElement>(null);
 
-  const lastReportedPage =
-    useRef(currentPage);
+  const lastReportedPage = useRef(currentPage);
+  const lastReportedOffset = useRef(currentOffset);
+  const lastPositionCallbackAt = useRef(0);
 
   const lastAppliedRowHeight = useRef(0);
   const windowStartIndex = useRef(0);
@@ -205,6 +210,7 @@ export default function PdfReader({
       if (!container) return;
 
       lastReportedPage.current = page;
+      lastReportedOffset.current = 0;
 
       const top = (page - 1) * rowHeight;
 
@@ -219,12 +225,14 @@ export default function PdfReader({
 
       setScrollTop(top);
       onPageChange(page);
+      onPositionChange(page, 0);
     },
     [
       canControl,
       numPages,
       rowHeight,
       onPageChange,
+      onPositionChange,
     ]
   );
 
@@ -253,31 +261,33 @@ export default function PdfReader({
 
     if (!numPages) return;
 
-    const readingPosition =
-      top +
-      Math.min(
-        container.clientHeight * 0.35,
-        rowHeight * 0.5
-      );
-
-    const page = Math.min(
-      numPages,
-      Math.max(
-        1,
-        Math.floor(
-          readingPosition / rowHeight
-        ) + 1
-      )
+    const pageIndex = Math.min(
+      numPages - 1,
+      Math.max(0, Math.floor(top / rowHeight))
+    );
+    const page = pageIndex + 1;
+    const offset = Math.min(
+      1,
+      Math.max(0, (top - pageIndex * rowHeight) / rowHeight)
     );
 
-    if (page !== lastReportedPage.current) {
+    const pageChanged = page !== lastReportedPage.current;
+    if (pageChanged) {
       lastReportedPage.current = page;
       onPageChange(page);
+    }
+
+    const now = performance.now();
+    if (pageChanged || now - lastPositionCallbackAt.current >= 50) {
+      lastPositionCallbackAt.current = now;
+      lastReportedOffset.current = offset;
+      onPositionChange(page, offset);
     }
   }, [
     numPages,
     rowHeight,
     onPageChange,
+    onPositionChange,
   ]);
 
   // Follow remote navigation, but preserve the current
@@ -299,7 +309,8 @@ export default function PdfReader({
       previousRowHeight === 0;
 
     const remotePageChanged =
-      currentPage !== lastReportedPage.current;
+      currentPage !== lastReportedPage.current ||
+      Math.abs(currentOffset - lastReportedOffset.current) > 0.005;
 
     const layoutChanged =
       previousRowHeight > 0 &&
@@ -309,7 +320,7 @@ export default function PdfReader({
 
     if (
       remotePageChanged ||
-      (firstLayout && currentPage > 1)
+      (firstLayout && (currentPage > 1 || currentOffset > 0))
     ) {
       const safePage = Math.min(
         numPages,
@@ -318,7 +329,9 @@ export default function PdfReader({
 
       lastReportedPage.current = safePage;
 
-      const top = (safePage - 1) * rowHeight;
+      const safeOffset = Math.min(1, Math.max(0, currentOffset));
+      const top = (safePage - 1 + safeOffset) * rowHeight;
+      lastReportedOffset.current = safeOffset;
 
       container.scrollTo({
         top,
@@ -372,9 +385,17 @@ export default function PdfReader({
       );
 
       setScrollTop(newTop);
+      const newPageIndex = Math.min(
+        numPages - 1,
+        Math.max(0, Math.floor(newTop / rowHeight))
+      );
+      lastReportedPage.current = newPageIndex + 1;
+      lastReportedOffset.current =
+        (newTop - newPageIndex * rowHeight) / rowHeight;
     }
   }, [
     currentPage,
+    currentOffset,
     numPages,
     rowHeight,
     hasMeasuredContainer,
@@ -435,9 +456,6 @@ export default function PdfReader({
   // canvas memory use on high-density screens.
   useEffect(() => {
     const updatePixelRatio = () => {
-      const isSmallScreen =
-        window.innerWidth < 640;
-
       // Keep canvases crisp on high-density displays without unbounded memory use.
       const limit = 2;
 

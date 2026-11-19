@@ -75,7 +75,8 @@ async function ConferenceContent({ params }: PageProps) {
 
   const canManageDocuments =
     membership.role === "organizer" ||
-    membership.role === "in_charge";
+    membership.role === "in_charge" ||
+    membership.role === "admin";
 
   return (
     <ConferenceRoom

@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: organizer } = await supabase
+    const { data: actor } = await supabase
       .from("session_members")
       .select("role, status")
       .eq("session_id", sessionId)
@@ -93,11 +93,12 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (
-      organizer?.role !== "organizer" ||
-      organizer.status !== "accepted"
+      !actor ||
+      actor.status !== "accepted" ||
+      !["organizer", "in_charge", "admin"].includes(actor.role)
     ) {
       return NextResponse.json(
-        { error: "Organizer permission required" },
+        { error: "Session management permission required" },
         { status: 403 }
       );
     }
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest) {
     if (
       !target ||
       target.status !== "accepted" ||
-      target.role === "organizer"
+      target.role === "organizer" ||
+      (actor.role !== "organizer" && target.role !== "participant")
     ) {
       return NextResponse.json(
         { error: "Participant cannot be moderated" },
@@ -144,6 +146,25 @@ export async function POST(request: NextRequest) {
     const roomName = `vaani-${sessionId}`;
 
     if (action === "remove") {
+      const { error: membershipRemovalError } = await supabase.rpc(
+        "remove_session_member",
+        {
+          p_session_id: sessionId,
+          p_user_id: targetUserId,
+        }
+      );
+
+      if (membershipRemovalError) {
+        console.error(
+          "Session membership removal failed:",
+          membershipRemovalError
+        );
+        return NextResponse.json(
+          { error: membershipRemovalError.message || "Unable to remove this session member." },
+          { status: membershipRemovalError.code === "42501" ? 403 : 400 }
+        );
+      }
+
       await roomService.removeParticipant(
         roomName,
         targetUserId

@@ -26,9 +26,11 @@ import {
 import "@livekit/components-styles";
 
 import PdfUploader from "./pdf-uploader";
+import DocumentLibrary from "./document-library";
 import ModerationPanel from "./moderation-panel";
 import PersistentChat from "./persistent-chat";
 import SynchronizedReader from "./synchronized-reader";
+import { createClient } from "@/lib/supabase/client";
 
 type Props = {
   sessionId: string;
@@ -352,9 +354,56 @@ function ConferenceWorkspace({
   const mediaActionLock =
     useRef(false);
 
-  const isOrganizer =
-    localParticipant.attributes?.role ===
-    "organizer";
+  const localRole = localParticipant.attributes?.role ?? "participant";
+  const [membershipRole, setMembershipRole] = useState(localRole);
+
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+    const refreshRole = async () => {
+      const { data, error } = await supabase
+        .from("session_members")
+        .select("role, status")
+        .eq("session_id", sessionId)
+        .eq("user_id", localParticipant.identity)
+        .maybeSingle();
+
+      if (!active || error) return;
+      setMembershipRole(data?.status === "accepted" ? data.role : "participant");
+    };
+
+    void refreshRole();
+
+    const channel = supabase
+      .channel(`session-member-role-${sessionId}-${localParticipant.identity}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_members",
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const changed = (payload.new ?? payload.old) as { user_id?: string };
+          if (changed.user_id === localParticipant.identity) {
+            void refreshRole();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [sessionId, localParticipant.identity]);
+
+  const isOrganizer = membershipRole === "organizer";
+  const canManageParticipants =
+    isOrganizer ||
+    membershipRole === "in_charge" ||
+    membershipRole === "admin";
 
   const handleDocumentAvailabilityChange =
     useCallback(
@@ -672,14 +721,13 @@ function ConferenceWorkspace({
           Session workspace
         </span>
 
-        <PdfUploader
-          sessionId={
-            sessionId
-          }
-          canManage={
-            canManageDocuments
-          }
-        />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+          <DocumentLibrary sessionId={sessionId} />
+          <PdfUploader
+            sessionId={sessionId}
+            canManage={canManageDocuments}
+          />
+        </div>
       </div>
 
       <div
@@ -727,7 +775,7 @@ function ConferenceWorkspace({
           />
 
           {participantsOpen &&
-            isOrganizer && (
+            canManageParticipants && (
               <ModerationPanel
                 sessionId={
                   sessionId
@@ -735,6 +783,7 @@ function ConferenceWorkspace({
                 open={
                   participantsOpen
                 }
+                localRole={membershipRole}
                 onClose={() =>
                   setParticipantsOpen(
                     false
@@ -819,7 +868,7 @@ function ConferenceWorkspace({
               }
             />
 
-            {isOrganizer && (
+            {canManageParticipants && (
               <button
                 type="button"
                 onClick={

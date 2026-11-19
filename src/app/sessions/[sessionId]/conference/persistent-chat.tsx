@@ -66,48 +66,22 @@ export default function PersistentChat({
 
   useEffect(() => {
     let active = true;
-
     const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let historyRequest = 0;
 
     async function loadMessages() {
-      setLoading(true);
-      setError("");
-
+      const request = ++historyRequest;
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data, error: queryError } = await supabase
+          .from("session_messages")
+          .select("id, session_id, sender_id, body, created_at")
+          .eq("session_id", sessionId)
+          .order("created_at", { ascending: true });
 
-        if (!user) {
-          throw new Error(
-            "Your session has expired. Please sign in again."
-          );
-        }
+        if (queryError) throw queryError;
+        if (!active || request !== historyRequest) return;
 
-        if (!active) return;
-
-        currentUserIdRef.current = user.id;
-        setCurrentUserId(user.id);
-
-        const { data, error: queryError } =
-          await supabase
-            .from("session_messages")
-            .select(
-              "id, session_id, sender_id, body, created_at"
-            )
-            .eq("session_id", sessionId)
-            .order("created_at", {
-              ascending: true,
-            });
-
-        if (queryError) {
-          throw queryError;
-        }
-
-        if (!active) return;
-
-        // Merge the history snapshot with any Realtime messages that
-        // arrived while the request was in flight.
         setMessages((previous) => {
           const merged = new Map<string, Message>();
           for (const message of (data ?? []) as Message[]) {
@@ -117,86 +91,87 @@ export default function PersistentChat({
             merged.set(message.id, message);
           }
           return [...merged.values()].sort(
-            (a, b) =>
-              new Date(a.created_at).getTime() -
-              new Date(b.created_at).getTime()
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
         });
         shouldScrollRef.current = true;
+        setLoading(false);
+        setError("");
       } catch (err) {
-        if (!active) return;
-
-        console.error(
-          "Unable to load session chat:",
-          err
-        );
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load chat."
-        );
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (!active || request !== historyRequest) return;
+        console.error("Unable to load session chat:", err);
+        setError(err instanceof Error ? err.message : "Unable to load chat.");
+        setLoading(false);
       }
     }
 
-    void loadMessages();
+    function addMessage(message: Message) {
+      setMessages((previous) => {
+        if (previous.some((item) => item.id === message.id)) return previous;
+        return [...previous, message].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      });
 
-    const channel = supabase
-      .channel(`session-chat-${sessionId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "session_messages",
-          filter: `session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          if (!active) return;
+      if (!openRef.current && message.sender_id !== currentUserIdRef.current) {
+        setUnreadCount((count) => Math.min(count + 1, 99));
+      }
+      if (openRef.current || shouldScrollRef.current) {
+        shouldScrollRef.current = true;
+      }
+    }
 
-          const message =
-            payload.new as Message;
-
-          setMessages((previous) => {
-            if (
-              previous.some(
-                (existing) =>
-                  existing.id === message.id
-              )
-            ) {
-              return previous;
-            }
-
-            return [...previous, message];
-          });
-
-          if (
-            !openRef.current &&
-            message.sender_id !==
-              currentUserIdRef.current
-          ) {
-            setUnreadCount((previous) =>
-              Math.min(previous + 1, 99)
-            );
-          }
-
-          if (
-            openRef.current ||
-            shouldScrollRef.current
-          ) {
-            shouldScrollRef.current = true;
-          }
+    async function initialize() {
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!user) {
+          throw new Error("Your session has expired. Please sign in again.");
         }
-      )
-      .subscribe();
+        if (!active) return;
+
+        currentUserIdRef.current = user.id;
+        setCurrentUserId(user.id);
+
+        // Establish the live subscription before fetching history so no
+        // message can fall into the gap between the snapshot and subscription.
+        channel = supabase
+          .channel(`session-chat-${sessionId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "session_messages",
+              filter: `session_id=eq.${sessionId}`,
+            },
+            (payload) => {
+              if (active) addMessage(payload.new as Message);
+            }
+          )
+          .subscribe((status) => {
+            if (!active) return;
+            if (status === "SUBSCRIBED") {
+              void loadMessages();
+            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              setError("Live chat connection interrupted. Reconnecting...");
+              setLoading(false);
+            }
+          });
+      } catch (err) {
+        if (!active) return;
+        console.error("Unable to initialize session chat:", err);
+        setError(err instanceof Error ? err.message : "Unable to load chat.");
+        setLoading(false);
+      }
+    }
+
+    void initialize();
 
     return () => {
       active = false;
-      void supabase.removeChannel(channel);
+      historyRequest += 1;
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [sessionId]);
 
@@ -375,15 +350,14 @@ export default function PersistentChat({
                           : "text-white/30"
                       }`}
                     >
-                      {new Date(
-                        message.created_at
-                      ).toLocaleTimeString(
-                        undefined,
-                        {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        }
-                      )}
+                      {message.pending
+                        ? "Sending..."
+                        : new Date(
+                            message.created_at
+                          ).toLocaleTimeString(undefined, {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
                     </p>
                   </div>
                 </div>
