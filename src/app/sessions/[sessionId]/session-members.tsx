@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ProfileAvatar from "@/components/profile-avatar";
 
 type Member = {
   user_id: string;
   role: string;
   status: string;
   display_name: string;
+  avatar_url: string | null;
 };
 
 export default function SessionMembers({
@@ -37,20 +39,21 @@ export default function SessionMembers({
 
       const rows = data ?? [];
       const ids = [...new Set(rows.map((member) => member.user_id))];
-      let names = new Map<string, string>();
+      let profilesById = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
       if (ids.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name")
+          .select("id, display_name, avatar_url, avatar_path")
           .in("id", ids);
         if (!active) return;
-        names = new Map((profiles ?? []).map((profile) => [profile.id, profile.display_name]));
+        profilesById = new Map((profiles ?? []).map((profile) => [profile.id, { display_name: profile.display_name, avatar_url: profile.avatar_url || (profile.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) }]));
       }
 
       setMembers(rows.map((member) => ({
         ...member,
-        display_name: names.get(member.user_id) || "Vaani member",
+        display_name: profilesById.get(member.user_id)?.display_name || "Vaani member",
+        avatar_url: profilesById.get(member.user_id)?.avatar_url || null,
       })));
     };
 
@@ -73,28 +76,31 @@ export default function SessionMembers({
   const acceptedCount = members.filter((member) => member.status === "accepted").length;
 
   return (
-    <section className="mt-7 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+    <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Session members</h2>
-          <p className="mt-1 text-sm text-stone-600">Member roles and invitation status update live.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Member roles and invitation status update live.</p>
         </div>
-        <span className="text-sm text-stone-500">{acceptedCount} accepted</span>
+        <span className="text-sm text-[var(--muted)]">{acceptedCount} accepted</span>
       </div>
 
       {members.length === 0 ? (
-        <p className="mt-6 text-sm text-stone-600">No member information is currently available.</p>
+        <p className="mt-6 text-sm text-[var(--muted)]">No member information is currently available.</p>
       ) : (
         <div className="mt-5 divide-y divide-stone-100">
           {members.map((member) => (
             <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <div>
-                <p className="text-sm font-medium text-stone-900">
-                  {member.display_name}{member.user_id === currentUserId ? " (You)" : ""}
-                </p>
-                <p className="mt-1 text-xs capitalize text-stone-500">{member.role.replaceAll("_", " ")}</p>
+              <div className="flex min-w-0 items-center gap-3">
+                <ProfileAvatar name={member.display_name} avatarUrl={member.avatar_url} size="md" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--ink)]">
+                    {member.display_name}{member.user_id === currentUserId ? " (You)" : ""}
+                  </p>
+                  <p className="mt-1 text-xs capitalize text-[var(--muted)]">{member.role.replaceAll("_", " ")}</p>
+                </div>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${member.status === "accepted" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${member.status === "accepted" ? "bg-[#edf3eb] text-[var(--forest)]" : "bg-amber-50 text-amber-800"}`}>
                 {member.status === "accepted" ? "Accepted" : "Invited"}
               </span>
             </div>

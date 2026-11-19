@@ -60,13 +60,13 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-stone-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-stone-900">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-sm">
+        <h1 className="text-2xl font-semibold text-[var(--ink)]">
           Choose a new password
         </h1>
 
-        <p className="mt-2 text-sm text-stone-500">
+        <p className="mt-2 text-sm text-[var(--muted)]">
           Enter and confirm your new password.
         </p>
 
@@ -74,7 +74,7 @@ export default function UpdatePasswordPage() {
           <div>
             <label
               htmlFor="password"
-              className="mb-1.5 block text-sm font-medium text-stone-700"
+              className="mb-1.5 block text-sm font-medium text-[var(--ink)]"
             >
               New password
             </label>
@@ -87,14 +87,14 @@ export default function UpdatePasswordPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 px-3 py-3 text-sm outline-none focus:border-stone-600"
+              className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm outline-none focus:border-stone-600"
             />
           </div>
 
           <div>
             <label
               htmlFor="confirmPassword"
-              className="mb-1.5 block text-sm font-medium text-stone-700"
+              className="mb-1.5 block text-sm font-medium text-[var(--ink)]"
             >
               Confirm new password
             </label>
@@ -107,7 +107,7 @@ export default function UpdatePasswordPage() {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-stone-300 px-3 py-3 text-sm outline-none focus:border-stone-600"
+              className="w-full rounded-lg border border-[var(--line)] px-3 py-3 text-sm outline-none focus:border-stone-600"
             />
           </div>
 
@@ -118,7 +118,7 @@ export default function UpdatePasswordPage() {
           )}
 
           {message && (
-            <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">
+            <p role="status" className="rounded-lg bg-[#edf3eb] p-3 text-sm text-[var(--forest)]">
               {message}
             </p>
           )}
@@ -127,7 +127,7 @@ export default function UpdatePasswordPage() {
             <button
               type="button"
               onClick={() => router.replace("/account")}
-              className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-medium text-white hover:bg-stone-700"
+              className="w-full rounded-lg bg-[var(--plum)] px-4 py-3 text-sm font-medium text-white hover:bg-[var(--plum-deep)]"
             >
               Continue to account
             </button>
@@ -136,7 +136,7 @@ export default function UpdatePasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-stone-900 px-4 py-3 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
+            className="w-full rounded-lg bg-[var(--plum)] px-4 py-3 text-sm font-medium text-white hover:bg-[var(--plum-deep)] disabled:opacity-50"
           >
             {loading ? "Updating..." : "Update password"}
           </button>

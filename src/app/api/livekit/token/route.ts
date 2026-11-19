@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       error: profileError,
     } = await supabase
       .from("profiles")
-      .select("display_name")
+      .select("display_name, avatar_url, avatar_path")
       .eq("id", userId)
       .maybeSingle();
 
@@ -136,10 +136,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: authUserData } = await supabase.auth.getUser();
+    const metadata = authUserData.user?.user_metadata ?? {};
     const displayName =
-      String(profile?.display_name ?? "")
+      String(profile?.display_name ?? metadata.full_name ?? metadata.name ?? "")
         .trim()
         .slice(0, 80) || "Vaani member";
+    const avatarUrl =
+      typeof profile?.avatar_url === "string"
+        ? profile.avatar_url
+        : typeof profile?.avatar_path === "string" && profile.avatar_path.startsWith("http")
+          ? profile.avatar_path
+          : typeof profile?.avatar_path === "string"
+            ? supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl
+            : typeof metadata.avatar_url === "string"
+              ? metadata.avatar_url
+              : typeof metadata.picture === "string"
+                ? metadata.picture
+                : "";
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -157,6 +171,7 @@ export async function POST(request: NextRequest) {
       name: displayName,
       attributes: {
         role: membership.role,
+        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       },
       ttl: "8h",
     });

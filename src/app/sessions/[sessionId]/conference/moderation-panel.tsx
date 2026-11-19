@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParticipants } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
+import ProfileAvatar from "@/components/profile-avatar";
 
 type Props = {
   sessionId: string;
@@ -271,15 +272,12 @@ export default function ModerationPanel({
                     className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
                   >
                     <div className="flex min-w-0 items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-white">
-                          {participantName}
-                        </p>
-
-                        <p className="mt-1 text-xs capitalize text-white/45">
-                          {(participant.attributes?.role || "participant")
-                            .replaceAll("_", " ")}
-                        </p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProfileAvatar name={participantName} avatarUrl={participant.attributes?.avatar_url || null} size="md" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{participantName}</p>
+                          <p className="mt-1 text-xs capitalize text-white/45">{(participant.attributes?.role || "participant").replaceAll("_", " ")}</p>
+                        </div>
                       </div>
 
                       <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-medium text-emerald-300">

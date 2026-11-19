@@ -1,8 +1,10 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CreateSessionForm from "./create-session-form";
+import SiteHeader from "@/components/site-header";
 
 import {
   createSession,
@@ -83,15 +85,15 @@ function SessionCard({
       membership.status === "removed");
 
   return (
-    <article className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+    <article className="surface-card p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-stone-900">
+          <h3 className="font-display text-2xl text-[var(--plum)]">
             {session.title}
           </h3>
 
           {session.description && (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-stone-600">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--muted)]">
               {session.description}
             </p>
           )}
@@ -100,27 +102,27 @@ function SessionCard({
         <span
           className={`rounded-full px-3 py-1 text-xs font-medium ${
             session.status === "live"
-              ? "bg-emerald-100 text-emerald-800"
-              : "bg-stone-100 text-stone-700"
+              ? "bg-[#e6eee5] text-[var(--forest)]"
+              : "bg-[var(--surface-soft)] text-[var(--ink)]"
           }`}
         >
           {session.status === "live" ? "Live now" : "Upcoming"}
         </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-600">
-        <span className="rounded-full bg-stone-100 px-3 py-1">
+      <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+        <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
           {session.access_type === "community"
             ? "Community"
             : "Invitation only"}
         </span>
 
-        <span className="rounded-full bg-stone-100 px-3 py-1">
+        <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
           {formatSchedule(session.scheduled_start_at)}
         </span>
 
         {membership && (
-          <span className="rounded-full bg-stone-100 px-3 py-1">
+          <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
             {membership.role.replace("_", " ")}
           </span>
         )}
@@ -129,12 +131,12 @@ function SessionCard({
       <div className="mt-5 flex flex-wrap items-center gap-3">
 	<a
 	  href={`/sessions/${session.id}`}
-	  className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+	  className="button-secondary !min-h-10 !px-4 !py-2 text-xs"
 	>
 	  View details
 	</a>
         {isOrganizer && (
-          <span className="text-sm font-medium text-emerald-800">
+          <span className="text-sm font-medium text-[var(--forest)]">
             You organize this session.
           </span>
         )}
@@ -152,7 +154,7 @@ function SessionCard({
                 name="accept"
                 value="true"
               />
-              <button className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+              <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">
                 Accept invitation
               </button>
             </form>
@@ -168,7 +170,7 @@ function SessionCard({
                 name="accept"
                 value="false"
               />
-              <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-stone-50">
+              <button className="button-secondary !min-h-9 !px-4 !py-1.5 text-xs">
                 Decline
               </button>
             </form>
@@ -182,7 +184,7 @@ function SessionCard({
               name="session_id"
               value={session.id}
             />
-            <button className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            <button className="button-primary !min-h-9 !px-4 !py-1.5 text-xs">
               Join session
             </button>
           </form>
@@ -195,7 +197,7 @@ function SessionCard({
               name="session_id"
               value={session.id}
             />
-            <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-stone-50">
+            <button className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-medium hover:bg-[var(--background)]">
               Leave session
             </button>
           </form>
@@ -221,17 +223,17 @@ function SessionSection({
   return (
     <section className="mt-10">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-stone-900">
+        <h2 className="text-xl font-semibold text-[var(--ink)]">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-stone-600">
+        <p className="mt-1 text-sm text-[var(--muted)]">
           {description}
         </p>
       </div>
 
       {sessions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-stone-300 p-7 text-center">
-          <p className="text-sm text-stone-600">{emptyMessage}</p>
+        <div className="rounded-xl border border-dashed border-[var(--line)] p-7 text-center">
+          <p className="text-sm text-[var(--muted)]">{emptyMessage}</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -250,10 +252,10 @@ function SessionSection({
 
 function SessionsLoading() {
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10 sm:px-8">
+    <main className="min-h-screen bg-[var(--background)] px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <div className="h-10 w-48 animate-pulse rounded bg-stone-200" />
-        <div className="mt-8 h-40 animate-pulse rounded-2xl bg-stone-200" />
+        <div className="h-10 w-48 animate-pulse rounded bg-[var(--surface-soft)]" />
+        <div className="mt-8 h-40 animate-pulse rounded-2xl bg-[var(--surface-soft)]" />
       </div>
     </main>
   );
@@ -275,6 +277,14 @@ async function SessionsContent({
   if (authError || typeof userId !== "string") {
     redirect("/login");
   }
+
+  const [{ data: authUser }, { data: profile }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("profiles").select("display_name, avatar_url, avatar_path").eq("id", userId).maybeSingle(),
+  ]);
+  const email = authUser.user?.email || "";
+  const displayName = profile?.display_name || authUser.user?.user_metadata?.full_name || authUser.user?.user_metadata?.name || email.split("@")[0] || "Sakhi";
+  const avatarUrl = profile?.avatar_url || (profile?.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) || authUser.user?.user_metadata?.avatar_url || authUser.user?.user_metadata?.picture || null;
 
   const { data: sessions, error: sessionsError } = await supabase
     .from("sessions")
@@ -330,66 +340,51 @@ async function SessionsContent({
   ).length;
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-10 text-stone-900 sm:px-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium tracking-wide text-emerald-800">
-              VAANI
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold">
-              Sessions
-            </h1>
-            <p className="mt-2 text-stone-600">
-              Discover gatherings, participate, and connect with the community.
-            </p>
-          </div>
-
-          <a
-            href="/home"
-            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-white"
-          >
-            Back to home
-          </a>
+    <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+      <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
+      <div className="page-shell py-8 sm:py-10">
+        <header className="mb-8 pt-2">
+          <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">Sessions for gaayan and shared reading.</p>
         </header>
 
         {params.success && successMessages[params.success] && (
-          <div className="mt-7 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <div className="mt-7 rounded-lg border border-[#d4e1d1] bg-[#edf3eb] p-4 text-sm text-[var(--forest)]">
             {successMessages[params.success]}
           </div>
         )}
 
         {params.error && errorMessages[params.error] && (
-          <div className="mt-7 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="mt-7 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
             {errorMessages[params.error]}
           </div>
         )}
 
-        <div className="mt-8 grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-stone-200 bg-white p-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="surface-card p-4">
             <p className="text-2xl font-semibold tabular-nums">
               {liveCount}
             </p>
-            <p className="mt-1 text-xs text-stone-600">Live</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Live</p>
           </div>
 
-          <div className="rounded-xl border border-stone-200 bg-white p-4">
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
             <p className="text-2xl font-semibold tabular-nums">
               {upcomingCount}
             </p>
-            <p className="mt-1 text-xs text-stone-600">Upcoming</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Upcoming</p>
           </div>
 
-          <div className="rounded-xl border border-stone-200 bg-white p-4">
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
             <p className="text-2xl font-semibold tabular-nums">
               {invitations.length}
             </p>
-            <p className="mt-1 text-xs text-stone-600">Invitations</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Invitations</p>
           </div>
         </div>
 
         {sessionsError || membershipError ? (
-          <p className="mt-8 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="mt-8 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
             We could not load your sessions. Please refresh the page.
           </p>
         ) : (
@@ -412,7 +407,7 @@ async function SessionsContent({
 
             <SessionSection
               title="Discover sessions"
-              description="Community sessions available for all Vaani members."
+              description="Open sessions available to members."
               sessions={discoverSessions}
               membershipMap={membershipMap}
               emptyMessage="There are no other community sessions available right now."
@@ -420,24 +415,24 @@ async function SessionsContent({
           </>
         )}
 
-        <section className="mt-12 border-t border-stone-200 pt-8">
-          <details className="group rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <section className="mt-14 border-t border-[var(--line)] pt-9">
+          <details className="group surface-card">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6">
               <div>
                 <h2 className="text-xl font-semibold">
                   Organize a session
                 </h2>
-                <p className="mt-1 text-sm text-stone-600">
-                  Create a new Chaturasi Ji gaayan, Pada gaayan, or discussion session.
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Set up a gathering and invite its members.
                 </p>
               </div>
 
-              <span className="text-2xl text-stone-500 transition-transform group-open:rotate-45">
+              <span className="text-2xl text-[var(--muted)] transition-transform group-open:rotate-45">
                 +
               </span>
             </summary>
 
-            <div className="border-t border-stone-200 p-6">
+            <div className="border-t border-[var(--line)] p-6">
               <CreateSessionForm action={createSession} />
             </div>
           </details>

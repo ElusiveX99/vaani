@@ -331,14 +331,14 @@ export default function PdfUploader({
           : message || "Upload a document for everyone";
 
   return (
-    <section className="flex min-w-0 items-center gap-3 rounded-lg border border-white/10 bg-[#202020] px-3 py-2 text-white">
+    <section className="conference-workspace flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-2 text-white">
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium">Session PDF</p>
 
         <p
           role="status"
           aria-live="polite"
-          className="max-w-64 truncate text-[11px] text-white/50"
+          className="max-w-full truncate text-[10px] text-white/50"
         >
           {stageLabel}
         </p>
@@ -353,7 +353,7 @@ export default function PdfUploader({
             aria-valuenow={progress}
           >
             <div
-              className="h-full rounded-full bg-white transition-all duration-200"
+              className="h-full rounded-full bg-[#d6b5c5] transition-all duration-200"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -364,7 +364,7 @@ export default function PdfUploader({
         type="button"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className="shrink-0 rounded-md bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-8 shrink-0 rounded-md bg-[var(--conference-accent)] px-2.5 py-1.5 text-[10px] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? "Please wait..." : "Upload PDF"}
       </button>

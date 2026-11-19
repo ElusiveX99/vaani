@@ -3,170 +3,131 @@ import { connection } from "next/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-
-const navigation = [
-  { label: "Home", href: "/home" },
-  { label: "Sessions", href: "/sessions" },
-  { label: "Account", href: "/account" },
-];
+import SiteHeader from "@/components/site-header";
 
 function HomeLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#faf9f5] text-[#292b25]">
-      <p className="text-sm text-[#858477]">
-        Loading your Vaani dashboard...
-      </p>
+    <main className="min-h-screen bg-[var(--background)]">
+      <div className="page-shell py-16">
+        <div className="h-8 w-48 animate-pulse rounded bg-[var(--surface-soft)]" />
+        <div className="mt-8 h-48 animate-pulse rounded-2xl bg-[var(--surface-soft)]" />
+      </div>
     </main>
   );
 }
 
 async function HomeContent() {
   await connection();
-
   const supabase = await createClient();
-
   const { data, error } = await supabase.auth.getClaims();
+  const userId = data?.claims?.sub;
+  if (error || typeof userId !== "string") redirect("/login");
 
-  if (error || !data?.claims) {
-    redirect("/login");
-  }
+  const [{ data: authUser }, { data: profile }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("profiles")
+      .select("display_name, avatar_url, avatar_path")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
 
-  const email =
-    typeof data.claims.email === "string"
-      ? data.claims.email
-      : "Member";
+  const email = authUser.user?.email || "";
+  const name = profile?.display_name ||
+    authUser.user?.user_metadata?.full_name ||
+    authUser.user?.user_metadata?.name ||
+    email.split("@")[0] ||
+    "Sakhi";
+  const avatarUrl = profile?.avatar_url ||
+    (profile?.avatar_path
+      ? (profile.avatar_path.startsWith("http")
+        ? profile.avatar_path
+        : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl)
+      : null) ||
+    authUser.user?.user_metadata?.avatar_url ||
+    authUser.user?.user_metadata?.picture ||
+    null;
+
+  const { data: sessions } = await supabase
+    .from("sessions")
+    .select("id, title, status, scheduled_start_at, access_type")
+    .in("status", ["scheduled", "live"])
+    .order("created_at", { ascending: false })
+    .limit(8);
+  const { data: memberships } = await supabase
+    .from("session_members")
+    .select("session_id")
+    .eq("user_id", userId)
+    .eq("status", "accepted");
+
+  const joined = new Set((memberships ?? []).map((item) => item.session_id));
+  const relevantSessions = (sessions ?? [])
+    .filter((item) => item.access_type === "community" || joined.has(item.id))
+    .slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-[#faf9f5] text-[#292b25]">
-      <header className="border-b border-[#e9e6dc] bg-white/80">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
-          <Link
-            href="/home"
-            className="text-2xl font-semibold tracking-[0.12em] text-[#344b3d]"
-          >
-            VAANI
-          </Link>
-
-          <div className="flex items-center gap-6">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm font-medium text-[#68695e] transition hover:text-[#344b3d]"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </nav>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-16">
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#927b50]">
-            Your community space
-          </p>
-
-          <h1 className="mt-4 font-serif text-4xl text-[#344b3d] sm:text-5xl">
-            Welcome to Vaani.
-          </h1>
-
-          <p className="mt-4 max-w-2xl text-base leading-8 text-[#68695e]">
-            A place to come together for Chaturasi Ji gaayan, pada
-            gaayan, guided reading, and meaningful conversations.
-          </p>
-
-          <p className="mt-3 text-sm text-[#858477]">
-            Signed in as {email}
-          </p>
-        </section>
-
-        <section className="mt-16">
+    <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+      <SiteHeader name={name} email={email} avatarUrl={avatarUrl} />
+      <div className="page-shell py-10 sm:py-14">
+        <section className="flex flex-col gap-5 border-b border-[var(--line)] pb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#927b50]">
-              Gather together
-            </p>
-
-            <h2 className="mt-3 font-serif text-3xl text-[#344b3d]">
-              Your sessions
-            </h2>
+            <p className="eyebrow">Vaani</p>
+            <h1 className="font-display mt-2 text-4xl text-[var(--plum)] sm:text-5xl">
+              Welcome back, {name.split(" ")[0]}.
+            </h1>
           </div>
-
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            <Link
-              href="/sessions"
-              className="group rounded-2xl border border-[#e5e1d5] bg-white p-8 transition hover:-translate-y-1 hover:border-[#b7bba7] hover:shadow-md"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9a895f]">
-                Participate
-              </p>
-
-              <h3 className="mt-5 text-2xl font-semibold text-[#344b3d]">
-                Join a session
-              </h3>
-
-              <p className="mt-3 text-sm leading-7 text-[#68695e]">
-                Enter a gathering and join the community in shared
-                devotional activities.
-              </p>
-
-              <span className="mt-8 inline-block text-sm font-semibold text-[#536b52] group-hover:underline">
-                Explore sessions →
-              </span>
-            </Link>
-
-            <Link
-              href="/sessions"
-              className="group rounded-2xl border border-[#e5e1d5] bg-white p-8 transition hover:-translate-y-1 hover:border-[#b7bba7] hover:shadow-md"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9a895f]">
-                Organize
-              </p>
-
-              <h3 className="mt-5 text-2xl font-semibold text-[#344b3d]">
-                Host a gathering
-              </h3>
-
-              <p className="mt-3 text-sm leading-7 text-[#68695e]">
-                Bring Sakhis together for a gathering with integrated
-                video conferencing and guided devotional reading.
-              </p>
-
-              <span className="mt-8 inline-block text-sm font-semibold text-[#536b52] group-hover:underline">
-                Manage sessions →
-              </span>
-            </Link>
-          </div>
+          <Link href="/sessions" className="button-primary self-start sm:self-auto">Browse gatherings</Link>
         </section>
 
-        <section className="mt-16 rounded-2xl border border-[#e5e1d5] bg-[#f3f1e8] p-8 sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#927b50]">
-            The Vaani experience
-          </p>
+        <section className="mt-9">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-display text-3xl text-[var(--plum)]">Your gatherings</h2>
+            <Link href="/sessions" className="text-sm font-semibold text-[var(--plum)] hover:underline">View all</Link>
+          </div>
 
-          <h2 className="mt-4 max-w-xl font-serif text-3xl leading-tight text-[#344b3d]">
-            Together in devotion. Connected through Vaani.
-          </h2>
-
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-[#68695e]">
-            Our gatherings bring together live participation and a
-            shared reading experience, where the designated in-charge
-            guides the document while everyone follows along.
-          </p>
+          {relevantSessions.length > 0 ? (
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {relevantSessions.map((session) => (
+                <Link
+                  key={session.id}
+                  href={`/sessions/${session.id}`}
+                  className="surface-card group p-5 transition hover:border-[var(--rose)]"
+                >
+                  <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                    {session.status === "live" && <span className="h-2 w-2 rounded-full bg-[#6d916f]" />}
+                    {session.status === "live" ? "Live now" : "Upcoming"}
+                  </div>
+                  <h3 className="mt-4 font-display text-2xl text-[var(--plum)]">{session.title}</h3>
+                  <p className="mt-2 text-xs text-[var(--muted)]">
+                    {session.scheduled_start_at
+                      ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.scheduled_start_at))
+                      : "Time not set"}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="surface-card mt-5 p-7">
+              <p className="text-sm text-[var(--muted)]">There are no current gatherings to show.</p>
+              <Link href="/sessions" className="button-secondary mt-4">Browse gatherings</Link>
+            </div>
+          )}
         </section>
 
-        <footer className="mt-16 border-t border-[#e9e6dc] pt-6 text-xs text-[#858477]">
-          Vaani — A shared space for devotion, learning, and togetherness.
-        </footer>
+        <section className="mt-10 grid gap-3 sm:grid-cols-2">
+          <Link href="/sessions" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
+            <h2 className="font-display text-2xl text-[var(--plum)]">Gatherings</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Join a session or organize one.</p>
+          </Link>
+          <Link href="/account" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
+            <h2 className="font-display text-2xl text-[var(--plum)]">Profile</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Update your name and photo.</p>
+          </Link>
+        </section>
       </div>
     </main>
   );
 }
 
 export default function HomePage() {
-  return (
-    <Suspense fallback={<HomeLoading />}>
-      <HomeContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<HomeLoading />}><HomeContent /></Suspense>;
 }

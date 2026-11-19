@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
-  GridLayout,
+
   ParticipantTile,
   useTracks,
   useRoomContext,
@@ -31,6 +31,7 @@ import ModerationPanel from "./moderation-panel";
 import PersistentChat from "./persistent-chat";
 import SynchronizedReader from "./synchronized-reader";
 import { createClient } from "@/lib/supabase/client";
+import ProfileAvatar from "@/components/profile-avatar";
 
 type Props = {
   sessionId: string;
@@ -685,8 +686,8 @@ function ConferenceWorkspace({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#171717] px-4 sm:px-6">
+    <div className="conference-shell flex min-h-0 flex-1 flex-col">
+      <header className="conference-toolbar flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6">
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold text-white">
             {title}
@@ -707,13 +708,13 @@ function ConferenceWorkspace({
       </header>
 
       {canManageDocuments && (
-        <div className="relative z-40 flex shrink-0 justify-end border-b border-white/10 bg-[#171717] px-3 py-1.5 sm:px-4">
+        <div className="conference-toolbar relative z-40 flex shrink-0 justify-end border-b px-3 py-1.5 sm:px-4">
           <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-white/85 transition hover:bg-white/10 [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-[var(--conference-line)] bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-medium text-white/85 transition hover:bg-white/10 [&::-webkit-details-marker]:hidden">
               <span>Workspace</span>
               <span className="text-white/45 transition group-open:rotate-180">⌄</span>
             </summary>
-            <div className="absolute right-0 top-full mt-2 flex w-[min(92vw,24rem)] flex-col gap-2 rounded-xl border border-white/10 bg-[#202020] p-3 shadow-2xl">
+            <div className="absolute right-0 top-full mt-2 flex w-[min(94vw,30rem)] max-h-[72svh] overflow-y-auto flex-col gap-2 rounded-xl border border-[var(--conference-line)] bg-[#302a34] p-3 shadow-2xl">
               <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
               <PdfUploader
                 sessionId={sessionId}
@@ -744,16 +745,39 @@ function ConferenceWorkspace({
           />
         </div>
 
-        <section className="relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#171717]">
+        <section className="relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#211d24]">
           <div className="relative min-h-0 flex-1 overflow-hidden">
-            <GridLayout
-              tracks={
-                tracks
-              }
-              className="h-full min-h-0 w-full"
-            >
-              <ParticipantTile />
-            </GridLayout>
+            <div className="grid h-full min-h-0 auto-rows-fr grid-cols-1 gap-2 p-2 sm:grid-cols-2">
+              {tracks.map((trackRef) => {
+                const participant = trackRef.participant;
+                const cameraOff =
+                  trackRef.source === Track.Source.Camera &&
+                  (!trackRef.publication ||
+                    trackRef.publication.isMuted ||
+                    !trackRef.publication.track);
+                const participantName = participant.name || "Sakhi";
+                return (
+                  <div
+                    key={`${participant.identity}-${trackRef.source}`}
+                    className="relative min-h-0 overflow-hidden rounded-xl"
+                  >
+                    <ParticipantTile trackRef={trackRef} />
+                    {cameraOff && (
+                      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#392f3b]">
+                        <ProfileAvatar
+                          name={participantName}
+                          avatarUrl={participant.attributes?.avatar_url || null}
+                          size="xl"
+                        />
+                        <span className="max-w-[80%] truncate text-sm font-medium text-white/85">
+                          {participantName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <PersistentChat
@@ -786,7 +810,7 @@ function ConferenceWorkspace({
               />
             )}
 
-          <div className="relative z-30 flex h-16 shrink-0 items-center justify-center gap-1.5 border-t border-white/10 bg-[#171717] px-2 sm:gap-2">
+          <div className="relative z-30 flex h-16 shrink-0 items-center justify-center gap-1.5 border-t border-[var(--conference-line)] bg-[#211d24] px-2 sm:gap-2">
             <MediaButton
               icon="mic"
               label="Mic"
@@ -843,7 +867,7 @@ function ConferenceWorkspace({
               enabled={
                 isScreenShareEnabled
               }
-              activeClassName="bg-blue-600 text-white hover:bg-blue-500"
+              activeClassName="bg-[var(--conference-accent)] text-white hover:brightness-110"
               busy={
                 mediaBusy ===
                 "screen"
@@ -901,7 +925,7 @@ function ConferenceWorkspace({
                 chatOpen
               }
               title="Chat"
-              className={`relative flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:w-auto sm:px-3 ${
+              className={`conference-control relative flex h-9 min-h-9 w-9 shrink-0 items-center justify-center rounded-lg px-0 text-xs transition hover:bg-white/20 sm:h-10 sm:w-auto sm:px-3 ${
                 chatOpen
                   ? "bg-white/20"
                   : "bg-white/10"
@@ -934,7 +958,7 @@ function ConferenceWorkspace({
               }
               aria-label="Leave conference"
               title="Leave conference"
-              className="flex h-10 min-h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 px-0 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50 sm:w-auto sm:px-3"
+              className="flex h-9 min-h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#a84f59] px-0 text-xs font-semibold text-white transition hover:bg-[#b75b65] disabled:opacity-50 sm:h-10 sm:w-auto sm:px-3"
             >
               <ControlContent
                 icon="leave"
@@ -1099,8 +1123,8 @@ export default function ConferenceRoom({
 
   if (removed) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#111111] px-5 text-white">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#171717] p-6 text-center shadow-2xl">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--conference-bg)] px-5 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-[var(--conference-line)] bg-[#211d24] p-6 text-center shadow-2xl">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-300">
             <span className="text-xl">
               ×

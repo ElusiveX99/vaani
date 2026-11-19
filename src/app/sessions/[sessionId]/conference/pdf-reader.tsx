@@ -551,8 +551,8 @@ export default function PdfReader({
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#1b1b1b] text-white">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[var(--conference-surface)] text-white">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--conference-line)] px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-xs font-medium">PDF</span>
           <span className="shrink-0 text-[11px] tabular-nums text-white/45">

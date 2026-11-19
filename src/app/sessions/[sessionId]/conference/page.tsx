@@ -24,7 +24,7 @@ type Membership = {
 
 function ConferenceLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#111111] text-white">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--conference-bg)] text-white">
       Loading conference...
     </main>
   );

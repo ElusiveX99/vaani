@@ -1,17 +1,27 @@
 -- Member profile photos and self-service profile editing.
+-- Keep the existing avatar_path field populated for compatibility with the
+-- original profile schema while avatar_url provides a directly renderable URL.
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS avatar_url text;
 
 UPDATE public.profiles AS p
 SET avatar_url = COALESCE(
-  NULLIF(p.avatar_url, ''),
-  NULLIF(u.raw_user_meta_data ->> 'avatar_url', ''),
-  NULLIF(u.raw_user_meta_data ->> 'picture', '')
-)
+      NULLIF(p.avatar_url, ''),
+      CASE WHEN p.avatar_path LIKE 'http%' THEN NULLIF(p.avatar_path, '') END,
+      NULLIF(u.raw_user_meta_data ->> 'avatar_url', ''),
+      NULLIF(u.raw_user_meta_data ->> 'picture', '')
+    ),
+    avatar_path = COALESCE(
+      NULLIF(p.avatar_path, ''),
+      NULLIF(p.avatar_url, ''),
+      NULLIF(u.raw_user_meta_data ->> 'avatar_url', ''),
+      NULLIF(u.raw_user_meta_data ->> 'picture', '')
+    )
 FROM auth.users AS u
 WHERE u.id = p.id
   AND COALESCE(
     NULLIF(p.avatar_url, ''),
+    NULLIF(p.avatar_path, ''),
     NULLIF(u.raw_user_meta_data ->> 'avatar_url', ''),
     NULLIF(u.raw_user_meta_data ->> 'picture', '')
   ) IS NOT NULL;
@@ -85,8 +95,8 @@ ON public.profiles FOR INSERT
 TO authenticated
 WITH CHECK (id = (SELECT auth.uid()));
 
-GRANT UPDATE (display_name, avatar_url)
+GRANT UPDATE (display_name, avatar_path, avatar_url)
 ON public.profiles TO authenticated;
 
-GRANT INSERT (id, display_name, avatar_url)
+GRANT INSERT (id, display_name, avatar_path, avatar_url)
 ON public.profiles TO authenticated;

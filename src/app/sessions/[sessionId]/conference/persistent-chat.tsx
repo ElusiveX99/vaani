@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ProfileAvatar from "@/components/profile-avatar";
 
 type Props = {
   sessionId: string;
@@ -22,6 +23,8 @@ type Message = {
   body: string;
   created_at: string;
   pending?: boolean;
+  sender_name?: string;
+  avatar_url?: string | null;
 };
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -87,13 +90,25 @@ export default function PersistentChat({
         if (queryError) throw queryError;
         if (!active || request !== historyRequest) return;
 
+        const rows = (data ?? []) as Message[];
+        const senderIds = [...new Set(rows.map((message) => message.sender_id))];
+        const { data: profiles } = senderIds.length
+          ? await supabase.from("profiles").select("id, display_name, avatar_url, avatar_path").in("id", senderIds)
+          : { data: [] };
+        if (!active || request !== historyRequest) return;
+        const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+        const enriched = rows.map((message) => ({
+          ...message,
+          sender_name: profileMap.get(message.sender_id)?.display_name || "Sakhi",
+          avatar_url: profileMap.get(message.sender_id)?.avatar_url || (profileMap.get(message.sender_id)?.avatar_path ? (profileMap.get(message.sender_id)!.avatar_path!.startsWith("http") ? profileMap.get(message.sender_id)!.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profileMap.get(message.sender_id)!.avatar_path!).data.publicUrl) : null),
+        }));
+
         setMessages((previous) => {
           const merged = new Map<string, Message>();
-          for (const message of (data ?? []) as Message[]) {
-            merged.set(message.id, message);
-          }
+          for (const message of enriched) merged.set(message.id, message);
           for (const message of previous) {
-            merged.set(message.id, message);
+            const current = merged.get(message.id);
+            merged.set(message.id, current ? { ...message, ...current, sender_name: current.sender_name || message.sender_name, avatar_url: current.avatar_url || message.avatar_url } : message);
           }
           return [...merged.values()].sort(
             (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -355,9 +370,10 @@ export default function PersistentChat({
                     }`}
                   >
                     {!own && (
-                      <p className="mb-1 text-[10px] font-medium text-white/40">
-                        Member
-                      </p>
+                      <div className="mb-1.5 flex items-center gap-1.5">
+                        <ProfileAvatar name={message.sender_name || "Sakhi"} avatarUrl={message.avatar_url} size="sm" className="!h-5 !w-5 !text-[8px]" />
+                        <p className="text-[10px] font-semibold text-white/55">{message.sender_name || "Sakhi"}</p>
+                      </div>
                     )}
 
                     <p className="whitespace-pre-wrap break-words text-xs leading-relaxed">
