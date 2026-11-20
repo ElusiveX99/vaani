@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const gatherings = [
-  { title: "Chaturasi Ji gaayan", detail: "Shared singing" },
-  { title: "Pada gaayan", detail: "Padas sung together" },
-  { title: "Vaani reading", detail: "Read together during a gathering" },
+  { title: "Chaturasi Ji gaayan", detail: "Sing together, with attention and feeling." },
+  { title: "Pada gaayan", detail: "Let the padas be heard and remembered together." },
+  { title: "Vaani reading", detail: "Read together, slowly enough to stay with the bhaav." },
 ];
 
 export default async function LandingPage() {
@@ -29,7 +29,7 @@ export default async function LandingPage() {
               Chaturasi Ji gaayan.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
-              A place for Sakhis to gather for pada gaayan, Vaani reading, and conversation.
+              A place for Sakhis to gather in the sweetness of shared singing, Vaani reading, and conversation.
             </p>
             <a href="#gatherings" className="mt-8 inline-flex text-sm font-semibold text-[var(--plum)] underline decoration-[var(--gold)] underline-offset-4">
               Explore gatherings
