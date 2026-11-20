@@ -72,7 +72,7 @@ async function HomeContent() {
           <div>
             <p className="eyebrow">Your Vaani</p>
             <h1 className="font-display mt-2 text-4xl text-[var(--plum)] sm:text-5xl">
-              Radhe Radhe, {name.split(" ")[0]}.
+              Shree Harivansh, {name.split(" ")[0]}.
             </h1>
           </div>
           
