@@ -306,7 +306,7 @@ export default function PersistentChat({
 
   return (
     <div
-      className={`absolute inset-x-3 bottom-[76px] top-3 z-40 flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl transition-[opacity,transform] duration-150 ${
+      className={`absolute inset-x-3 bottom-3 top-3 z-40 flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl transition-[opacity,transform] duration-150 ${
         open
           ? "visible translate-y-0 opacity-100"
           : "pointer-events-none invisible translate-y-2 opacity-0"

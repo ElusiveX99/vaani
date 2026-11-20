@@ -742,12 +742,14 @@ function ConferenceWorkspace({
       <main
         className={`grid min-h-0 flex-1 gap-2 p-2 lg:gap-3 lg:p-3 ${
           readerAvailable
-            ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.36fr)]"
-            : "grid-cols-1"
+            ? chatOpen
+              ? "grid-cols-1 grid-rows-1 lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.36fr)]"
+              : "grid-cols-1 grid-rows-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.36fr)]"
+            : "grid-cols-1 grid-rows-1"
         }`}
       >
         {readerAvailable && (
-          <section className="min-h-0 min-w-0 overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#211d24]">
+          <section className={`min-h-0 min-w-0 overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#211d24] ${chatOpen ? "hidden lg:block" : ""}`}>
             <SynchronizedReader
               sessionId={sessionId}
               onDocumentAvailabilityChange={handleDocumentAvailabilityChange}
