@@ -993,7 +993,6 @@ function ConferenceWorkspace({
               </button>
             </div>
           )}
-        </section>
       </div>
     );
 }
