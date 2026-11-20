@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
-  const supabase = useMemo(() => createClient(), []);
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
   const router = useRouter();
 
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
@@ -21,8 +21,11 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
   useEffect(() => {
     let active = true;
 
+    const client = createClient();
+    setSupabase(client);
+
     async function initializeAuth() {
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await client.auth.getSession();
 
       if (!active) return;
 
@@ -40,7 +43,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
         ) {
           // Only clear this browser's session. Never use the default global
           // signOut here because it would revoke sessions on other devices.
-          await supabase.auth.signOut({ scope: "local" });
+          await client.auth.signOut({ scope: "local" });
         }
       }
 
@@ -49,7 +52,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
 
     void initializeAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
       if (session) {
         router.replace("/home");
       }
@@ -59,7 +62,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [router]);
 
   async function handleEmailAuth(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,6 +71,8 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
     setError("");
 
     try {
+      if (!supabase) throw new Error("Authentication is still initializing. Please try again.");
+
       if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -109,6 +114,8 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
     setMessage("");
 
     try {
+      if (!supabase) throw new Error("Authentication is still initializing. Please try again.");
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

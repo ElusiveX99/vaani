@@ -35,7 +35,7 @@ async function AccountContent() {
     <main className="min-h-screen bg-[var(--background)]">
       <SiteHeader name={name} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-12 sm:py-16">
-        <div className="mb-9"><p className="eyebrow">Account</p><h1 className="font-display mt-3 text-5xl text-[var(--plum)] sm:text-6xl">Your profile</h1><p className="mt-3 max-w-xl text-sm leading-7 text-[var(--muted)]">Your name and photo appear to other members in Vaani.</p></div>
+        <div className="mb-9"><p className="eyebrow">Your Vaani</p><h1 className="font-display mt-3 text-5xl text-[var(--plum)] sm:text-6xl">Your profile</h1><p className="mt-3 max-w-xl text-sm leading-7 text-[var(--muted)]">Your name and photo appear to other members in Vaani.</p></div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <ProfileEditor userId={userId} initialName={name} initialAvatarUrl={avatarUrl} initialAvatarPath={profile?.avatar_path ?? null} email={email} />
           <aside className="surface-card p-6">

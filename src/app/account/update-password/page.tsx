@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function UpdatePasswordPage() {
-  const supabase = createClient();
   const router = useRouter();
 
   const [password, setPassword] = useState("");
@@ -32,6 +31,11 @@ export default function UpdatePasswordPage() {
     setLoading(true);
 
     try {
+      // Create the browser client only after a user action. Client Components
+      // are prerendered on the server during the build, where browser auth
+      // initialization must not run.
+      const supabase = createClient();
+
       const {
         data: { user },
         error: userError,

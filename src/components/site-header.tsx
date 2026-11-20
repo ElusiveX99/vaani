@@ -48,9 +48,12 @@ export default function SiteHeader({ name, avatarUrl }: Props) {
             <span>Manage account</span>
           </Link>
           <details className="mobile-nav md:hidden">
-            <summary aria-label="Open navigation"><span aria-hidden="true" className="text-lg">☰</span></summary>
-            <div className="mobile-nav-panel">
-              {links.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
+            <summary aria-label="Open navigation" aria-haspopup="true"><span aria-hidden="true" className="text-lg">☰</span></summary>
+            <div className="mobile-nav-panel" aria-label="Mobile navigation">
+              {links.map((link) => {
+                const active = pathname === link.href || (link.href !== "/home" && pathname.startsWith(link.href));
+                return <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}>{link.label}</Link>;
+              })}
             </div>
           </details>
         </div>

@@ -309,6 +309,11 @@ export async function PATCH(
 ) {
   const { sessionId } = await context.params;
 
+  const origin = request.headers.get("origin");
+  if (!origin || origin !== new URL(request.url).origin) {
+    return json({ error: "Invalid request origin." }, 403);
+  }
+
   if (!isValidUuid(sessionId)) {
     return json(
       { error: "Invalid session ID." },

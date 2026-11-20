@@ -25,8 +25,9 @@ type Session = {
   title: string;
   description: string | null;
   access_type: "community" | "invitation_only";
-  status: "scheduled" | "live";
+  status: "scheduled" | "live" | "ended";
   scheduled_start_at: string | null;
+  ended_at?: string | null;
   created_by: string;
 };
 
@@ -61,9 +62,10 @@ function formatSchedule(value: string | null) {
     return "Time not scheduled";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Kolkata",
   }).format(date);
 }
 
@@ -79,6 +81,7 @@ function SessionCard({
   const isAccepted = membership?.status === "accepted";
 
   const canJoin =
+    session.status !== "ended" &&
     session.access_type === "community" &&
     (!membership ||
       membership.status === "declined" ||
@@ -106,7 +109,7 @@ function SessionCard({
               : "bg-[var(--surface-soft)] text-[var(--ink)]"
           }`}
         >
-          {session.status === "live" ? "Live now" : "Upcoming"}
+          {session.status === "live" ? "Live now" : session.status === "ended" ? "Concluded" : "Upcoming"}
         </span>
       </div>
 
@@ -190,7 +193,7 @@ function SessionCard({
           </form>
         )}
 
-        {isAccepted && !isOrganizer && (
+        {isAccepted && !isOrganizer && session.status !== "ended" && (
           <form action={leaveSession}>
             <input
               type="hidden"
@@ -331,6 +334,39 @@ async function SessionsContent({
     );
   });
 
+  const acceptedSessionIds = [...membershipMap.entries()]
+    .filter(([, membership]) => membership.status === "accepted")
+    .map(([sessionId]) => sessionId);
+
+  const [ownedHistoryResult, joinedHistoryResult] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
+      .eq("status", "ended")
+      .eq("created_by", userId)
+      .order("ended_at", { ascending: false })
+      .limit(20),
+    acceptedSessionIds.length
+      ? supabase
+          .from("sessions")
+          .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
+          .eq("status", "ended")
+          .in("id", acceptedSessionIds)
+          .order("ended_at", { ascending: false })
+          .limit(20)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const historyError = ownedHistoryResult.error || joinedHistoryResult.error;
+  const historySessions = [...new Map<string, Session>(
+    [...(ownedHistoryResult.data ?? []), ...(joinedHistoryResult.data ?? [])]
+      .map((session): [string, Session] => [session.id, session as Session])
+  ).values()].sort((a, b) => {
+    const aTime = a.ended_at ? new Date(a.ended_at).getTime() : 0;
+    const bTime = b.ended_at ? new Date(b.ended_at).getTime() : 0;
+    return bTime - aTime;
+  });
+
   const liveCount = visibleSessions.filter(
     (session) => session.status === "live"
   ).length;
@@ -382,7 +418,7 @@ async function SessionsContent({
           </div>
         </div>
 
-        {sessionsError || membershipError ? (
+        {sessionsError || membershipError || historyError ? (
           <p className="mt-8 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
             We could not load your sessions. Please refresh the page.
           </p>
@@ -403,6 +439,16 @@ async function SessionsContent({
               membershipMap={membershipMap}
               emptyMessage="You have not joined or organized any sessions yet."
             />
+
+            {historySessions.length > 0 && (
+              <SessionSection
+                title="Past gatherings"
+                description="Gatherings you have been part of."
+                sessions={historySessions}
+                membershipMap={membershipMap}
+                emptyMessage="No past gatherings yet."
+              />
+            )}
 
             <SessionSection
               title="Discover sessions"

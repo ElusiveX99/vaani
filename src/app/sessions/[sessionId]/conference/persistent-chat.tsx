@@ -120,7 +120,7 @@ export default function PersistentChat({
       } catch (err) {
         if (!active || request !== historyRequest) return;
         console.error("Unable to load session chat:", err);
-        setError(err instanceof Error ? err.message : "Unable to load chat.");
+        setError("The gathering chat could not be loaded. Please try again.");
         setLoading(false);
       }
     }
@@ -205,11 +205,25 @@ export default function PersistentChat({
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
+    const handleOffline = () => {
+      if (active) setConnectionStatus("You're offline. Messages will refresh when you're connected again.");
+    };
+    const handleOnline = () => {
+      if (!active) return;
+      setConnectionStatus("Connection restored. Refreshing messages...");
+      void loadMessages();
+    };
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    if (typeof navigator !== "undefined" && !navigator.onLine) handleOffline();
+
     return () => {
       active = false;
       historyRequest += 1;
       window.clearInterval(poll);
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
       if (channel) void supabase.removeChannel(channel);
     };
   }, [sessionId]);
@@ -284,7 +298,7 @@ export default function PersistentChat({
       console.error("Unable to send session chat message:", err);
       setMessages((previous) => previous.filter((message) => message.id !== temporaryId));
       setInput(body);
-      setError(err instanceof Error ? err.message : "Unable to send message.");
+      setError("Your message could not be sent. Check your connection and try again.");
     } finally {
       setSending(false);
     }
@@ -312,17 +326,18 @@ export default function PersistentChat({
           : "pointer-events-none invisible translate-y-2 opacity-0"
       }`}
       aria-hidden={!open}
+      inert={!open}
     >
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-4">
         <div>
           <p className="text-sm font-semibold text-white">
-            Session chat
+            Gathering chat
           </p>
 
         </div>
 
         {unreadCount > 0 && !open && (
-          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="rounded-full bg-[#76516b] px-2 py-0.5 text-[10px] font-semibold text-white">
             {unreadCount > 99
               ? "99+"
               : unreadCount}
@@ -335,16 +350,15 @@ export default function PersistentChat({
         className="min-h-0 flex-1 overflow-y-auto px-3 py-3"
       >
         {loading ? (
-          <div className="flex h-full items-center justify-center text-xs text-white/40">
-            Loading messages...
+          <div className="flex h-full flex-col justify-center gap-3 px-4" role="status" aria-label="Loading gathering messages">
+            <span className="h-3 w-2/3 animate-pulse rounded bg-white/10" />
+            <span className="h-3 w-1/2 animate-pulse rounded bg-white/10" />
+            <span className="h-3 w-3/5 animate-pulse rounded bg-white/10" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-white/40">
-            <span>
-              No messages yet.
-              <br />
-              Start the conversation.
-            </span>
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+            <p className="text-sm font-medium text-white/65">A quiet beginning</p>
+            <p className="mt-2 max-w-xs text-xs leading-6 text-white/35">Messages shared with the gathering will appear here.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -409,7 +423,7 @@ export default function PersistentChat({
       {(error || connectionStatus) && (
         <p
           role={error ? "alert" : "status"}
-          className={`shrink-0 border-t px-3 py-1.5 text-[10px] ${error ? "border-red-400/10 bg-red-950/40 text-red-200" : "border-white/5 text-white/35"}`}
+          className={`shrink-0 border-t px-3 py-1.5 text-[10px] ${error ? "border-red-400/10 bg-red-950/40 text-red-200" : "border-white/5 text-white/60"}`}
         >
           {error || connectionStatus}
           {!error && connectionStatus && " · Messages refresh automatically"}
@@ -441,7 +455,8 @@ export default function PersistentChat({
           }}
           rows={1}
           maxLength={MAX_MESSAGE_LENGTH}
-          placeholder="Type a message..."
+          aria-label="Message to the gathering"
+          placeholder="Share a message with the gathering..."
           disabled={
             sending || !currentUserId
           }
@@ -455,7 +470,7 @@ export default function PersistentChat({
             !input.trim() ||
             !currentUserId
           }
-          className="h-10 shrink-0 rounded-lg bg-blue-600 px-4 text-xs font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-10 shrink-0 rounded-lg bg-blue-600 px-4 text-xs font-medium text-white transition hover:bg-[#89647e] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {sending ? "..." : "Send"}
         </button>

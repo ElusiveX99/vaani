@@ -70,9 +70,9 @@ async function HomeContent() {
       <div className="page-shell py-10 sm:py-14">
         <section className="flex flex-col gap-5 border-b border-[var(--line)] pb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="eyebrow">Vaani</p>
+            <p className="eyebrow">Your Vaani</p>
             <h1 className="font-display mt-2 text-4xl text-[var(--plum)] sm:text-5xl">
-              Welcome back, {name.split(" ")[0]}.
+              Radhe Radhe, {name.split(" ")[0]}.
             </h1>
           </div>
           
@@ -80,6 +80,7 @@ async function HomeContent() {
 
         <section className="mt-9">
           <h2 className="font-display text-3xl text-[var(--plum)]">Your gatherings</h2>
+          <p className="mt-2 text-sm text-[var(--muted)]">Gatherings you can join or are already part of.</p>
 
           {relevantSessions.length > 0 ? (
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -96,7 +97,7 @@ async function HomeContent() {
                   <h3 className="mt-4 font-display text-2xl text-[var(--plum)]">{session.title}</h3>
                   <p className="mt-2 text-xs text-[var(--muted)]">
                     {session.scheduled_start_at
-                      ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.scheduled_start_at))
+                      ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(session.scheduled_start_at))
                       : "Time not set"}
                   </p>
                 </Link>
@@ -104,7 +105,7 @@ async function HomeContent() {
             </div>
           ) : (
             <div className="surface-card mt-5 p-7">
-              <p className="text-sm text-[var(--muted)]">There are no current gatherings to show.</p>
+              <p className="text-sm text-[var(--muted)]">No gatherings are available here just now.</p>
               <Link href="/sessions#discover-sessions" className="button-secondary mt-4">Find a session</Link>
             </div>
           )}
@@ -112,12 +113,12 @@ async function HomeContent() {
 
         <section className="mt-10 grid gap-3 sm:grid-cols-2">
           <Link href="/sessions#discover-sessions" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
-            <h2 className="font-display text-2xl text-[var(--plum)]">Join a session</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Browse gatherings open to members.</p>
+            <h2 className="font-display text-2xl text-[var(--plum)]">Find a gathering</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">See gatherings open to members.</p>
           </Link>
           <Link href="/sessions?create=1#create-session" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
-            <h2 className="font-display text-2xl text-[var(--plum)]">Host a gathering</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Create a session and invite members.</p>
+            <h2 className="font-display text-2xl text-[var(--plum)]">Create a gathering</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Arrange a gathering and invite members.</p>
           </Link>
         </section>
       </div>

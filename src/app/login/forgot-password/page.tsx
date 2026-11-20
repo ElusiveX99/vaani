@@ -4,8 +4,6 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
-  const supabase = createClient();
-
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -18,6 +16,8 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
+      // Create the browser client only after submission; this page is prerendered during builds.
+      const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback?next=/account/update-password`,
       });

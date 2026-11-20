@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
-import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
+import { useLocalParticipant, useRemoteParticipants, useRoomContext } from "@livekit/components-react";
 import { RoomEvent } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 
@@ -55,6 +55,12 @@ type ReaderData = {
   } | null;
 };
 
+type PersonalPosition = {
+  documentId: string;
+  page: number;
+  offset: number;
+};
+
 type SyncStatus =
   | "idle"
   | "local"
@@ -80,9 +86,11 @@ const SynchronizedReader = memo(
     const [currentPage, setCurrentPage] = useState(1);
     const [currentOffset, setCurrentOffset] = useState(0);
     const [controlMessage, setControlMessage] = useState("");
+    const [personalPosition, setPersonalPosition] = useState<PersonalPosition | null>(null);
 
     const room = useRoomContext();
     const { localParticipant } = useLocalParticipant();
+    const remoteParticipants = useRemoteParticipants();
 
     const [syncStatus, setSyncStatus] =
       useState<SyncStatus>("idle");
@@ -290,6 +298,44 @@ const SynchronizedReader = memo(
         onDocumentAvailabilityChange,
       ]
     );
+
+    useEffect(() => {
+      if (!data || !data.document) {
+        setPersonalPosition(null);
+        return;
+      }
+
+      const key = `vaani-reading-position:${sessionId}:${localParticipant.identity}:${data.document.id}`;
+      try {
+        const stored = window.localStorage.getItem(key);
+        if (!stored) {
+          setPersonalPosition(null);
+          return;
+        }
+
+        const parsed = JSON.parse(stored) as { page?: unknown; offset?: unknown };
+        if (
+          typeof parsed.page !== "number" ||
+          !Number.isSafeInteger(parsed.page) ||
+          parsed.page < 1 ||
+          typeof parsed.offset !== "number" ||
+          !Number.isFinite(parsed.offset)
+        ) {
+          window.localStorage.removeItem(key);
+          setPersonalPosition(null);
+          return;
+        }
+
+        setPersonalPosition({
+          documentId: data.document.id,
+          page: parsed.page,
+          offset: Math.min(1, Math.max(0, parsed.offset)),
+        });
+      } catch (storageError) {
+        console.warn("Could not restore personal Vaani reading position:", storageError);
+        setPersonalPosition(null);
+      }
+    }, [data?.document?.id, sessionId, localParticipant.identity]);
 
     useEffect(() => {
       let active = true;
@@ -627,6 +673,19 @@ const SynchronizedReader = memo(
         const safeOffset = Math.min(1, Math.max(0, offset));
         pageRef.current = page;
         offsetRef.current = safeOffset;
+        const documentId = dataRef.current.document?.id;
+        if (documentId) {
+          const personalPosition = { documentId, page, offset: safeOffset };
+          setPersonalPosition(personalPosition);
+          try {
+            window.localStorage.setItem(
+              `vaani-reading-position:${sessionId}:${localParticipant.identity}:${documentId}`,
+              JSON.stringify({ page, offset: safeOffset })
+            );
+          } catch (storageError) {
+            console.warn("Could not save personal Vaani reading position:", storageError);
+          }
+        }
         setCurrentPage(page);
         setCurrentOffset(safeOffset);
         setError("");
@@ -894,16 +953,58 @@ const SynchronizedReader = memo(
       );
     }
 
-    if (!data?.document) {
-      return null;
+    const readerData = data;
+
+    if (readerData === null) {
+      return (
+        <section className="flex h-full min-h-0 items-center justify-center rounded-xl border border-white/10 bg-[#1b1b1b] px-6 py-10 text-center text-sm text-white/50" aria-live="polite">
+          The shared Vaani reader is unavailable.
+        </section>
+      );
     }
+
+    if (!readerData.document) {
+      return (
+        <section className="flex h-full min-h-0 flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-[#1b1b1b] px-6 py-10 text-center" aria-live="polite">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65" aria-hidden="true">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 3.75h8l4 4v12.5H6z" /><path d="M14 3.75v4h4M9 12h6M9 15.5h6" /></svg>
+          </div>
+          <div className="max-w-sm">
+            <h2 className="text-sm font-medium text-white/85">The shared Vaani reader</h2>
+            <p className="mt-2 text-xs leading-6 text-white/50">
+              {readerData.canRequestControl
+                ? "Choose a document in the Workspace to begin the shared reading."
+                : "The reader will appear here when a document is selected for the gathering."}
+            </p>
+          </div>
+        </section>
+      );
+    }
+
+    const controllerId = readerData.readerState?.controller_user_id ?? null;
+    const leaseExpiry = readerData.readerState?.controller_expires_at
+      ? new Date(readerData.readerState.controller_expires_at).getTime()
+      : 0;
+    const controllerActive = Boolean(controllerId && leaseExpiry > Date.now());
+    const controllerParticipant = remoteParticipants.find(
+      (participant) => participant.identity === controllerId
+    );
+    const controllerName =
+      controllerId === localParticipant.identity
+        ? "You are guiding the shared reading"
+        : controllerParticipant?.name
+          ? `${controllerParticipant.name} is guiding the shared reading`
+          : controllerActive
+            ? "An assigned member is guiding the shared reading"
+            : "The shared reader is ready";
 
     return (
       <div className="flex h-full min-h-0 flex-col gap-2">
         <div className="flex shrink-0 items-center justify-between gap-2 px-1">
-          <p className="truncate text-xs text-white/60">
-            {data.document.title}
-          </p>
+          <div className="min-w-0">
+            <p className="truncate text-xs text-white/75">{readerData.document.title}</p>
+            <p className="mt-1 truncate text-[10px] text-white/40" role="status">{controllerName}</p>
+          </div>
 
           <div className="flex items-center gap-2">
             <span
@@ -911,17 +1012,34 @@ const SynchronizedReader = memo(
               aria-label={syncStatus}
               className={`h-1.5 w-1.5 rounded-full ${syncStatus === "error" ? "bg-red-400" : syncStatus === "syncing" ? "bg-amber-300" : syncStatus === "local" ? "bg-white/30" : "bg-emerald-400"}`}
             />
-            {data.canRequestControl && !data.canControl && (
+            {readerData.canRequestControl && !readerData.canControl && (
               <button
                 type="button"
                 onClick={() => void claimReaderControl()}
                 className="shrink-0 rounded-md bg-white/10 px-2.5 py-1.5 text-[10px] font-medium text-white/80 hover:bg-white/20"
               >
-                {data.canReclaimControl ? "Take control" : "Request control"}
+                {readerData.canReclaimControl ? "Take control" : "Request control"}
               </button>
             )}
           </div>
         </div>
+
+        {personalPosition &&
+          !readerData.canControl &&
+          personalPosition.documentId === readerData.document.id &&
+          (personalPosition.page !== currentPage ||
+            Math.abs(personalPosition.offset - currentOffset) > 0.01) && (
+            <button
+              type="button"
+              onClick={() => {
+                changePosition(personalPosition.page, personalPosition.offset);
+                setControlMessage(`Returned to your last place on page ${personalPosition.page}. This position is visible only to you.`);
+              }}
+              className="w-fit shrink-0 rounded-md border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Return to your last place · page {personalPosition.page}
+            </button>
+          )}
 
         {controlMessage && (
           <p className="shrink-0 text-xs text-white/55" role="status">
@@ -940,11 +1058,11 @@ const SynchronizedReader = memo(
 
         <div className="min-h-0 flex-1">
           <PdfReader
-            key={data.document.id}
-            documentUrl={data.document.url}
+            key={readerData.document.id}
+            documentUrl={readerData.document.url}
             currentPage={currentPage}
             currentOffset={currentOffset}
-            canControl={data.canControl}
+            canControl={readerData.canControl}
             onPageChange={changePage}
             onPositionChange={changePosition}
           />
