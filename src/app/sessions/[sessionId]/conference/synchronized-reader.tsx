@@ -65,7 +65,7 @@ type SyncStatus =
 const URL_REFRESH_INTERVAL =
   5.5 * 60 * 60 * 1000;
 
-const PAGE_SAVE_DELAY = 300;
+const PAGE_SAVE_DELAY = 250;
 
 const SynchronizedReader = memo(
   function SynchronizedReader({
@@ -96,6 +96,7 @@ const SynchronizedReader = memo(
     const controllerUserIdRef = useRef<string | null>(null);
     const controllerEpochRef = useRef(0);
     const lastBroadcastAt = useRef(0);
+    const broadcastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const broadcastSequence = useRef(0);
     const lastRemoteSequence = useRef(0);
     const claimInFlight = useRef(false);
@@ -332,6 +333,14 @@ const SynchronizedReader = memo(
           60 * 1000
         );
 
+      // Realtime is the primary update path. This lightweight fallback makes
+      // document switches recover automatically if a client misses an event.
+      const stateFallbackInterval = window.setInterval(() => {
+        if (active && document.visibilityState === "visible") {
+          void loadReaderState(true, false);
+        }
+      }, 4000);
+
       const membershipChannel = supabase
         .channel(`reader-membership-${sessionId}`)
         .on(
@@ -466,6 +475,7 @@ const SynchronizedReader = memo(
         );
 
         window.clearInterval(refreshInterval);
+        window.clearInterval(stateFallbackInterval);
 
         if (saveTimer.current) {
           clearTimeout(saveTimer.current);
@@ -474,6 +484,10 @@ const SynchronizedReader = memo(
 
         documentGeneration.current += 1;
         loadRequestId.current += 1;
+        if (broadcastTimer.current) {
+          clearTimeout(broadcastTimer.current);
+          broadcastTimer.current = null;
+        }
 
         void supabase.removeChannel(channel);
         void supabase.removeChannel(membershipChannel);
@@ -618,29 +632,43 @@ const SynchronizedReader = memo(
         setError("");
 
         if (dataRef.current.canControl) {
-          const now = Date.now();
-          if (now - lastBroadcastAt.current >= 50) {
-            lastBroadcastAt.current = now;
-            const documentId = dataRef.current.document?.id;
-            if (documentId) {
-              const packet = {
-                type: "vaani-reader-position",
-                sessionId,
-                documentId,
-                senderId: localParticipant.identity,
-                epoch: controllerEpochRef.current,
-                sequence: Date.now() * 1000 + (++broadcastSequence.current % 1000),
-                page,
-                offset: safeOffset,
-              };
+          const publishPosition = () => {
+            const documentId = dataRef.current?.document?.id;
+            if (!documentId) return;
 
-              void room.localParticipant.publishData(
-                new TextEncoder().encode(JSON.stringify(packet)),
-                { reliable: false, topic: "vaani-reader-position" }
-              ).catch((publishError) => {
-                console.error("Reader position broadcast failed:", publishError);
-              });
+            lastBroadcastAt.current = Date.now();
+            const packet = {
+              type: "vaani-reader-position",
+              sessionId,
+              documentId,
+              senderId: localParticipant.identity,
+              epoch: controllerEpochRef.current,
+              sequence: ++broadcastSequence.current,
+              page: pageRef.current,
+              offset: offsetRef.current,
+            };
+
+            void room.localParticipant.publishData(
+              new TextEncoder().encode(JSON.stringify(packet)),
+              { reliable: true, topic: "vaani-reader-position" }
+            ).catch((publishError) => {
+              console.error("Reader position broadcast failed:", publishError);
+            });
+          };
+
+          const now = Date.now();
+          if (now - lastBroadcastAt.current >= 80) {
+            if (broadcastTimer.current) {
+              clearTimeout(broadcastTimer.current);
+              broadcastTimer.current = null;
             }
+            publishPosition();
+          } else {
+            if (broadcastTimer.current) clearTimeout(broadcastTimer.current);
+            broadcastTimer.current = setTimeout(() => {
+              broadcastTimer.current = null;
+              publishPosition();
+            }, 80 - (now - lastBroadcastAt.current));
           }
         }
 

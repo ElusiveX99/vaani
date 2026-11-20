@@ -1,6 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function clearAuthCookies(response: NextResponse, request: NextRequest) {
+  for (const cookie of request.cookies.getAll()) {
+    if (cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token")) {
+      response.cookies.set(cookie.name, "", {
+        path: "/",
+        maxAge: 0,
+      });
+    }
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -35,8 +46,25 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh and verify the authentication token.
-  const { data } = await supabase.auth.getClaims();
+  // The proxy is the single server-side place responsible for refreshing
+  // Supabase sessions. Do not refresh the same session again in a page.
+  const { data, error } = await supabase.auth.getClaims();
+
+  if (error) {
+    const message = error.message.toLowerCase();
+
+    // A stale/revoked refresh token should not poison every subsequent
+    // request. Clear the browser's Supabase auth cookies and let the user
+    // continue as signed out.
+    if (
+      message.includes("invalid refresh token") ||
+      message.includes("refresh token not found")
+    ) {
+      clearAuthCookies(supabaseResponse, request);
+    }
+
+    return supabaseResponse;
+  }
 
   // Keep the public landing page out of the way for authenticated members.
   if (request.nextUrl.pathname === "/" && typeof data?.claims?.sub === "string") {

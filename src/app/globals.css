@@ -117,3 +117,53 @@ button, summary { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Responsive conference stage: the document and participant gallery share
+   the available space instead of forcing either region to a fixed viewport. */
+.vaani-participant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  align-content: start;
+  gap: .5rem;
+  width: 100%;
+}
+.vaani-participant-tile {
+  aspect-ratio: 16 / 10;
+  min-height: 0;
+  isolation: isolate;
+}
+.vaani-participant-tile .lk-participant-tile {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.vaani-participant-tile .lk-participant-tile video {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+}
+.vaani-participant-tile .lk-participant-tile > * {
+  min-height: 0;
+}
+@media (max-width: 639px) {
+  .vaani-participant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .vaani-participant-tile {
+    aspect-ratio: 1 / 1;
+  }
+}
+@media (min-width: 1024px) {
+  .vaani-participant-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  }
+}

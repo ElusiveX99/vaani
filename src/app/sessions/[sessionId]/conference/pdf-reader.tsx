@@ -45,10 +45,13 @@ type PdfDocument = {
   }>;
 };
 
+// Fetch page data on demand instead of eagerly streaming the entire PDF.
+ // With range requests enabled, PDF.js can request the visible pages without
+ // aggressively downloading every remaining page during initial load.
 const PDF_OPTIONS = {
   disableRange: false,
-  disableStream: false,
-  disableAutoFetch: false,
+  disableStream: true,
+  disableAutoFetch: true,
 };
 
 const MAX_PAGE_WIDTH = 900;
@@ -162,7 +165,7 @@ export default function PdfReader({
   );
 
   const visibleCount =
-    Math.ceil(containerHeight / rowHeight) + 4;
+    Math.ceil(containerHeight / rowHeight) + 6;
 
   const firstPage = visibleStart + 1;
 

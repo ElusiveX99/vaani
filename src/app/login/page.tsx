@@ -20,17 +20,41 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
+
+    async function initializeAuth() {
+      const { data, error } = await supabase.auth.getSession();
+
       if (!active) return;
+
       if (data.session) {
         router.replace("/home");
-      } else {
-        setAuthReady(true);
+        return;
+      }
+
+      if (error) {
+        const message = error.message.toLowerCase();
+
+        if (
+          message.includes("invalid refresh token") ||
+          message.includes("refresh token not found")
+        ) {
+          // Only clear this browser's session. Never use the default global
+          // signOut here because it would revoke sessions on other devices.
+          await supabase.auth.signOut({ scope: "local" });
+        }
+      }
+
+      setAuthReady(true);
+    }
+
+    void initializeAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        router.replace("/home");
       }
     });
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) router.replace("/home");
-    });
+
     return () => {
       active = false;
       authListener.subscription.unsubscribe();

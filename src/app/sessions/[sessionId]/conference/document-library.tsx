@@ -53,6 +53,10 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       if (active) void load();
     };
 
+    const fallbackRefresh = window.setInterval(() => {
+      if (active && document.visibilityState === "visible") void load();
+    }, 5000);
+
     const channel = supabase
       .channel(`session-document-library-${sessionId}`)
       .on("postgres_changes", {
@@ -72,6 +76,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     return () => {
       active = false;
       window.clearTimeout(initialLoad);
+      window.clearInterval(fallbackRefresh);
       void supabase.removeChannel(channel);
     };
   }, [sessionId, load]);

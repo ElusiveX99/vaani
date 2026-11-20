@@ -330,6 +330,9 @@ function ConferenceWorkspace({
   const [chatOpen, setChatOpen] =
     useState(false);
 
+  const [workspaceOpen, setWorkspaceOpen] =
+    useState(false);
+
   const [
     chatUnreadCount,
     setChatUnreadCount,
@@ -440,11 +443,6 @@ function ConferenceWorkspace({
       onlySubscribed: false,
     }
   );
-
-  const gridClassName =
-    readerAvailable
-      ? "grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(220px,0.9fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)] lg:grid-rows-1"
-      : "grid-cols-1 grid-rows-1";
 
   useEffect(() => {
     let unlocked = false;
@@ -688,7 +686,8 @@ function ConferenceWorkspace({
   return (
     <div className="conference-shell flex min-h-0 flex-1 flex-col">
       <header className="conference-toolbar flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6">
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
+          <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold text-white">
             {title}
           </h1>
@@ -705,49 +704,60 @@ function ConferenceWorkspace({
           </p>
         </div>
 
+          {canManageDocuments && (
+            <button
+              type="button"
+              onClick={() => setWorkspaceOpen((open) => !open)}
+              aria-expanded={workspaceOpen}
+              aria-controls="conference-workspace-panel"
+              className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-[var(--conference-line)] bg-white/[0.06] px-3 text-xs font-medium text-white/85 transition hover:bg-white/10"
+            >
+              <span>Workspace</span>
+              <span className="text-white/45">{workspaceOpen ? "Close" : "PDFs"}</span>
+            </button>
+          )}
+        </div>
       </header>
 
-      {canManageDocuments && (
-        <div className="conference-toolbar relative z-40 flex shrink-0 justify-end border-b px-3 py-1.5 sm:px-4">
-          <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-[var(--conference-line)] bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-medium text-white/85 transition hover:bg-white/10 [&::-webkit-details-marker]:hidden">
-              <span>Workspace</span>
-              <span className="text-white/45 transition group-open:rotate-180">⌄</span>
-            </summary>
-            <div className="absolute right-0 top-full mt-2 flex w-[min(94vw,30rem)] max-h-[72svh] overflow-y-auto flex-col gap-2 rounded-xl border border-[var(--conference-line)] bg-[#302a34] p-3 shadow-2xl">
-              <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
-              <PdfUploader
-                sessionId={sessionId}
-                canManage={canManageDocuments}
-              />
-            </div>
-          </details>
+      {workspaceOpen && canManageDocuments && (
+        <div
+          id="conference-workspace-panel"
+          className="absolute right-3 top-[4.5rem] z-50 flex max-h-[min(72svh,38rem)] w-[min(94vw,30rem)] flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--conference-line)] bg-[#302a34] p-3 shadow-2xl"
+        >
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs font-semibold text-white">Session workspace</p>
+            <button
+              type="button"
+              onClick={() => setWorkspaceOpen(false)}
+              className="rounded-md px-2 py-1 text-xs text-white/55 hover:bg-white/10 hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+          <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
+          <PdfUploader sessionId={sessionId} canManage={canManageDocuments} />
         </div>
       )}
 
-      <div
-        className={`grid min-h-0 flex-1 gap-2 p-2 lg:gap-3 lg:p-3 ${gridClassName}`}
+      <main
+        className={`grid min-h-0 flex-1 gap-2 p-2 lg:gap-3 lg:p-3 ${
+          readerAvailable
+            ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.36fr)]"
+            : "grid-cols-1"
+        }`}
       >
-        <div
-          className={
-            readerAvailable
-              ? "min-h-0 overflow-hidden"
-              : "hidden"
-          }
-        >
-          <SynchronizedReader
-            sessionId={
-              sessionId
-            }
-            onDocumentAvailabilityChange={
-              handleDocumentAvailabilityChange
-            }
-          />
-        </div>
+        {readerAvailable && (
+          <section className="min-h-0 min-w-0 overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#211d24]">
+            <SynchronizedReader
+              sessionId={sessionId}
+              onDocumentAvailabilityChange={handleDocumentAvailabilityChange}
+            />
+          </section>
+        )}
 
-        <section className="relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#211d24]">
-          <div className="relative min-h-0 flex-1 overflow-hidden">
-            <div className="grid h-full min-h-0 auto-rows-fr grid-cols-1 gap-2 p-2 sm:grid-cols-2">
+        <section className="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#211d24]">
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            <div className="vaani-participant-grid">
               {tracks.map((trackRef) => {
                 const participant = trackRef.participant;
                 const cameraOff =
@@ -756,20 +766,21 @@ function ConferenceWorkspace({
                     trackRef.publication.isMuted ||
                     !trackRef.publication.track);
                 const participantName = participant.name || "Sakhi";
+
                 return (
                   <div
                     key={`${participant.identity}-${trackRef.source}`}
-                    className="relative min-h-0 overflow-hidden rounded-xl"
+                    className="vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b]"
                   >
                     <ParticipantTile trackRef={trackRef} />
                     {cameraOff && (
-                      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#392f3b]">
+                      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#392f3b] p-2">
                         <ProfileAvatar
                           name={participantName}
                           avatarUrl={participant.attributes?.avatar_url || null}
                           size="xl"
                         />
-                        <span className="max-w-[80%] truncate text-sm font-medium text-white/85">
+                        <span className="max-w-[90%] truncate text-xs font-medium text-white/85 sm:text-sm">
                           {participantName}
                         </span>
                       </div>
@@ -781,34 +792,21 @@ function ConferenceWorkspace({
           </div>
 
           <PersistentChat
-            sessionId={
-              sessionId
-            }
-            open={
-              chatOpen
-            }
-            onUnreadChange={
-              setChatUnreadCount
-            }
+            sessionId={sessionId}
+            open={chatOpen}
+            onUnreadChange={setChatUnreadCount}
           />
 
-          {participantsOpen &&
-            canManageParticipants && (
-              <ModerationPanel
-                sessionId={
-                  sessionId
-                }
-                open={
-                  participantsOpen
-                }
-                localRole={membershipRole}
-                onClose={() =>
-                  setParticipantsOpen(
-                    false
-                  )
-                }
-              />
-            )}
+          {participantsOpen && canManageParticipants && (
+            <ModerationPanel
+              sessionId={sessionId}
+              open={participantsOpen}
+              localRole={membershipRole}
+              onClose={() => setParticipantsOpen(false)}
+            />
+          )}
+        </section>
+      </main>
 
           <div className="relative z-30 flex h-16 shrink-0 items-center justify-center gap-1.5 border-t border-[var(--conference-line)] bg-[#211d24] px-2 sm:gap-2">
             <MediaButton
@@ -997,8 +995,7 @@ function ConferenceWorkspace({
           )}
         </section>
       </div>
-    </div>
-  );
+    );
 }
 
 export default function ConferenceRoom({
