@@ -17,6 +17,11 @@ export default function InstallVaani() {
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
     setInstalled(standalone);
 
+    const userAgent = navigator.userAgent;
+    const isAppleMobile = /iPhone|iPad|iPod/.test(userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    setHelpOpen(false);
+
     function handleBeforeInstall(event: Event) {
       event.preventDefault();
       setInstallPrompt(event as InstallPromptEvent);
