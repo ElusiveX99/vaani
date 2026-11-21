@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-lockup";
 
 const gatherings = [
   {
@@ -20,9 +21,7 @@ export default function LandingPage() {
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
       <header className="site-header relative z-20">
         <nav className="site-nav" aria-label="Main navigation">
-          <Link href="/" className="brand-lockup" aria-label="Vaani home">
-            <span className="brand-word">Vaani</span>
-          </Link>
+          <BrandMark />
           <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/login" className="nav-link">Sign in</Link>
             <Link href="/signup" className="button-primary !min-h-10 !px-5 !py-2 text-xs sm:text-sm">Create account</Link>
@@ -53,7 +52,7 @@ export default function LandingPage() {
             <div className="absolute inset-[15%] rounded-[48%_52%_45%_55%] bg-[linear-gradient(145deg,#eee2dc,#e6ded0_55%,#d7c5c5)]" />
             <div className="absolute inset-[25%] rounded-[45%_55%_55%_45%] border border-white/80" />
             <div className="relative text-center">
-              <span className="font-display text-5xl text-[var(--plum)]">Vaani</span>
+              <BrandMark size="md" />
               <span className="mx-auto mt-4 block h-px w-14 bg-[var(--gold)]" />
             </div>
           </div>
@@ -81,7 +80,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="page-shell flex flex-col gap-2 py-7 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/" className="brand-lockup"><span className="brand-word">Vaani</span></Link>
+        <BrandMark />
         <p className="text-xs text-[var(--muted)]">Radha Vallabh Sampradaya</p>
       </footer>
     </main>
