@@ -376,6 +376,9 @@ function ConferenceWorkspace({
   }, [room, updateConnectionState]);
 
   useEffect(() => {
+    const identity = localParticipant.identity;
+    if (!identity) return;
+
     let active = true;
     const supabase = createClient();
     const refreshRole = async () => {
@@ -383,7 +386,7 @@ function ConferenceWorkspace({
         .from("session_members")
         .select("role, status")
         .eq("session_id", sessionId)
-        .eq("user_id", localParticipant.identity)
+        .eq("user_id", identity)
         .maybeSingle();
 
       if (!active || error) return;
@@ -393,7 +396,7 @@ function ConferenceWorkspace({
     void refreshRole();
 
     const channel = supabase
-      .channel(`session-member-role-${sessionId}-${localParticipant.identity}`)
+      .channel(`session-member-role-${sessionId}-${identity}`)
       .on(
         "postgres_changes",
         {
@@ -404,7 +407,7 @@ function ConferenceWorkspace({
         },
         (payload) => {
           const changed = (payload.new ?? payload.old) as { user_id?: string };
-          if (changed.user_id === localParticipant.identity) {
+          if (changed.user_id === identity) {
             void refreshRole();
           }
         }

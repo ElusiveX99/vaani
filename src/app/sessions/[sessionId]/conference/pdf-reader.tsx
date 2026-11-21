@@ -1,7 +1,8 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { pdfjs } from "react-pdf";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -17,94 +18,160 @@ type Props = {
   onPositionChange: (page: number, offset: number) => void;
 };
 
-type PdfPage = {
-  getViewport: (options: { scale: number }) => { width: number; height: number };
-};
-
-type PdfDocument = {
-  numPages: number;
-  getPage: (page: number) => Promise<PdfPage>;
-};
-
-type PageMetric = { width: number; height: number };
+type PdfDocument = Awaited<ReturnType<typeof pdfjs.getDocument>["promise"]>;
+type PdfPage = Awaited<ReturnType<PdfDocument["getPage"]>>;
+type Metric = { width: number; height: number };
 type Position = { page: number; offset: number };
-type VisibleRange = { first: number; last: number };
+type Range = { first: number; last: number };
 
-const PDF_OPTIONS = {
-  disableRange: false,
-  disableStream: true,
-  disableAutoFetch: true,
-};
+const PAGE_GAP = 20;
+const DEFAULT_RATIO = 1.4142;
+const MAX_PAGE_WIDTH = 1200;
+const MAX_RENDER_WIDTH = 1600;
+const MAX_DPR = 1.4;
+const OVERSCAN = 2;
+const POSITION_INTERVAL = 80;
 
-const PAGE_GAP = 18;
-const MAX_PAGE_WIDTH = 1100;
-const MAX_RENDER_WIDTH = 1650;
-const OVERSCAN_PAGES = 2;
-const POSITION_REPORT_INTERVAL = 50;
-const POSITION_EPSILON = 0.002;
-
-const PdfPageView = memo(function PdfPageView({
-  pageNumber,
-  width,
-  height,
-  devicePixelRatio,
-}: {
-  pageNumber: number;
-  width: number;
-  height: number;
-  devicePixelRatio: number;
-}) {
-  return (
-    <div
-      className="flex w-full min-w-0 shrink-0 justify-center pb-[18px]"
-      style={{ minHeight: height + PAGE_GAP }}
-    >
-      <Page
-        pageNumber={pageNumber}
-        width={width}
-        devicePixelRatio={devicePixelRatio}
-        renderTextLayer={false}
-        renderAnnotationLayer={false}
-        loading={
-          <div
-            className="flex items-center justify-center rounded-lg border border-black/5 bg-white text-xs text-slate-400"
-            style={{ width, height }}
-          >
-            Rendering page {pageNumber}…
-          </div>
-        }
-        error={
-          <div
-            className="flex items-center justify-center rounded-lg border border-red-300/30 bg-red-950/20 px-4 text-center text-xs text-red-200"
-            style={{ width, height }}
-          >
-            This page could not be rendered. Other pages remain available.
-          </div>
-        }
-      />
-    </div>
-  );
-});
-
-function clampPage(page: number, count: number) {
-  return Math.min(count, Math.max(1, Math.floor(page) || 1));
+function pageNumberKey(page: number, width: number, retry: number) {
+  return `${page}:${Math.round(width)}:${retry}`;
 }
 
-function clampOffset(offset: number) {
-  return Math.min(1, Math.max(0, Number.isFinite(offset) ? offset : 0));
+function clampPage(value: number, count: number) {
+  return Math.min(count, Math.max(1, Math.floor(value) || 1));
 }
 
-function findPageAtOffset(offsets: number[], value: number) {
+function clampOffset(value: number) {
+  return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function pageOffsetsFor(metrics: Array<Metric | null>, width: number) {
+  const offsets = new Array(metrics.length + 1).fill(0);
+  for (let i = 0; i < metrics.length; i += 1) {
+    const metric = metrics[i];
+    const height = metric
+      ? width * metric.height / metric.width
+      : width / DEFAULT_RATIO;
+    offsets[i + 1] = offsets[i] + height + PAGE_GAP;
+  }
+  return offsets;
+}
+
+function findPage(offsets: number[], value: number) {
   let low = 0;
   let high = Math.max(0, offsets.length - 2);
-
   while (low < high) {
     const middle = Math.floor((low + high + 1) / 2);
     if (offsets[middle] <= value) low = middle;
     else high = middle - 1;
   }
-
   return low;
+}
+
+function PdfCanvas({
+  pdf,
+  pageNumber,
+  width,
+  active,
+  onMetric,
+  onRenderError,
+  onRendered,
+}: {
+  pdf: PdfDocument;
+  pageNumber: number;
+  width: number;
+  active: boolean;
+  onMetric: (page: number, metric: Metric) => void;
+  onRenderError: (page: number, error: unknown) => void;
+  onRendered: (page: number) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+
+  useEffect(() => {
+    if (!active || !canvasRef.current || width < 1) return;
+
+    let cancelled = false;
+    let renderTask: ReturnType<PdfPage["render"]> | null = null;
+    let page: PdfPage | null = null;
+
+    async function renderPage() {
+      setStatus("loading");
+      try {
+        page = await pdf.getPage(pageNumber);
+        if (cancelled || !canvasRef.current) return;
+
+        const base = page.getViewport({ scale: 1 });
+        if (!base.width || !base.height) {
+          throw new Error("The PDF page has invalid dimensions.");
+        }
+
+        onMetric(pageNumber, { width: base.width, height: base.height });
+
+        const scale = width / base.width;
+        const viewport = page.getViewport({ scale });
+        const outputScale = Math.min(
+          window.devicePixelRatio || 1,
+          MAX_DPR
+        );
+        const canvas = canvasRef.current;
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) throw new Error("This browser could not create a PDF canvas.");
+
+        canvas.width = Math.max(1, Math.ceil(viewport.width * outputScale));
+        canvas.height = Math.max(1, Math.ceil(viewport.height * outputScale));
+        canvas.style.width = Math.ceil(viewport.width) + "px";
+        canvas.style.height = Math.ceil(viewport.height) + "px";
+
+        renderTask = page.render({
+          canvas,
+          viewport,
+          transform: outputScale === 1
+            ? undefined
+            : [outputScale, 0, 0, outputScale, 0, 0],
+        });
+
+        await renderTask.promise;
+        if (!cancelled) {
+          setStatus("ready");
+          onRendered(pageNumber);
+        }
+      } catch (error) {
+        if (cancelled || (error instanceof Error && error.name === "RenderingCancelledException")) return;
+        setStatus("error");
+        onRenderError(pageNumber, error);
+      }
+    }
+
+    void renderPage();
+
+    return () => {
+      cancelled = true;
+      if (renderTask) {
+        try { renderTask.cancel(); } catch {}
+      }
+    };
+  }, [active, pageNumber, pdf, width, onMetric, onRenderError, onRendered]);
+
+  return (
+    <div className="relative flex w-full justify-center">
+      <canvas
+        ref={canvasRef}
+        aria-label={"PDF page " + pageNumber}
+        className="block max-w-full rounded-[2px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.22)]"
+        style={{ visibility: status === "ready" ? "visible" : "hidden" }}
+      />
+      {status !== "ready" && (
+        <div
+          className="absolute inset-0 flex items-center justify-center rounded-sm bg-white text-xs text-slate-500"
+          style={{ minHeight: Math.max(160, width / DEFAULT_RATIO) }}
+        >
+          {status === "error"
+            ? "Page " + pageNumber + " could not be rendered"
+            : "Rendering page " + pageNumber + "…"}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function PdfReader({
@@ -116,603 +183,361 @@ export default function PdfReader({
   onPositionChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const generationRef = useRef(0);
-  const scrollFrameRef = useRef<number | null>(null);
-  const positionTimerRef = useRef<number | null>(null);
-  const pendingPositionRef = useRef<Position>({
-    page: Math.max(1, currentPage),
-    offset: clampOffset(currentOffset),
-  });
-  const lastReportedPositionRef = useRef<Position>({
-    page: Math.max(1, currentPage),
-    offset: clampOffset(currentOffset),
-  });
-  const lastAppliedLayoutRef = useRef("");
-  const visibleRangeRef = useRef<VisibleRange>({ first: 0, last: 3 });
-  const suppressReportsUntilRef = useRef(0);
-
-  const [numPages, setNumPages] = useState(0);
-  const [metrics, setMetrics] = useState<PageMetric[]>([]);
-  const [basePageWidth, setBasePageWidth] = useState(0);
-  const [containerHeight, setContainerHeight] = useState(0);
-  const [visibleRange, setVisibleRange] = useState<VisibleRange>({
-    first: 0,
-    last: 3,
-  });
+  const metricFrameRef = useRef<number | null>(null);
+  const metricsRef = useRef<Array<Metric | null>>([]);
+  const positionRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
+  const lastSentRef = useRef<Position>(positionRef.current);
+  const lastWidthRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const suppressUntilRef = useRef(0);
+  const lastAppliedRef = useRef("");
+  const [pdf, setPdf] = useState<PdfDocument | null>(null);
+  const [pageCount, setPageCount] = useState(0);
+  const [metrics, setMetrics] = useState<Array<Metric | null>>([]);
+  const [width, setWidth] = useState(0);
+  const [visibleRange, setVisibleRange] = useState<Range>({ first: 0, last: 3 });
   const [visiblePage, setVisiblePage] = useState(Math.max(1, currentPage));
-  const [devicePixelRatio, setDevicePixelRatio] = useState(1);
-  const [zoom, setZoom] = useState(1);
-  const [pageDraft, setPageDraft] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<"loading" | "rendering" | "ready" | "error">("loading");
   const [error, setError] = useState("");
-  const [metricsLoading, setMetricsLoading] = useState(false);
-  const [loadProgress, setLoadProgress] = useState(0);
+  const [pageErrors, setPageErrors] = useState<Record<number, string>>({});
+  const [pageDraft, setPageDraft] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [retryToken, setRetryToken] = useState(0);
+  const [pageRetryToken, setPageRetryToken] = useState(0);
 
-  const pageWidth = Math.max(
-    1,
-    Math.min(MAX_RENDER_WIDTH, basePageWidth * zoom)
-  );
+  const pageWidth = Math.max(1, Math.min(MAX_RENDER_WIDTH, width * zoom));
+  const offsets = useMemo(() => pageOffsetsFor(metrics, pageWidth), [metrics, pageWidth]);
+  const totalHeight = offsets[offsets.length - 1] || 0;
+  const safePage = pageCount ? clampPage(visiblePage, pageCount) : 1;
+  const first = Math.min(Math.max(0, visibleRange.first), Math.max(0, pageCount - 1));
+  const last = Math.min(Math.max(first, visibleRange.last), Math.max(0, pageCount - 1));
+  const topSpacer = offsets[first] || 0;
+  const bottomSpacer = Math.max(0, totalHeight - (offsets[last + 1] || totalHeight));
 
-  const pageHeights = useMemo(
-    () =>
-      metrics.map((metric) =>
-        pageWidth > 0 ? (pageWidth * metric.height) / metric.width : 0
-      ),
-    [metrics, pageWidth]
-  );
-
-  const pageOffsets = useMemo(() => {
-    const offsets = new Array(pageHeights.length + 1).fill(0);
-    for (let index = 0; index < pageHeights.length; index += 1) {
-      offsets[index + 1] = offsets[index] + pageHeights[index] + PAGE_GAP;
-    }
-    return offsets;
-  }, [pageHeights]);
-
-  const totalHeight = pageOffsets[pageOffsets.length - 1] ?? 0;
-  const safeCurrentPage = numPages ? clampPage(visiblePage, numPages) : 1;
-  const inputPage = pageDraft || String(safeCurrentPage);
-  const firstIndex = Math.min(
-    Math.max(0, visibleRange.first),
-    Math.max(0, numPages - 1)
-  );
-  const lastIndex = Math.min(
-    Math.max(firstIndex, visibleRange.last),
-    Math.max(0, numPages - 1)
-  );
-  const topSpacerHeight = pageOffsets[firstIndex] ?? 0;
-  const bottomSpacerHeight = Math.max(
-    0,
-    totalHeight - (pageOffsets[lastIndex + 1] ?? totalHeight)
-  );
-
-  const updateVisibleRange = useCallback(() => {
-    const container = containerRef.current;
-    if (!container || !numPages || pageOffsets.length < 2) return;
-
-    const top = Math.max(0, container.scrollTop);
-    const bottom = Math.min(
-      Math.max(0, totalHeight - 1),
-      top + Math.max(1, container.clientHeight)
-    );
-    const firstVisible = findPageAtOffset(pageOffsets, top);
-    const lastVisible = findPageAtOffset(pageOffsets, bottom);
-    const next = {
-      first: Math.max(0, firstVisible - OVERSCAN_PAGES),
-      last: Math.min(numPages - 1, lastVisible + OVERSCAN_PAGES),
-    };
-
-    if (
-      next.first !== visibleRangeRef.current.first ||
-      next.last !== visibleRangeRef.current.last
-    ) {
-      visibleRangeRef.current = next;
-      setVisibleRange(next);
-    }
-  }, [numPages, pageOffsets, totalHeight]);
-
-  const applyPosition = useCallback(
-    (page: number, offset: number) => {
-      const container = containerRef.current;
-      if (!container || !numPages || metrics.length !== numPages) return;
-
-      const safePage = clampPage(page, numPages);
-      const safeOffset = clampOffset(offset);
-      const index = safePage - 1;
-      const pageTop = pageOffsets[index] ?? 0;
-      const contentHeight = pageHeights[index] ?? 1;
-      const nextTop = pageTop + safeOffset * contentHeight;
-
-      pendingPositionRef.current = { page: safePage, offset: safeOffset };
-      lastReportedPositionRef.current = {
-        page: safePage,
-        offset: safeOffset,
-      };
-      setVisiblePage(safePage);
-      suppressReportsUntilRef.current = performance.now() + 120;
-
-      if (Math.abs(container.scrollTop - nextTop) > 1) {
-        container.scrollTo({ top: nextTop, behavior: "auto" });
-      }
-      updateVisibleRange();
-    },
-    [metrics.length, numPages, pageOffsets, pageHeights]
-  );
-
-  const reportPendingPosition = useCallback(() => {
-    positionTimerRef.current = null;
-    const next = pendingPositionRef.current;
-    const previous = lastReportedPositionRef.current;
-
-    if (
-      next.page === previous.page &&
-      Math.abs(next.offset - previous.offset) < POSITION_EPSILON
-    ) {
-      return;
-    }
-
-    lastReportedPositionRef.current = next;
+  const reportPosition = useCallback(() => {
+    timerRef.current = null;
+    const next = positionRef.current;
+    const previous = lastSentRef.current;
+    if (next.page === previous.page && Math.abs(next.offset - previous.offset) < 0.0015) return;
+    lastSentRef.current = next;
     if (next.page !== previous.page) onPageChange(next.page);
     onPositionChange(next.page, next.offset);
   }, [onPageChange, onPositionChange]);
 
-  const schedulePositionReport = useCallback(() => {
-    if (positionTimerRef.current !== null) return;
-    positionTimerRef.current = window.setTimeout(
-      reportPendingPosition,
-      POSITION_REPORT_INTERVAL
+  const queuePosition = useCallback(() => {
+    if (timerRef.current !== null) return;
+    timerRef.current = window.setTimeout(reportPosition, POSITION_INTERVAL);
+  }, [reportPosition]);
+
+  const updateVisibleRange = useCallback(() => {
+    const node = containerRef.current;
+    if (!node || !pageCount || offsets.length < 2) return;
+    const top = Math.max(0, node.scrollTop);
+    const bottom = Math.min(totalHeight, top + Math.max(1, node.clientHeight));
+    const firstVisible = findPage(offsets, top);
+    const lastVisible = findPage(offsets, bottom);
+    const next = {
+      first: Math.max(0, firstVisible - OVERSCAN),
+      last: Math.min(pageCount - 1, lastVisible + OVERSCAN),
+    };
+    setVisibleRange(previous =>
+      previous.first === next.first && previous.last === next.last ? previous : next
     );
-  }, [reportPendingPosition]);
+  }, [offsets, pageCount, totalHeight]);
 
-  const handleScroll = useCallback(() => {
-    if (scrollFrameRef.current !== null) return;
+  const applyPosition = useCallback((page: number, offset: number) => {
+    const node = containerRef.current;
+    if (!node || !pageCount) return;
+    const safe = clampPage(page, pageCount);
+    const safeOffset = clampOffset(offset);
+    const index = safe - 1;
+    const pageHeight = offsets[index + 1] - offsets[index] - PAGE_GAP;
+    const nextTop = offsets[index] + safeOffset * Math.max(1, pageHeight);
+    positionRef.current = { page: safe, offset: safeOffset };
+    lastSentRef.current = positionRef.current;
+    setVisiblePage(safe);
+    suppressUntilRef.current = performance.now() + 260;
+    if (Math.abs(node.scrollTop - nextTop) > 2) node.scrollTo({ top: nextTop, behavior: "auto" });
+    updateVisibleRange();
+  }, [offsets, pageCount, updateVisibleRange]);
 
-    scrollFrameRef.current = window.requestAnimationFrame(() => {
-      scrollFrameRef.current = null;
-      const container = containerRef.current;
-      if (!container || !numPages || pageOffsets.length < 2) return;
+  const handleMetric = useCallback((pageNumber: number, metric: Metric) => {
+    const index = pageNumber - 1;
+    const previous = metricsRef.current;
+    const old = previous[index];
+    if (old && Math.abs(old.width - metric.width) < 0.1 && Math.abs(old.height - metric.height) < 0.1) return;
 
-      updateVisibleRange();
+    const node = containerRef.current;
+    const oldOffsets = pageOffsetsFor(previous, pageWidth);
+    const anchorIndex = node && previous.length ? findPage(oldOffsets, node.scrollTop) : 0;
+    const anchorHeight = Math.max(1, oldOffsets[anchorIndex + 1] - oldOffsets[anchorIndex] - PAGE_GAP);
+    const anchorFraction = node
+      ? clampOffset((node.scrollTop - oldOffsets[anchorIndex]) / anchorHeight)
+      : 0;
+    const next = previous.slice();
+    next[index] = metric;
+    metricsRef.current = next;
+    setMetrics(next);
 
-      const top = Math.max(0, container.scrollTop);
-      const index = Math.min(
-        numPages - 1,
-        findPageAtOffset(pageOffsets, top)
-      );
-      const pageTop = pageOffsets[index] ?? 0;
-      const contentHeight = Math.max(1, pageHeights[index] ?? 1);
-      const offset = clampOffset((top - pageTop) / contentHeight);
-      const next = { page: index + 1, offset };
-
-      pendingPositionRef.current = next;
-      setVisiblePage(next.page);
-
-      if (performance.now() >= suppressReportsUntilRef.current) {
-        schedulePositionReport();
-      }
-    });
-  }, [
-    numPages,
-    pageOffsets,
-    pageHeights,
-    schedulePositionReport,
-    updateVisibleRange,
-  ]);
-
-  useEffect(() => {
-    generationRef.current += 1;
-    lastAppliedLayoutRef.current = "";
-    const initial = {
-      page: Math.max(1, currentPage),
-      offset: clampOffset(currentOffset),
-    };
-    pendingPositionRef.current = initial;
-    lastReportedPositionRef.current = initial;
-    visibleRangeRef.current = { first: 0, last: 3 };
-    setVisibleRange(visibleRangeRef.current);
-    setNumPages(0);
-    setMetrics([]);
-    setError("");
-    setMetricsLoading(false);
-    setLoadProgress(0);
-  }, [documentUrl]);
-
-  async function handleDocumentLoad(pdf: PdfDocument) {
-    const generation = ++generationRef.current;
-    setNumPages(pdf.numPages);
-    setMetrics([]);
-    setError("");
-    setLoadProgress(100);
-    setMetricsLoading(true);
-    visibleRangeRef.current = { first: 0, last: Math.min(3, pdf.numPages - 1) };
-    setVisibleRange(visibleRangeRef.current);
-
-    if (!Number.isSafeInteger(pdf.numPages) || pdf.numPages < 1) {
-      setMetricsLoading(false);
-      setError("This PDF does not contain any readable pages.");
-      return;
-    }
-
-    try {
-      const firstPage = await pdf.getPage(1);
-      const firstViewport = firstPage.getViewport({ scale: 1 });
-      if (!firstViewport.width || !firstViewport.height) {
-        throw new Error("The first page has invalid dimensions.");
-      }
-
-      const firstMetric = {
-        width: firstViewport.width,
-        height: firstViewport.height,
-      };
-
-      if (generation !== generationRef.current) return;
-
-      // Render page one immediately; the remaining page geometry is measured
-      // concurrently and replaces these temporary estimates when ready.
-      setMetrics(Array.from({ length: pdf.numPages }, () => firstMetric));
-
-      if (pdf.numPages === 1) {
-        setMetricsLoading(false);
-        return;
-      }
-
-      const exactMetrics: PageMetric[] = new Array(pdf.numPages);
-      exactMetrics[0] = firstMetric;
-      let cursor = 2;
-      let hadMeasurementError = false;
-
-      const worker = async () => {
-        while (generation === generationRef.current) {
-          const pageNumber = cursor++;
-          if (pageNumber > pdf.numPages) return;
-
-          try {
-            const page = await pdf.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: 1 });
-            if (!viewport.width || !viewport.height) {
-              throw new Error("Invalid page dimensions.");
-            }
-            exactMetrics[pageNumber - 1] = {
-              width: viewport.width,
-              height: viewport.height,
-            };
-          } catch (pageError) {
-            hadMeasurementError = true;
-            exactMetrics[pageNumber - 1] = firstMetric;
-            console.warn(
-              "Unable to measure PDF page " + pageNumber + "; using a fallback size.",
-              pageError
-            );
-          }
+    if (node && index <= anchorIndex) {
+      const newOffsets = pageOffsetsFor(next, pageWidth);
+      const newAnchorHeight = Math.max(1, newOffsets[anchorIndex + 1] - newOffsets[anchorIndex] - PAGE_GAP);
+      suppressUntilRef.current = performance.now() + 180;
+      if (metricFrameRef.current !== null) window.cancelAnimationFrame(metricFrameRef.current);
+      metricFrameRef.current = window.requestAnimationFrame(() => {
+        metricFrameRef.current = null;
+        if (containerRef.current) {
+          containerRef.current.scrollTop = newOffsets[anchorIndex] + anchorFraction * newAnchorHeight;
         }
-      };
-
-      await Promise.all(
-        Array.from(
-          { length: Math.min(3, pdf.numPages - 1) },
-          () => worker()
-        )
-      );
-
-      if (generation !== generationRef.current) return;
-
-      setMetrics(exactMetrics);
-      setMetricsLoading(false);
-      if (hadMeasurementError) {
-        setError(
-          "Some page dimensions could not be read. The reader is using fallback sizing for those pages."
-        );
-      }
-    } catch (loadError) {
-      if (generation !== generationRef.current) return;
-      console.error("Unable to prepare PDF pages:", loadError);
-      setMetricsLoading(false);
-      setError("The PDF opened, but its page layout could not be prepared. Try reopening it.");
+      });
     }
-  }
+  }, [pageWidth]);
 
-  const jumpToPage = useCallback(
-    (requestedPage: number) => {
-      if (!numPages || !Number.isSafeInteger(requestedPage)) return;
-      const page = clampPage(requestedPage, numPages);
-      applyPosition(page, 0);
-      setPageDraft("");
-      pendingPositionRef.current = { page, offset: 0 };
-      if (positionTimerRef.current !== null) {
-        clearTimeout(positionTimerRef.current);
-        positionTimerRef.current = null;
-      }
-      onPageChange(page);
-      onPositionChange(page, 0);
-    },
-    [applyPosition, numPages, onPageChange, onPositionChange]
-  );
+  const handlePageRendered = useCallback((pageNumber: number) => {
+    setPhase("ready");
+    setPageErrors(previous => {
+      if (!(pageNumber in previous)) return previous;
+      const next = { ...previous };
+      delete next[pageNumber];
+      return next;
+    });
+  }, []);
+
+  const handleRenderError = useCallback((pageNumber: number, cause: unknown) => {
+    const message = cause instanceof Error ? cause.message : "Unknown PDF rendering error";
+    console.error("Vaani PDF page render failed:", { pageNumber, message, cause });
+    setPageErrors(previous => ({ ...previous, [pageNumber]: message }));
+    setPhase("ready");
+  }, []);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const measure = () => {
-      const nextWidth = Math.max(
-        120,
-        Math.min(MAX_PAGE_WIDTH, container.clientWidth - 32)
-      );
-      const nextHeight = container.clientHeight;
-      setBasePageWidth((current) =>
-        current === nextWidth ? current : nextWidth
-      );
-      setContainerHeight((current) =>
-        current === nextHeight ? current : nextHeight
-      );
-    };
-
+    const node = containerRef.current;
+    if (!node) return;
+    const measure = () => setWidth(Math.max(120, Math.min(MAX_PAGE_WIDTH, node.clientWidth - 36)));
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(container);
+    observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    const updatePixelRatio = () => {
-      setDevicePixelRatio(
-        Math.min(window.devicePixelRatio || 1, 1.75)
-      );
-    };
-    updatePixelRatio();
-    window.addEventListener("resize", updatePixelRatio, { passive: true });
-    return () => window.removeEventListener("resize", updatePixelRatio);
-  }, []);
-
-  useEffect(() => {
-    updateVisibleRange();
-  }, [basePageWidth, containerHeight, pageWidth, updateVisibleRange]);
-
-  useEffect(() => {
-    if (!numPages || metrics.length !== numPages || !pageOffsets.length) return;
-
-    const layoutKey =
-      String(pageWidth) +
-      ":" +
-      String(numPages) +
-      ":" +
-      metrics.map((metric) => metric.width + "x" + metric.height).join(",");
-
-    if (lastAppliedLayoutRef.current !== layoutKey) {
-      lastAppliedLayoutRef.current = layoutKey;
-      const anchor = pendingPositionRef.current;
-      applyPosition(anchor.page || currentPage, anchor.offset);
+    let cancelled = false;
+    let task: ReturnType<typeof pdfjs.getDocument> | null = null;
+    setPhase("loading");
+    setError("");
+    setProgress(0);
+    setPageErrors({});
+    setPdf(null);
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
-  }, [
-    applyPosition,
-    currentPage,
-    metrics,
-    numPages,
-    pageOffsets,
-    pageWidth,
-  ]);
-
-  useEffect(() => {
-    if (!numPages || metrics.length !== numPages) return;
-
-    const page = clampPage(currentPage, numPages);
-    const offset = clampOffset(currentOffset);
-    const last = lastReportedPositionRef.current;
-
-    if (
-      page !== last.page ||
-      Math.abs(offset - last.offset) > POSITION_EPSILON
-    ) {
-      pendingPositionRef.current = { page, offset };
-      applyPosition(page, offset);
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
     }
-  }, [applyPosition, currentOffset, currentPage, metrics.length, numPages]);
+    if (metricFrameRef.current !== null) {
+      window.cancelAnimationFrame(metricFrameRef.current);
+      metricFrameRef.current = null;
+    }
+    setPageCount(0);
+    setVisiblePage(Math.max(1, currentPage));
+    lastSentRef.current = { page: Math.max(1, currentPage), offset: clampOffset(currentOffset) };
+    setVisibleRange({ first: 0, last: 3 });
+    setMetrics([]);
+    metricsRef.current = [];
+    lastAppliedRef.current = "";
+    lastWidthRef.current = 0;
+    positionRef.current = { page: Math.max(1, currentPage), offset: clampOffset(currentOffset) };
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    updateVisibleRange();
-  }, [containerHeight, pageOffsets, updateVisibleRange]);
+    try {
+      task = pdfjs.getDocument({
+        url: documentUrl,
+        rangeChunkSize: 65536,
+        disableRange: false,
+        disableStream: false,
+        disableAutoFetch: false,
+        isEvalSupported: false,
+      });
+      task.onProgress = ({ loaded, total }) => {
+        if (!cancelled && total > 0) setProgress(Math.min(100, Math.round(loaded / total * 100)));
+      };
+      task.promise.then(loadedPdf => {
+        if (cancelled) {
+          void loadedPdf.destroy();
+          return;
+        }
+        setPdf(loadedPdf);
+        setPageCount(loadedPdf.numPages);
+        setMetrics(Array.from({ length: loadedPdf.numPages }, () => null));
+        metricsRef.current = Array.from({ length: loadedPdf.numPages }, () => null);
+        setPhase("rendering");
+        setProgress(100);
+      }).catch(loadError => {
+        if (cancelled) return;
+        console.error("Vaani PDF document load failed:", loadError);
+        setPhase("error");
+        setError(loadError instanceof Error ? loadError.message : "The PDF could not be opened.");
+      });
+    } catch (loadError) {
+      setPhase("error");
+      setError(loadError instanceof Error ? loadError.message : "The PDF could not be opened.");
+    }
 
-  useEffect(() => {
     return () => {
-      generationRef.current += 1;
-      if (scrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollFrameRef.current);
-      }
-      if (positionTimerRef.current !== null) {
-        clearTimeout(positionTimerRef.current);
-      }
+      cancelled = true;
+      if (task) void task.destroy();
     };
+  }, [documentUrl, retryToken]);
+
+  useEffect(() => {
+    if (!pdf || !pageCount || !width) return;
+    const targetPage = clampPage(currentPage, pageCount);
+    const targetOffset = clampOffset(currentOffset);
+    const key = documentUrl + ":" + pageWidth + ":" + targetPage + ":" + targetOffset;
+    if (lastAppliedRef.current === key) return;
+    const widthChanged = lastWidthRef.current !== pageWidth;
+    lastWidthRef.current = pageWidth;
+    const local = positionRef.current;
+    const alreadyAtTarget =
+      local.page === targetPage &&
+      Math.abs(local.offset - targetOffset) < 0.012;
+    lastAppliedRef.current = key;
+    if (!widthChanged && alreadyAtTarget) return;
+    applyPosition(targetPage, targetOffset);
+  }, [applyPosition, currentOffset, currentPage, documentUrl, pageCount, pageWidth, pdf, width]);
+
+  useEffect(() => {
+    updateVisibleRange();
+  }, [updateVisibleRange]);
+
+  const handleScroll = useCallback(() => {
+    if (frameRef.current !== null) return;
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+      const node = containerRef.current;
+      if (!node || !pageCount) return;
+      updateVisibleRange();
+      const index = Math.min(pageCount - 1, findPage(offsets, Math.max(0, node.scrollTop)));
+      const pageTop = offsets[index] || 0;
+      const pageHeight = Math.max(1, (offsets[index + 1] || 0) - pageTop - PAGE_GAP);
+      const next = { page: index + 1, offset: clampOffset((node.scrollTop - pageTop) / pageHeight) };
+      positionRef.current = next;
+      setVisiblePage(next.page);
+      if (performance.now() >= suppressUntilRef.current) queuePosition();
+    });
+  }, [offsets, pageCount, queuePosition, updateVisibleRange]);
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    if (metricFrameRef.current !== null) window.cancelAnimationFrame(metricFrameRef.current);
   }, []);
 
-  function submitPageJump() {
-    const requested = Number(pageDraft);
-    if (!Number.isSafeInteger(requested) || requested < 1 || requested > numPages) {
-      setPageDraft("");
-      return;
+  function jumpToPage(requested: number) {
+    if (!pageCount || !Number.isSafeInteger(requested) || requested < 1 || requested > pageCount) return;
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
-    jumpToPage(requested);
+    applyPosition(requested, 0);
+    setPageDraft("");
+    positionRef.current = { page: requested, offset: 0 };
+    lastSentRef.current = positionRef.current;
+    onPageChange(requested);
+    onPositionChange(requested, 0);
+  }
+
+  function submitJump(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    jumpToPage(Number(pageDraft));
   }
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#17151a] text-white">
       <header className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-[#1d1a20] px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">
-            Vaani reader
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">Vaani reader</span>
           <span className="h-1 w-1 rounded-full bg-white/20" />
           <span className="text-xs tabular-nums text-white/65">
-            {numPages ? safeCurrentPage + " / " + numPages : "Opening PDF"}
+            {pageCount ? safePage + " / " + pageCount : phase === "error" ? "PDF unavailable" : "Opening PDF"}
           </span>
-          {metricsLoading && (
-            <span className="hidden text-[10px] text-white/35 sm:inline">
-              Preparing pages…
-            </span>
-          )}
+          {phase === "loading" && <span className="hidden text-[10px] text-white/35 sm:inline">{progress ? progress + "%" : "Connecting…"}</span>}
+          {phase === "rendering" && <span className="hidden text-[10px] text-white/35 sm:inline">Preparing pages…</span>}
         </div>
-
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => jumpToPage(safeCurrentPage - 1)}
-            disabled={!numPages || safeCurrentPage <= 1}
-            aria-label="Previous page"
-            title="Previous page"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-25"
-          >
-            ‹
-          </button>
-          <form
-            className="flex items-center gap-1"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitPageJump();
-            }}
-          >
-            <input
-              type="number"
-              min={1}
-              max={numPages || undefined}
-              value={inputPage}
-              disabled={!numPages}
-              onChange={(event) => setPageDraft(event.target.value)}
-              aria-label="Go to page"
-              className="h-8 w-12 rounded-md border border-white/[0.09] bg-white/[0.05] px-1 text-center text-xs tabular-nums text-white outline-none focus:border-white/30 disabled:opacity-40"
-            />
+          <button type="button" onClick={() => jumpToPage(safePage - 1)} disabled={!pageCount || safePage <= 1} aria-label="Previous page" className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:opacity-25">‹</button>
+          <form className="flex items-center gap-1" onSubmit={submitJump}>
+            <input type="number" min={1} max={pageCount || undefined} value={pageDraft || String(safePage)} disabled={!pageCount} onChange={event => setPageDraft(event.target.value)} aria-label="Go to page" className="h-8 w-12 rounded-md border border-white/[0.09] bg-white/[0.05] px-1 text-center text-xs tabular-nums text-white outline-none focus:border-white/30 disabled:opacity-40" />
           </form>
-          <button
-            type="button"
-            onClick={() => jumpToPage(safeCurrentPage + 1)}
-            disabled={!numPages || safeCurrentPage >= numPages}
-            aria-label="Next page"
-            title="Next page"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-25"
-          >
-            ›
-          </button>
-
+          <button type="button" onClick={() => jumpToPage(safePage + 1)} disabled={!pageCount || safePage >= pageCount} aria-label="Next page" className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:opacity-25">›</button>
           <span className="mx-1 h-5 w-px bg-white/10" />
-
-          <button
-            type="button"
-            onClick={() => setZoom((value) => Math.max(0.7, Math.round((value - 0.1) * 10) / 10))}
-            disabled={zoom <= 0.7}
-            aria-label="Zoom out"
-            title="Zoom out"
-            className="h-8 w-8 rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:opacity-25"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom(1)}
-            aria-label="Reset zoom"
-            title="Fit page"
-            className="h-8 min-w-12 rounded-md px-1 text-[10px] tabular-nums text-white/55 transition hover:bg-white/10 hover:text-white"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom((value) => Math.min(1.7, Math.round((value + 0.1) * 10) / 10))}
-            disabled={zoom >= 1.7}
-            aria-label="Zoom in"
-            title="Zoom in"
-            className="h-8 w-8 rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:opacity-25"
-          >
-            +
-          </button>
+          <button type="button" onClick={() => setZoom(value => Math.max(0.7, Math.round((value - 0.1) * 10) / 10))} disabled={zoom <= 0.7} aria-label="Zoom out" className="h-8 w-8 rounded-md border border-white/[0.08] text-sm text-white/75 disabled:opacity-25">−</button>
+          <button type="button" onClick={() => setZoom(1)} aria-label="Fit page" className="h-8 min-w-12 rounded-md px-1 text-[10px] tabular-nums text-white/55 hover:text-white">{Math.round(zoom * 100)}%</button>
+          <button type="button" onClick={() => setZoom(value => Math.min(1.7, Math.round((value + 0.1) * 10) / 10))} disabled={zoom >= 1.7} aria-label="Zoom in" className="h-8 w-8 rounded-md border border-white/[0.08] text-sm text-white/75 disabled:opacity-25">+</button>
         </div>
       </header>
 
-      {error && (
-        <p
-          role="status"
-          className="shrink-0 border-b border-amber-300/10 bg-amber-300/[0.05] px-3 py-2 text-[11px] leading-5 text-amber-100/75"
-        >
-          {error}
-        </p>
+      {phase === "error" && (
+        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-300/15 bg-red-950/30 px-3 py-2 text-xs text-red-100/85">
+          <span className="min-w-0 flex-1">The PDF could not be opened. {error}</span>
+          <button type="button" onClick={() => setRetryToken(value => value + 1)} className="shrink-0 rounded-md border border-red-200/20 px-3 py-1.5 text-red-50 hover:bg-white/10">Retry</button>
+        </div>
+      )}
+      {Object.keys(pageErrors).length > 0 && (
+        <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-300/10 bg-amber-300/[0.05] px-3 py-2 text-[11px] text-amber-100/75">
+          <span className="min-w-0 flex-1">{Object.keys(pageErrors).length} page(s) could not be rendered. {Object.values(pageErrors)[0]}</span>
+          <button type="button" onClick={() => { setPageErrors({}); setPageRetryToken(value => value + 1); }} className="shrink-0 rounded-md border border-amber-100/15 px-2.5 py-1 text-amber-50 hover:bg-white/10">Retry pages</button>
+        </div>
       )}
 
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-auto overscroll-contain px-2 py-3 [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
-      >
-        <Document
-          key={documentUrl}
-          file={documentUrl}
-          options={PDF_OPTIONS}
-          onLoadSuccess={(pdf) => void handleDocumentLoad(pdf)}
-          onLoadProgress={({ loaded, total }) => {
-            if (total > 0) {
-              setLoadProgress(Math.min(100, Math.round((loaded / total) * 100)));
-            }
-          }}
-          onLoadError={(loadError) => {
-            console.error("Unable to load PDF:", loadError);
-            setNumPages(0);
-            setMetrics([]);
-            setMetricsLoading(false);
-            setError("Unable to open this PDF. Check the connection and try reopening the reader.");
-          }}
-          loading={
-            <div className="mx-auto flex min-h-56 max-w-sm flex-col items-center justify-center gap-3 px-4 text-center">
-              <div className="h-1.5 w-40 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-white/60 transition-[width] duration-200"
-                  style={{ width: Math.max(8, loadProgress) + "%" }}
-                />
-              </div>
-              <p className="text-xs text-white/45">
-                Loading document{loadProgress ? " · " + loadProgress + "%" : "…"}
-              </p>
+      <div ref={containerRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-auto overscroll-contain px-2 py-3 [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]">
+        {phase === "loading" && (
+          <div className="mx-auto flex min-h-64 max-w-sm flex-col items-center justify-center gap-3 px-4 text-center">
+            <div className="h-1.5 w-40 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-white/60 transition-[width] duration-200" style={{ width: Math.max(8, progress) + "%" }} />
             </div>
-          }
-          error={
-            <p className="py-12 text-center text-xs text-red-200/80">
-              This document could not be opened.
-            </p>
-          }
-        >
-          {numPages > 0 && metrics.length === numPages && (
-            <div className="mx-auto w-full" style={{ minWidth: pageWidth }}>
-              <div style={{ height: topSpacerHeight }} />
-              {Array.from(
-                { length: Math.max(0, lastIndex - firstIndex + 1) },
-                (_, offset) => firstIndex + offset
-              ).map((index) => {
-                const metric = metrics[index];
-                if (!metric || !pageWidth) return null;
-                const height = (pageWidth * metric.height) / metric.width;
-                return (
-                  <PdfPageView
-                    key={index + 1}
-                    pageNumber={index + 1}
-                    width={pageWidth}
-                    height={height}
-                    devicePixelRatio={devicePixelRatio}
-                  />
-                );
-              })}
-              <div style={{ height: bottomSpacerHeight }} />
-            </div>
-          )}
-          {metricsLoading && (
-            <p className="py-3 text-center text-[10px] text-white/30">
-              Preparing page layout…
-            </p>
-          )}
-        </Document>
+            <p className="text-xs text-white/45">Loading PDF{progress ? " · " + progress + "%" : "…"}</p>
+          </div>
+        )}
+        {phase === "error" && (
+          <div className="mx-auto flex min-h-64 max-w-sm items-center justify-center px-4 text-center text-xs text-red-200/75">
+            Check that the document is accessible, then ask the organizer to reselect it.
+          </div>
+        )}
+        {pdf && pageCount > 0 && (
+          <div className="mx-auto" style={{ width: pageWidth, maxWidth: pageWidth }}>
+            <div style={{ height: topSpacer }} />
+            {Array.from({ length: Math.max(0, last - first + 1) }, (_, offset) => first + offset).map(index => {
+              const metric = metrics[index];
+              const estimatedHeight = metric ? pageWidth * metric.height / metric.width : pageWidth / DEFAULT_RATIO;
+              return (
+                <div key={index + 1} className="mx-auto flex w-full justify-center pb-5" style={{ minHeight: estimatedHeight + PAGE_GAP }}>
+                  <div className="w-full">
+                    <PdfCanvas
+                      key={pageNumberKey(index + 1, pageWidth, pageRetryToken)}
+                      pdf={pdf}
+                      pageNumber={index + 1}
+                      width={pageWidth}
+                      active={true}
+                      onMetric={handleMetric}
+                      onRenderError={handleRenderError}
+                      onRendered={handlePageRendered}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ height: bottomSpacer }} />
+          </div>
+        )}
       </div>
 
       <footer className="flex shrink-0 items-center justify-between border-t border-white/[0.06] bg-[#1d1a20] px-3 py-1.5">
-        <span className="text-[10px] text-white/35">
-          {canControl ? "You are guiding the shared reading" : "Your reading position is local"}
-        </span>
-        <span className="text-[10px] tabular-nums text-white/30">
-          {metricsLoading ? "Optimizing layout" : numPages ? numPages + " pages" : " "}
-        </span>
+        <span className="text-[10px] text-white/35">{canControl ? "You are guiding the shared reading" : "Your reading position is local"}</span>
+        <span className="text-[10px] tabular-nums text-white/30">{phase === "loading" ? "Loading document" : pageCount ? pageCount + " pages" : ""}</span>
       </footer>
     </section>
   );

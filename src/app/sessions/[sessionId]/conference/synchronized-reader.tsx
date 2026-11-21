@@ -10,6 +10,7 @@ import {
 import dynamic from "next/dynamic";
 import { useLocalParticipant, useRemoteParticipants, useRoomContext } from "@livekit/components-react";
 import { RoomEvent } from "livekit-client";
+import { RoomEvent } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 
 const PdfReader = dynamic(
@@ -71,7 +72,7 @@ type SyncStatus =
 const URL_REFRESH_INTERVAL =
   5.5 * 60 * 60 * 1000;
 
-const PAGE_SAVE_DELAY = 250;
+const PAGE_SAVE_DELAY = 1000;
 
 const SynchronizedReader = memo(
   function SynchronizedReader({
@@ -300,7 +301,7 @@ const SynchronizedReader = memo(
     );
 
     useEffect(() => {
-      if (!data || !data.document) {
+      if (!data || !data.document || !localParticipant.identity) {
         setPersonalPosition(null);
         return;
       }
@@ -346,7 +347,7 @@ const SynchronizedReader = memo(
 
       const handleReaderRefresh = () => {
         if (active) {
-          void loadReaderState(false, false);
+          void loadReaderState(Boolean(dataRef.current?.canControl), false);
         }
       };
 
@@ -385,7 +386,7 @@ const SynchronizedReader = memo(
         if (active && document.visibilityState === "visible") {
           void loadReaderState(true, false);
         }
-      }, 4000);
+      }, 15000);
 
       const membershipChannel = supabase
         .channel(`reader-membership-${sessionId}`)
@@ -709,7 +710,7 @@ const SynchronizedReader = memo(
 
             void room.localParticipant.publishData(
               new TextEncoder().encode(JSON.stringify(packet)),
-              { reliable: true, topic: "vaani-reader-position" }
+              { reliable: false, topic: "vaani-reader-position" }
             ).catch((publishError) => {
               console.error("Reader position broadcast failed:", publishError);
             });
@@ -861,6 +862,21 @@ const SynchronizedReader = memo(
         }).catch(() => {});
       };
     }, [data?.canControl, sessionId]);
+
+    // Recover the authoritative checkpoint after reconnecting. Ephemeral
+    // position packets may have been missed while this client was offline.
+    useEffect(() => {
+      const handleConnectionState = () => {
+        if (room.state !== "connected") return;
+        lastRemoteSequence.current = 0;
+        void loadReaderState(false, false);
+      };
+
+      room.on(RoomEvent.ConnectionStateChanged, handleConnectionState);
+      return () => {
+        room.off(RoomEvent.ConnectionStateChanged, handleConnectionState);
+      };
+    }, [room, loadReaderState]);
 
     // Apply high-frequency LiveKit positions from the current controller.
     useEffect(() => {
