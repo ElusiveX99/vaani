@@ -10,7 +10,6 @@ import {
 import dynamic from "next/dynamic";
 import { useLocalParticipant, useRemoteParticipants, useRoomContext } from "@livekit/components-react";
 import { RoomEvent } from "livekit-client";
-import { RoomEvent } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 
 const PdfReader = dynamic(
