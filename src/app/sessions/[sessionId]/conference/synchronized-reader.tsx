@@ -346,7 +346,7 @@ const SynchronizedReader = memo(
 
       const handleReaderRefresh = () => {
         if (active) {
-          void loadReaderState(Boolean(dataRef.current?.canControl), false);
+          void loadReaderState(false, false);
         }
       };
 
@@ -868,7 +868,7 @@ const SynchronizedReader = memo(
       const handleConnectionState = () => {
         if (room.state !== "connected") return;
         lastRemoteSequence.current = 0;
-        void loadReaderState(false, false);
+        void loadReaderState(Boolean(dataRef.current?.canControl), false);
       };
 
       room.on(RoomEvent.ConnectionStateChanged, handleConnectionState);
