@@ -216,8 +216,6 @@ export default function PdfReader({
         setScrollTop(top);
       }
 
-      if (!canControl) return;
-
       if (page !== lastReportedPageRef.current) {
         lastReportedPageRef.current = page;
         onPageChange(page);
@@ -240,8 +238,30 @@ export default function PdfReader({
     setMetricsLoading(true);
 
     try {
-      const nextMetrics: PageMetric[] = new Array(pdf.numPages);
-      let cursor = 1;
+      const firstPage = await pdf.getPage(1);
+      const firstViewport = firstPage.getViewport({ scale: 1 });
+      if (!firstViewport.width || !firstViewport.height) {
+        throw new Error("Invalid dimensions on page 1.");
+      }
+
+      const firstMetric = {
+        width: firstViewport.width,
+        height: firstViewport.height,
+      };
+
+      // Show the first page immediately. Until each page's dimensions arrive,
+      // use page 1's ratio as a temporary estimate; restore the anchor after
+      // exact measurements replace the estimates.
+      setMetrics(Array.from({ length: pdf.numPages }, () => firstMetric));
+
+      if (pdf.numPages === 1) {
+        setMetricsLoading(false);
+        return;
+      }
+
+      const exactMetrics: PageMetric[] = new Array(pdf.numPages);
+      exactMetrics[0] = firstMetric;
+      let cursor = 2;
 
       const worker = async () => {
         while (true) {
@@ -252,7 +272,7 @@ export default function PdfReader({
           if (!viewport.width || !viewport.height) {
             throw new Error(`Invalid dimensions on page ${pageNumber}.`);
           }
-          nextMetrics[pageNumber - 1] = {
+          exactMetrics[pageNumber - 1] = {
             width: viewport.width,
             height: viewport.height,
           };
@@ -260,11 +280,11 @@ export default function PdfReader({
       };
 
       await Promise.all(
-        Array.from({ length: Math.min(4, pdf.numPages) }, () => worker())
+        Array.from({ length: Math.min(4, pdf.numPages - 1) }, () => worker())
       );
 
       if (generation !== generationRef.current) return;
-      setMetrics(nextMetrics);
+      setMetrics(exactMetrics);
       setMetricsLoading(false);
     } catch (loadError) {
       if (generation !== generationRef.current) return;
