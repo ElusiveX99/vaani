@@ -1,24 +1,12 @@
 "use client";
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  Document,
-  Page,
-  pdfjs,
-} from "react-pdf";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
 
-pdfjs.GlobalWorkerOptions.workerSrc =
-  new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url
-  ).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 type Props = {
   documentUrl: string;
@@ -29,88 +17,90 @@ type Props = {
   onPositionChange: (page: number, offset: number) => void;
 };
 
-type PdfDocument = {
-  numPages: number;
-  getPage: (
-    page: number
-  ) => Promise<{
-    getViewport: (
-      options: {
-        scale: number;
-      }
-    ) => {
-      width: number;
-      height: number;
-    };
-  }>;
+type PdfPage = {
+  getViewport: (options: { scale: number }) => { width: number; height: number };
 };
 
-// Fetch page data on demand instead of eagerly streaming the entire PDF.
- // With range requests enabled, PDF.js can request the visible pages without
- // aggressively downloading every remaining page during initial load.
+type PdfDocument = {
+  numPages: number;
+  getPage: (page: number) => Promise<PdfPage>;
+};
+
+type PageMetric = { width: number; height: number };
+
 const PDF_OPTIONS = {
   disableRange: false,
   disableStream: true,
   disableAutoFetch: true,
 };
 
-const MAX_PAGE_WIDTH = 900;
-const MIN_PAGE_WIDTH = 160;
+const PAGE_GAP = 20;
+const MAX_PAGE_WIDTH = 1100;
+const OVERSCAN_PAGES = 2;
+const POSITION_THROTTLE_MS = 80;
 
-const VirtualPdfPage = memo(
-  function VirtualPdfPage({
-    pageNumber,
-    pageWidth,
-    pageHeight,
-    rowHeight,
-    devicePixelRatio,
-  }: {
-    pageNumber: number;
-    pageWidth: number;
-    pageHeight: number;
-    rowHeight: number;
-    devicePixelRatio: number;
-  }) {
-    return (
-      <div
-        className="flex w-full shrink-0 justify-center"
-        style={{
-          height: rowHeight,
-        }}
-      >
-        <Page
-          pageNumber={pageNumber}
-          width={pageWidth}
-          devicePixelRatio={devicePixelRatio}
-          renderTextLayer={false}
-          renderAnnotationLayer={false}
-          loading={
-            <div
-              style={{
-                height: pageHeight,
-                width: pageWidth,
-              }}
-              className="flex items-center justify-center rounded bg-white/5 text-sm text-white/40"
-            >
-              Loading page {pageNumber}...
-            </div>
-          }
-        />
-      </div>
-    );
-  }
-);
-
-function getAvailablePageWidth(
-  container: HTMLDivElement
-) {
-  return Math.max(
-    MIN_PAGE_WIDTH,
-    Math.min(
-      MAX_PAGE_WIDTH,
-      Math.round(container.clientWidth - 24)
-    )
+const PdfPageView = memo(function PdfPageView({
+  pageNumber,
+  width,
+  height,
+  devicePixelRatio,
+}: {
+  pageNumber: number;
+  width: number;
+  height: number;
+  devicePixelRatio: number;
+}) {
+  return (
+    <div
+      className="flex w-full shrink-0 justify-center"
+      style={{ height: height + PAGE_GAP, paddingBottom: PAGE_GAP }}
+    >
+      <Page
+        pageNumber={pageNumber}
+        width={width}
+        devicePixelRatio={devicePixelRatio}
+        renderTextLayer={false}
+        renderAnnotationLayer={false}
+        loading={
+          <div
+            className="flex items-center justify-center rounded bg-white/[0.04] text-xs text-white/40"
+            style={{ width, height }}
+          >
+            Loading page {pageNumber}…
+          </div>
+        }
+        error={
+          <div
+            className="flex items-center justify-center rounded border border-red-400/20 bg-red-950/20 px-4 text-center text-xs text-red-200"
+            style={{ width, height }}
+          >
+            Page {pageNumber} could not be rendered.
+          </div>
+        }
+      />
+    </div>
   );
+});
+
+function findPageAtOffset(offsets: number[], value: number) {
+  let low = 0;
+  let high = Math.max(0, offsets.length - 2);
+
+  while (low < high) {
+    const middle = Math.floor((low + high + 1) / 2);
+    if (offsets[middle] <= value) low = middle;
+    else high = middle - 1;
+  }
+
+  return low;
+}
+
+function clampPage(page: number, count: number) {
+  return Math.min(count, Math.max(1, Math.floor(page) || 1));
+}
+
+function getPageWidth(container: HTMLDivElement) {
+  return Math.max(1, Math.min(MAX_PAGE_WIDTH, container.clientWidth - 28));
 }
 
 export default function PdfReader({
@@ -121,436 +111,239 @@ export default function PdfReader({
   onPageChange,
   onPositionChange,
 }: Props) {
-  const containerRef =
-    useRef<HTMLDivElement>(null);
-
-  const lastReportedPage = useRef(currentPage);
-  const lastReportedOffset = useRef(currentOffset);
-  const lastPositionCallbackAt = useRef(0);
-
-  const lastAppliedRowHeight = useRef(0);
-  const windowStartIndex = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const generationRef = useRef(0);
+  const scrollFrameRef = useRef<number | null>(null);
+  const lastPositionAtRef = useRef(0);
+  const lastReportedPageRef = useRef(currentPage);
+  const lastReportedOffsetRef = useRef(currentOffset);
+  const lastAppliedLayoutRef = useRef("");
+  const lastWindowRef = useRef(-1);
 
   const [numPages, setNumPages] = useState(0);
-
+  const [metrics, setMetrics] = useState<PageMetric[]>([]);
   const [pageWidth, setPageWidth] = useState(0);
-  const [pageAspectRatio, setPageAspectRatio] = useState(0);
-  const [hasMeasuredContainer, setHasMeasuredContainer] = useState(false);
-  const [pageMetricsReady, setPageMetricsReady] = useState(false);
-
-  const [scrollTop, setScrollTop] = useState(0);
-
   const [containerHeight, setContainerHeight] = useState(0);
-
-  const [devicePixelRatio, setDevicePixelRatio] =
-    useState(1);
-
-  const [inputDraft, setInputDraft] = useState<{
-    basedOnPage: number;
-    value: string;
-  } | null>(null);
-
-  const [error, setError] = useState("");
+  const [scrollTop, setScrollTop] = useState(0);
+  const [devicePixelRatio, setDevicePixelRatio] = useState(1);
+  const [inputDraft, setInputDraft] = useState<string | null>(null);
   const [controlsVisible, setControlsVisible] = useState(false);
+  const [error, setError] = useState("");
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
-  const pageHeight =
-    pageWidth * pageAspectRatio;
-
-  const rowHeight = pageHeight + 24;
-
-  // Render only visible pages and a small buffer.
-  const visibleStart = Math.max(
-    0,
-    Math.floor(scrollTop / rowHeight) - 1
+  const pageHeights = useMemo(
+    () => metrics.map((metric) => (pageWidth > 0 ? pageWidth * metric.height / metric.width : 0) + PAGE_GAP),
+    [metrics, pageWidth]
   );
 
-  const visibleCount =
-    Math.ceil(containerHeight / rowHeight) + 6;
+  const pageOffsets = useMemo(() => {
+    const offsets = new Array(pageHeights.length + 1).fill(0);
+    for (let index = 0; index < pageHeights.length; index += 1) {
+      offsets[index + 1] = offsets[index] + pageHeights[index];
+    }
+    return offsets;
+  }, [pageHeights]);
 
-  const firstPage = visibleStart + 1;
-
-  const lastPage = Math.min(
-    numPages,
-    firstPage + visibleCount - 1
+  const totalHeight = pageOffsets[pageOffsets.length - 1] ?? 0;
+  const safeCurrentPage = numPages ? clampPage(currentPage, numPages) : 1;
+  const visibleIndex = pageOffsets.length > 1
+    ? findPageAtOffset(pageOffsets, Math.max(0, scrollTop))
+    : 0;
+  const visibleCount = Math.max(
+    1,
+    Math.ceil(containerHeight / Math.max(1, pageHeights[visibleIndex] ?? 700))
   );
-
+  const firstIndex = Math.max(0, visibleIndex - OVERSCAN_PAGES);
+  const lastIndex = Math.min(
+    numPages - 1,
+    visibleIndex + visibleCount + OVERSCAN_PAGES
+  );
   const renderedPages = useMemo(() => {
-    const length = Math.max(
-      0,
-      lastPage - firstPage + 1
-    );
-
+    if (!numPages || !metrics.length) return [];
     return Array.from(
-      { length },
-      (_, index) => firstPage + index
+      { length: Math.max(0, lastIndex - firstIndex + 1) },
+      (_, index) => firstIndex + index
     );
-  }, [firstPage, lastPage]);
+  }, [firstIndex, lastIndex, metrics.length, numPages]);
 
-  const topSpacerHeight =
-    (firstPage - 1) * rowHeight;
+  const topSpacerHeight = pageOffsets[firstIndex] ?? 0;
+  const bottomSpacerHeight = Math.max(0, totalHeight - (pageOffsets[lastIndex + 1] ?? totalHeight));
+  const inputPage = inputDraft ?? String(safeCurrentPage);
 
-  const bottomSpacerHeight =
-    Math.max(0, numPages - lastPage) *
-    rowHeight;
+  const applyPosition = useCallback((page: number, offset: number) => {
+    const container = containerRef.current;
+    if (!container || !pageOffsets.length || !numPages) return;
 
-  const inputPage =
-    inputDraft?.basedOnPage === currentPage
-      ? inputDraft.value
-      : String(currentPage);
+    const safePage = clampPage(page, numPages);
+    const index = safePage - 1;
+    const pageTop = pageOffsets[index] ?? 0;
+    const rowHeight = pageHeights[index] ?? 1;
+    const safeOffset = Math.min(1, Math.max(0, offset));
+    const nextTop = pageTop + safeOffset * rowHeight;
 
-  const jumpToPage = useCallback(
-    (page: number) => {
-      if (
-        !canControl ||
-        !Number.isSafeInteger(page) ||
-        page < 1 ||
-        page > numPages
-      ) {
-        return;
+    container.scrollTo({ top: nextTop, behavior: "auto" });
+    setScrollTop(nextTop);
+    lastWindowRef.current = findPageAtOffset(pageOffsets, nextTop);
+    lastReportedPageRef.current = safePage;
+    lastReportedOffsetRef.current = safeOffset;
+  }, [numPages, pageOffsets, pageHeights]);
+
+  const jumpToPage = useCallback((page: number) => {
+    if (!canControl || !Number.isSafeInteger(page) || page < 1 || page > numPages) return;
+    applyPosition(page, 0);
+    onPageChange(page);
+    onPositionChange(page, 0);
+    setInputDraft(null);
+  }, [applyPosition, canControl, numPages, onPageChange, onPositionChange]);
+
+  const handleScroll = useCallback(() => {
+    if (scrollFrameRef.current !== null) return;
+
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      const container = containerRef.current;
+      if (!container || !numPages || !pageOffsets.length) return;
+
+      const top = Math.max(0, container.scrollTop);
+      const index = Math.min(numPages - 1, findPageAtOffset(pageOffsets, top));
+      const page = index + 1;
+      const pageTop = pageOffsets[index] ?? 0;
+      const rowHeight = Math.max(1, pageHeights[index] ?? 1);
+      const offset = Math.min(1, Math.max(0, (top - pageTop) / rowHeight));
+
+      if (index !== lastWindowRef.current) {
+        lastWindowRef.current = index;
+        setScrollTop(top);
       }
 
-      const container = containerRef.current;
+      if (!canControl) return;
 
-      if (!container) return;
+      if (page !== lastReportedPageRef.current) {
+        lastReportedPageRef.current = page;
+        onPageChange(page);
+      }
 
-      lastReportedPage.current = page;
-      lastReportedOffset.current = 0;
+      const now = performance.now();
+      if (now - lastPositionAtRef.current >= POSITION_THROTTLE_MS) {
+        lastPositionAtRef.current = now;
+        lastReportedOffsetRef.current = offset;
+        onPositionChange(page, offset);
+      }
+    });
+  }, [canControl, numPages, onPageChange, onPositionChange, pageOffsets, pageHeights]);
 
-      const top = (page - 1) * rowHeight;
-
-      container.scrollTo({
-        top,
-        behavior: "auto",
-      });
-
-      windowStartIndex.current = Math.floor(
-        top / rowHeight
-      );
-
-      setScrollTop(top);
-      onPageChange(page);
-      onPositionChange(page, 0);
-    },
-    [
-      canControl,
-      numPages,
-      rowHeight,
-      onPageChange,
-      onPositionChange,
-    ]
-  );
-
-  // Update local page position for all participants.
-  // React state is updated only when the virtual window changes.
-  const handleScroll = useCallback(() => {
-    const container = containerRef.current;
-
-    if (!container) return;
-
-    const top = container.scrollTop;
-
-    const nextWindowIndex = Math.floor(
-      top / rowHeight
-    );
-
-    if (
-      nextWindowIndex !==
-      windowStartIndex.current
-    ) {
-      windowStartIndex.current =
-        nextWindowIndex;
-
-      setScrollTop(top);
-    }
-
-    if (!numPages) return;
-
-    const pageIndex = Math.min(
-      numPages - 1,
-      Math.max(0, Math.floor(top / rowHeight))
-    );
-    const page = pageIndex + 1;
-    const offset = Math.min(
-      1,
-      Math.max(0, (top - pageIndex * rowHeight) / rowHeight)
-    );
-
-    const pageChanged = page !== lastReportedPage.current;
-    if (pageChanged) {
-      lastReportedPage.current = page;
-      onPageChange(page);
-    }
-
-    const now = performance.now();
-    if (pageChanged || now - lastPositionCallbackAt.current >= 50) {
-      lastPositionCallbackAt.current = now;
-      lastReportedOffset.current = offset;
-      onPositionChange(page, offset);
-    }
-  }, [
-    numPages,
-    rowHeight,
-    onPageChange,
-    onPositionChange,
-  ]);
-
-  // Follow remote navigation, but preserve the current
-  // page and fractional offset when the layout changes.
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (
-      !container ||
-      !numPages ||
-      !hasMeasuredContainer ||
-      !pageMetricsReady
-    ) return;
-
-    const previousRowHeight =
-      lastAppliedRowHeight.current;
-
-    const firstLayout =
-      previousRowHeight === 0;
-
-    const remotePageChanged =
-      currentPage !== lastReportedPage.current ||
-      Math.abs(currentOffset - lastReportedOffset.current) > 0.005;
-
-    const layoutChanged =
-      previousRowHeight > 0 &&
-      previousRowHeight !== rowHeight;
-
-    lastAppliedRowHeight.current = rowHeight;
-
-    if (
-      remotePageChanged ||
-      (firstLayout && (currentPage > 1 || currentOffset > 0))
-    ) {
-      const safePage = Math.min(
-        numPages,
-        Math.max(1, currentPage)
-      );
-
-      lastReportedPage.current = safePage;
-
-      const safeOffset = Math.min(1, Math.max(0, currentOffset));
-      const top = (safePage - 1 + safeOffset) * rowHeight;
-      lastReportedOffset.current = safeOffset;
-
-      container.scrollTo({
-        top,
-        behavior: "auto",
-      });
-
-      windowStartIndex.current = Math.floor(
-        top / rowHeight
-      );
-
-      setScrollTop(top);
-      return;
-    }
-
-    if (layoutChanged) {
-      const oldTop = container.scrollTop;
-
-      const oldPageIndex = Math.min(
-        numPages - 1,
-        Math.max(
-          0,
-          Math.floor(
-            oldTop / previousRowHeight
-          )
-        )
-      );
-
-      const oldOffset =
-        oldTop -
-        oldPageIndex * previousRowHeight;
-
-      const pageProgress = Math.min(
-        1,
-        Math.max(
-          0,
-          oldOffset / previousRowHeight
-        )
-      );
-
-      const newTop =
-        oldPageIndex * rowHeight +
-        pageProgress * rowHeight;
-
-      container.scrollTo({
-        top: newTop,
-        behavior: "auto",
-      });
-
-      windowStartIndex.current = Math.floor(
-        newTop / rowHeight
-      );
-
-      setScrollTop(newTop);
-      const newPageIndex = Math.min(
-        numPages - 1,
-        Math.max(0, Math.floor(newTop / rowHeight))
-      );
-      lastReportedPage.current = newPageIndex + 1;
-      lastReportedOffset.current =
-        (newTop - newPageIndex * rowHeight) / rowHeight;
-    }
-  }, [
-    currentPage,
-    currentOffset,
-    numPages,
-    rowHeight,
-    hasMeasuredContainer,
-    pageMetricsReady,
-  ]);
-
-  // Measure the reader container.
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (!container) return;
-
-    const updateSize = () => {
-      const availableWidth =
-        getAvailablePageWidth(container);
-
-      setPageWidth((previous) =>
-        previous === availableWidth
-          ? previous
-          : availableWidth
-      );
-
-      setContainerHeight((previous) =>
-        previous === container.clientHeight
-          ? previous
-          : container.clientHeight
-      );
-      setHasMeasuredContainer(true);
-    };
-
-    updateSize();
-
-    if (typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver(
-        updateSize
-      );
-
-      observer.observe(container);
-
-      return () => observer.disconnect();
-    }
-
-    window.addEventListener(
-      "resize",
-      updateSize,
-      { passive: true }
-    );
-
-    return () => {
-      window.removeEventListener(
-        "resize",
-        updateSize
-      );
-    };
-  }, []);
-
-  // Cap rendering resolution to avoid excessive mobile
-  // canvas memory use on high-density screens.
-  useEffect(() => {
-    const updatePixelRatio = () => {
-      // Keep canvases crisp on high-density displays without unbounded memory use.
-      const limit = 2;
-
-      const nextRatio = Math.min(
-        window.devicePixelRatio || 1,
-        limit
-      );
-
-      setDevicePixelRatio((previous) =>
-        previous === nextRatio
-          ? previous
-          : nextRatio
-      );
-    };
-
-    updatePixelRatio();
-
-    window.addEventListener(
-      "resize",
-      updatePixelRatio,
-      { passive: true }
-    );
-
-    return () => {
-      window.removeEventListener(
-        "resize",
-        updatePixelRatio
-      );
-    };
-  }, []);
-
-  async function handleDocumentLoad(
-    pdf: PdfDocument
-  ) {
+  async function handleDocumentLoad(pdf: PdfDocument) {
+    const generation = ++generationRef.current;
     setNumPages(pdf.numPages);
+    setMetrics([]);
     setError("");
+    setMetricsLoading(true);
 
     try {
-      const firstPage = await pdf.getPage(1);
+      const nextMetrics: PageMetric[] = new Array(pdf.numPages);
+      let cursor = 1;
 
-      const viewport = firstPage.getViewport({
-        scale: 1,
-      });
+      const worker = async () => {
+        while (true) {
+          const pageNumber = cursor++;
+          if (pageNumber > pdf.numPages || generation !== generationRef.current) return;
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1 });
+          if (!viewport.width || !viewport.height) {
+            throw new Error(`Invalid dimensions on page ${pageNumber}.`);
+          }
+          nextMetrics[pageNumber - 1] = {
+            width: viewport.width,
+            height: viewport.height,
+          };
+        }
+      };
 
-      if (
-        viewport.width > 0 &&
-        viewport.height > 0
-      ) {
-        setPageAspectRatio(
-          viewport.height / viewport.width
-        );
-        setPageMetricsReady(true);
-      }
+      await Promise.all(
+        Array.from({ length: Math.min(4, pdf.numPages) }, () => worker())
+      );
 
-      const container = containerRef.current;
-
-      if (container) {
-        setPageWidth(
-          getAvailablePageWidth(container)
-        );
-
-        setContainerHeight(
-          container.clientHeight
-        );
-      }
+      if (generation !== generationRef.current) return;
+      setMetrics(nextMetrics);
+      setMetricsLoading(false);
     } catch (loadError) {
-      console.error(
-        "Unable to prepare PDF pages:",
-        loadError
-      );
-
-      setError(
-        "Unable to prepare PDF pages."
-      );
+      if (generation !== generationRef.current) return;
+      console.error("Unable to measure PDF pages:", loadError);
+      setMetricsLoading(false);
+      setError("Some PDF page information could not be loaded. Please reopen the document.");
     }
   }
 
-  function submitPageJump() {
-    const page = Number(inputPage);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    if (
-      !Number.isSafeInteger(page) ||
-      page < 1 ||
-      page > numPages
-    ) {
-      setInputDraft(null);
+    const measure = () => {
+      setPageWidth(getPageWidth(container));
+      setContainerHeight(container.clientHeight);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const updatePixelRatio = () => {
+      setDevicePixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    };
+    updatePixelRatio();
+    window.addEventListener("resize", updatePixelRatio, { passive: true });
+    return () => window.removeEventListener("resize", updatePixelRatio);
+  }, []);
+
+  useEffect(() => {
+    if (!numPages || metrics.length !== numPages || !pageOffsets.length) return;
+
+    const layoutKey = `${pageWidth}:${numPages}:${metrics.map((metric) => metric.width + "x" + metric.height).join(",")}`;
+    const layoutChanged = lastAppliedLayoutRef.current !== layoutKey;
+
+    if (layoutChanged) {
+      lastAppliedLayoutRef.current = layoutKey;
+      applyPosition(currentPage, currentOffset);
       return;
     }
 
+    if (
+      currentPage !== lastReportedPageRef.current ||
+      Math.abs(currentOffset - lastReportedOffsetRef.current) > 0.01
+    ) {
+      applyPosition(currentPage, currentOffset);
+    }
+  }, [applyPosition, currentOffset, currentPage, metrics, numPages, pageOffsets, pageWidth]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !pageOffsets.length) return;
+    const nextIndex = findPageAtOffset(pageOffsets, container.scrollTop);
+    if (nextIndex !== lastWindowRef.current) {
+      lastWindowRef.current = nextIndex;
+      setScrollTop(container.scrollTop);
+    }
+  }, [pageOffsets]);
+
+  useEffect(() => {
+    return () => {
+      generationRef.current += 1;
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+      }
+    };
+  }, []);
+
+  function submitPageJump() {
+    const page = Number(inputPage);
+    if (!Number.isSafeInteger(page) || page < 1 || page > numPages) {
+      setInputDraft(null);
+      return;
+    }
     jumpToPage(page);
-    setInputDraft(null);
   }
 
   return (
@@ -559,7 +352,7 @@ export default function PdfReader({
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-xs font-medium">PDF</span>
           <span className="shrink-0 text-[11px] tabular-nums text-white/45">
-            {numPages ? `${currentPage} / ${numPages}` : "Loading"}
+            {numPages ? `${safeCurrentPage} / ${numPages}` : "Loading"}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -567,8 +360,8 @@ export default function PdfReader({
             <>
               <button
                 type="button"
-                disabled={!canControl || currentPage <= 1 || !numPages}
-                onClick={() => jumpToPage(currentPage - 1)}
+                disabled={!canControl || safeCurrentPage <= 1 || !numPages}
+                onClick={() => jumpToPage(safeCurrentPage - 1)}
                 aria-label="Previous page"
                 className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs hover:bg-white/20 disabled:opacity-30"
               >
@@ -581,7 +374,7 @@ export default function PdfReader({
                   max={numPages || undefined}
                   value={inputPage}
                   disabled={!canControl || !numPages}
-                  onChange={(event) => setInputDraft({ basedOnPage: currentPage, value: event.target.value })}
+                  onChange={(event) => setInputDraft(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submitPageJump();
                   }}
@@ -592,8 +385,8 @@ export default function PdfReader({
               </div>
               <button
                 type="button"
-                disabled={!canControl || !numPages || currentPage >= numPages}
-                onClick={() => jumpToPage(currentPage + 1)}
+                disabled={!canControl || !numPages || safeCurrentPage >= numPages}
+                onClick={() => jumpToPage(safeCurrentPage + 1)}
                 aria-label="Next page"
                 className="rounded-md bg-white/10 px-2.5 py-1.5 text-xs hover:bg-white/20 disabled:opacity-30"
               >
@@ -615,10 +408,7 @@ export default function PdfReader({
       </header>
 
       {error && (
-        <p
-          role="alert"
-          className="shrink-0 px-4 py-2 text-center text-sm text-red-300"
-        >
+        <p role="alert" className="shrink-0 px-4 py-2 text-center text-xs text-red-300">
           {error}
         </p>
       )}
@@ -632,53 +422,39 @@ export default function PdfReader({
           key={documentUrl}
           file={documentUrl}
           options={PDF_OPTIONS}
-          onLoadSuccess={handleDocumentLoad}
+          onLoadSuccess={(pdf) => void handleDocumentLoad(pdf)}
           onLoadError={(loadError) => {
-            console.error(
-              "Unable to load PDF:",
-              loadError
-            );
-
-            setError(
-              "Unable to load this PDF. Please try reopening the reader."
-            );
+            console.error("Unable to load PDF:", loadError);
+            setError("Unable to load this PDF. Please try reopening the reader.");
           }}
           loading={
-            <p className="py-10 text-center text-sm text-white/50">
-              Loading PDF...
-            </p>
+            <p className="py-10 text-center text-sm text-white/50">Loading PDF…</p>
+          }
+          error={
+            <p className="py-10 text-center text-sm text-red-300">Unable to open this PDF.</p>
           }
         >
-          <div
-            style={{
-              height: topSpacerHeight,
-            }}
-          />
-
-          <div className="flex flex-col items-center">
-            {hasMeasuredContainer && pageMetricsReady && renderedPages.map((pageNumber) => (
-              <VirtualPdfPage
-                key={pageNumber}
-                pageNumber={pageNumber}
-                pageWidth={pageWidth}
-                pageHeight={pageHeight}
-                rowHeight={rowHeight}
-                devicePixelRatio={
-                  devicePixelRatio
-                }
+          {metricsLoading && !metrics.length && (
+            <p className="py-10 text-center text-xs text-white/45">Preparing page layout…</p>
+          )}
+          <div style={{ height: topSpacerHeight }} />
+          {renderedPages.map((index) => {
+            const metric = metrics[index];
+            if (!metric || !pageWidth) return null;
+            const height = pageWidth * metric.height / metric.width;
+            return (
+              <PdfPageView
+                key={index + 1}
+                pageNumber={index + 1}
+                width={pageWidth}
+                height={height}
+                devicePixelRatio={devicePixelRatio}
               />
-            ))}
-          </div>
-
-          <div
-            style={{
-              height: bottomSpacerHeight,
-            }}
-          />
+            );
+          })}
+          <div style={{ height: bottomSpacerHeight }} />
         </Document>
       </div>
-
-
     </section>
   );
 }
