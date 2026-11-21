@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody } from "@/lib/security/request";
 
 function isValidUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -33,16 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let body: { sessionId?: unknown };
-
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid request body." },
-        { status: 400 }
-      );
+    const parsedBody = await readJsonBody<{ sessionId?: unknown }>(request, 4096);
+    if (!parsedBody.ok) {
+      const message = parsedBody.status === 413 ? "Request body is too large." : parsedBody.status === 415 ? "Content-Type must be application/json." : "Invalid request body.";
+      return NextResponse.json({ error: message }, { status: parsedBody.status });
     }
+    const body = parsedBody.data;
 
     const sessionId =
       typeof body.sessionId === "string"
@@ -173,7 +170,7 @@ export async function POST(request: NextRequest) {
         role: membership.role,
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       },
-      ttl: "8h",
+      ttl: "2h",
     });
 
     token.addGrant({

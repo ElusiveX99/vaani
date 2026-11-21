@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RoomServiceClient } from "livekit-server-sdk";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody } from "@/lib/security/request";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -31,7 +32,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const parsedBody = await readJsonBody<{
+      sessionId?: unknown;
+      targetUserId?: unknown;
+      action?: unknown;
+      trackSid?: unknown;
+    }>(request, 4096);
+    if (!parsedBody.ok) {
+      const message = parsedBody.status === 413 ? "Request body is too large." : parsedBody.status === 415 ? "Content-Type must be application/json." : "Invalid request body.";
+      return NextResponse.json({ error: message }, { status: parsedBody.status });
+    }
+    const body = parsedBody.data;
 
     const sessionId = String(body.sessionId ?? "");
     const targetUserId = String(body.targetUserId ?? "");
