@@ -359,16 +359,12 @@ export default function PdfReader({
         disableRange: false,
         disableStream: false,
         disableAutoFetch: false,
-        isEvalSupported: false,
       });
-      task.onProgress = ({ loaded, total }) => {
+      task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
         if (!cancelled && total > 0) setProgress(Math.min(100, Math.round(loaded / total * 100)));
       };
       task.promise.then(loadedPdf => {
-        if (cancelled) {
-          void loadedPdf.destroy();
-          return;
-        }
+        if (cancelled) return;
         setPdf(loadedPdf);
         setPageCount(loadedPdf.numPages);
         setMetrics(Array.from({ length: loadedPdf.numPages }, () => null));
