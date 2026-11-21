@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import ProfileAvatar from "./profile-avatar";
 import { BrandMark } from "./brand-lockup";
-import InstallVaani from "./install-vaani";
 
 type Props = {
   name: string;
@@ -22,7 +21,9 @@ export default function SiteHeader({ name, avatarUrl }: Props) {
   return (
     <header className="site-header sticky top-0 z-40">
       <nav className="site-nav" aria-label="Main navigation">
-        <BrandMark />
+        <div className="shrink-0">
+          <BrandMark />
+        </div>
 
         <div className="hidden items-center gap-1 md:flex">
           {links.map((link) => {
@@ -41,13 +42,17 @@ export default function SiteHeader({ name, avatarUrl }: Props) {
           })}
         </div>
 
-        <div className="flex items-center gap-2">
-          <InstallVaani />
-          <a href="/account" className="button-secondary !min-h-9 !gap-2 !px-3 !py-1.5 text-xs sm:!min-h-10 sm:!px-4 sm:!py-2 sm:text-sm">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <a
+            href="/account"
+            aria-label="Manage account"
+            title="Manage account"
+            className="button-secondary !flex !h-9 !w-9 !min-h-9 !shrink-0 !gap-0 !p-0 sm:!h-10 sm:!w-auto sm:!min-h-10 sm:!gap-2 sm:!px-4 sm:!py-2"
+          >
             <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
-            <span>Manage account</span>
+            <span className="hidden sm:inline">Manage account</span>
           </a>
-          <details className="mobile-nav md:hidden">
+          <details className="mobile-nav shrink-0 md:hidden">
             <summary aria-label="Open navigation" aria-haspopup="true"><span aria-hidden="true" className="text-lg">☰</span></summary>
             <div className="mobile-nav-panel" aria-label="Mobile navigation">
               {links.map((link) => {
