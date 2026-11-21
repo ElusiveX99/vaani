@@ -27,8 +27,8 @@ type Range = { first: number; last: number };
 const PAGE_GAP = 20;
 const DEFAULT_RATIO = 1.4142;
 const MAX_PAGE_WIDTH = 1200;
-const MAX_RENDER_WIDTH = 1600;
-const MAX_DPR = 1.4;
+const MAX_RENDER_WIDTH = 1650;
+const MAX_DPR = 1.75;
 const OVERSCAN = 2;
 const POSITION_INTERVAL = 80;
 
@@ -191,6 +191,8 @@ export default function PdfReader({
   const timerRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
   const suppressUntilRef = useRef(0);
+  const navigationTargetRef = useRef<{ page: number; top: number; expiresAt: number } | null>(null);
+  const pageInputRef = useRef<HTMLInputElement>(null);
   const lastAppliedRef = useRef("");
   const [pdf, setPdf] = useState<PdfDocument | null>(null);
   const [pageCount, setPageCount] = useState(0);
@@ -206,6 +208,7 @@ export default function PdfReader({
   const [zoom, setZoom] = useState(1);
   const [retryToken, setRetryToken] = useState(0);
   const [pageRetryToken, setPageRetryToken] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
 
   const pageWidth = Math.max(1, Math.min(MAX_RENDER_WIDTH, width * zoom));
   const offsets = useMemo(() => pageOffsetsFor(metrics, pageWidth), [metrics, pageWidth]);
@@ -258,8 +261,17 @@ export default function PdfReader({
     positionRef.current = { page: safe, offset: safeOffset };
     lastSentRef.current = positionRef.current;
     setVisiblePage(safe);
-    suppressUntilRef.current = performance.now() + 260;
-    if (Math.abs(node.scrollTop - nextTop) > 2) node.scrollTo({ top: nextTop, behavior: "auto" });
+    const now = performance.now();
+    const distance = Math.abs(node.scrollTop - nextTop);
+    suppressUntilRef.current = now + 700;
+    navigationTargetRef.current = distance > 2
+      ? { page: safe, top: nextTop, expiresAt: now + 700 }
+      : null;
+    if (distance > 2) {
+      node.scrollTo({ top: nextTop, behavior: "auto" });
+    } else {
+      navigationTargetRef.current = null;
+    }
     updateVisibleRange();
   }, [offsets, pageCount, updateVisibleRange]);
 
@@ -416,13 +428,32 @@ export default function PdfReader({
       const node = containerRef.current;
       if (!node || !pageCount) return;
       updateVisibleRange();
+      const now = performance.now();
+      const navigationTarget = navigationTargetRef.current;
+      if (navigationTarget) {
+        const distance = Math.abs(node.scrollTop - navigationTarget.top);
+        if (distance <= 4 || now >= navigationTarget.expiresAt) {
+          navigationTargetRef.current = null;
+          suppressUntilRef.current = now + 40;
+        } else {
+          setVisiblePage(navigationTarget.page);
+          return;
+        }
+      }
+
       const index = Math.min(pageCount - 1, findPage(offsets, Math.max(0, node.scrollTop)));
       const pageTop = offsets[index] || 0;
       const pageHeight = Math.max(1, (offsets[index + 1] || 0) - pageTop - PAGE_GAP);
       const next = { page: index + 1, offset: clampOffset((node.scrollTop - pageTop) / pageHeight) };
+
+      if (now < suppressUntilRef.current) {
+        setVisiblePage(positionRef.current.page);
+        return;
+      }
+
       positionRef.current = next;
       setVisiblePage(next.page);
-      if (performance.now() >= suppressUntilRef.current) queuePosition();
+      queuePosition();
     });
   }, [offsets, pageCount, queuePosition, updateVisibleRange]);
 
@@ -433,27 +464,42 @@ export default function PdfReader({
   }, []);
 
   function jumpToPage(requested: number) {
-    if (!pageCount || !Number.isSafeInteger(requested) || requested < 1 || requested > pageCount) return;
+    if (!pageCount) return;
+
+    const target = clampPage(
+      Number.isFinite(requested) ? Math.trunc(requested) : 1,
+      pageCount
+    );
+
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    applyPosition(requested, 0);
-    setPageDraft("");
-    positionRef.current = { page: requested, offset: 0 };
+
+    applyPosition(target, 0);
+    setPageDraft(String(target));
+    positionRef.current = { page: target, offset: 0 };
     lastSentRef.current = positionRef.current;
-    onPageChange(requested);
-    onPositionChange(requested, 0);
+    onPageChange(target);
+    onPositionChange(target, 0);
   }
 
   function submitJump(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    jumpToPage(Number(pageDraft));
+    const raw = pageDraft.trim();
+    const parsed = raw === "" ? 1 : Number(raw);
+    jumpToPage(Number.isFinite(parsed) ? parsed : 1);
   }
 
+  useEffect(() => {
+    const input = pageInputRef.current;
+    if (!input || document.activeElement === input) return;
+    setPageDraft(String(safePage));
+  }, [safePage]);
+
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#17151a] text-white">
-      <header className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-[#1d1a20] px-3 py-2">
+    <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--conference-line)] bg-[#17151a] text-white">
+      {controlsVisible ? <header className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-[#1d1a20] px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">Vaani reader</span>
           <span className="h-1 w-1 rounded-full bg-white/20" />
@@ -466,23 +512,30 @@ export default function PdfReader({
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => jumpToPage(safePage - 1)} disabled={!pageCount || safePage <= 1} aria-label="Previous page" className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:opacity-25">‹</button>
           <form className="flex items-center gap-1" onSubmit={submitJump}>
-            <input type="number" min={1} max={pageCount || undefined} value={pageDraft || String(safePage)} disabled={!pageCount} onChange={event => setPageDraft(event.target.value)} aria-label="Go to page" className="h-8 w-12 rounded-md border border-white/[0.09] bg-white/[0.05] px-1 text-center text-xs tabular-nums text-white outline-none focus:border-white/30 disabled:opacity-40" />
+            <input ref={pageInputRef} type="text" inputMode="numeric" value={pageDraft} disabled={!pageCount} onChange={event => setPageDraft(event.target.value)} aria-label="Go to page" className="h-8 w-12 rounded-md border border-white/[0.09] bg-white/[0.05] px-1 text-center text-xs tabular-nums text-white outline-none focus:border-white/30 disabled:opacity-40" />
           </form>
           <button type="button" onClick={() => jumpToPage(safePage + 1)} disabled={!pageCount || safePage >= pageCount} aria-label="Next page" className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-sm text-white/75 transition hover:bg-white/10 disabled:opacity-25">›</button>
           <span className="mx-1 h-5 w-px bg-white/10" />
           <button type="button" onClick={() => setZoom(value => Math.max(0.7, Math.round((value - 0.1) * 10) / 10))} disabled={zoom <= 0.7} aria-label="Zoom out" className="h-8 w-8 rounded-md border border-white/[0.08] text-sm text-white/75 disabled:opacity-25">−</button>
           <button type="button" onClick={() => setZoom(1)} aria-label="Fit page" className="h-8 min-w-12 rounded-md px-1 text-[10px] tabular-nums text-white/55 hover:text-white">{Math.round(zoom * 100)}%</button>
           <button type="button" onClick={() => setZoom(value => Math.min(1.7, Math.round((value + 0.1) * 10) / 10))} disabled={zoom >= 1.7} aria-label="Zoom in" className="h-8 w-8 rounded-md border border-white/[0.08] text-sm text-white/75 disabled:opacity-25">+</button>
+          <button type="button" onClick={() => setControlsVisible(false)} aria-label="Hide reader controls" className="ml-1 h-8 rounded-md border border-white/[0.08] px-2 text-[10px] text-white/55 transition hover:bg-white/10 hover:text-white sm:block">Hide</button>
         </div>
-      </header>
+      </header> : null}
 
-      {phase === "error" && (
+      {!controlsVisible && (
+        <button type="button" onClick={() => setControlsVisible(true)} aria-label="Show reader controls" className="absolute right-2 top-2 z-20 rounded-md border border-white/10 bg-[#17151a]/90 px-2 py-1.5 text-[10px] text-white/65 shadow-lg backdrop-blur transition hover:bg-[#242027] hover:text-white">
+          Show controls
+        </button>
+      )}
+
+      {controlsVisible && phase === "error" && (
         <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-300/15 bg-red-950/30 px-3 py-2 text-xs text-red-100/85">
           <span className="min-w-0 flex-1">The PDF could not be opened. {error}</span>
           <button type="button" onClick={() => setRetryToken(value => value + 1)} className="shrink-0 rounded-md border border-red-200/20 px-3 py-1.5 text-red-50 hover:bg-white/10">Retry</button>
         </div>
       )}
-      {Object.keys(pageErrors).length > 0 && (
+      {controlsVisible && Object.keys(pageErrors).length > 0 && (
         <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-300/10 bg-amber-300/[0.05] px-3 py-2 text-[11px] text-amber-100/75">
           <span className="min-w-0 flex-1">{Object.keys(pageErrors).length} page(s) could not be rendered. {Object.values(pageErrors)[0]}</span>
           <button type="button" onClick={() => { setPageErrors({}); setPageRetryToken(value => value + 1); }} className="shrink-0 rounded-md border border-amber-100/15 px-2.5 py-1 text-amber-50 hover:bg-white/10">Retry pages</button>
@@ -531,10 +584,10 @@ export default function PdfReader({
         )}
       </div>
 
-      <footer className="flex shrink-0 items-center justify-between border-t border-white/[0.06] bg-[#1d1a20] px-3 py-1.5">
+      {controlsVisible && <footer className="flex shrink-0 items-center justify-between border-t border-white/[0.06] bg-[#1d1a20] px-3 py-1.5">
         <span className="text-[10px] text-white/35">{canControl ? "You are guiding the shared reading" : "Your reading position is local"}</span>
         <span className="text-[10px] tabular-nums text-white/30">{phase === "loading" ? "Loading document" : pageCount ? pageCount + " pages" : ""}</span>
-      </footer>
+      </footer>}
     </section>
   );
 }
