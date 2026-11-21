@@ -53,8 +53,18 @@ export const metadata: Metadata = {
       "For Sakhis of the Radha Vallabh Sampradaya.",
   },
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/pwa-icons/192", type: "image/png", sizes: "192x192" },
+      { url: "/pwa-icons/512", type: "image/png", sizes: "512x512" },
+    ],
     shortcut: "/icon.svg",
+    apple: "/pwa-icons/180",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Vaani",
+    statusBarStyle: "default",
   },
   robots: { index: true, follow: true },
 };
