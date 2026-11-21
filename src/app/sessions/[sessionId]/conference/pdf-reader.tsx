@@ -118,7 +118,7 @@ export default function PdfReader({
   const containerRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
   const scrollFrameRef = useRef<number | null>(null);
-  const positionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const positionTimerRef = useRef<number | null>(null);
   const pendingPositionRef = useRef<Position>({
     page: Math.max(1, currentPage),
     offset: clampOffset(currentOffset),
