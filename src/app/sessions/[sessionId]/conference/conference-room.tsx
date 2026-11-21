@@ -202,11 +202,11 @@ function getMediaErrorMessage(
     name === "SecurityError"
   ) {
     if (action === "microphone") {
-      return "Microphone access was denied. Check your browser and device permissions, then try again.";
+      return "Microphone access is blocked. Allow microphone access for Vaani in your browser's site settings, then return and try again.";
     }
 
     if (action === "camera") {
-      return "Camera access was denied. Check your browser and device permissions, then try again.";
+      return "Camera access is blocked. Allow camera access for Vaani in your browser's site settings, then return and try again.";
     }
 
     return "Screen sharing was blocked or canceled by the browser.";
@@ -362,6 +362,18 @@ function ConferenceWorkspace({
 
   const localRole = localParticipant.attributes?.role ?? "participant";
   const [membershipRole, setMembershipRole] = useState(localRole);
+  const [connectionState, setConnectionState] = useState(room.state);
+
+  const updateConnectionState = useCallback(() => {
+    setConnectionState(room.state);
+  }, [room]);
+
+  useEffect(() => {
+    room.on(RoomEvent.ConnectionStateChanged, updateConnectionState);
+    return () => {
+      room.off(RoomEvent.ConnectionStateChanged, updateConnectionState);
+    };
+  }, [room, updateConnectionState]);
 
   useEffect(() => {
     let active = true;
@@ -692,15 +704,14 @@ function ConferenceWorkspace({
             {title}
           </h1>
 
-          <p className="text-xs text-white/50">
-            {remoteParticipants.length +
-              1}{" "}
-            participant
-            {remoteParticipants.length ===
-            0
-              ? ""
-              : "s"}{" "}
-            connected
+          <p className="text-xs text-white/50" role="status" aria-live="polite">
+            {connectionState === "reconnecting"
+              ? "Connection interrupted · Reconnecting…"
+              : connectionState === "disconnected"
+                ? "Connection lost · Trying to reconnect…"
+                : connectionState !== "connected"
+                  ? "Connecting to the gathering…"
+                  : `${remoteParticipants.length + 1} participant${remoteParticipants.length === 0 ? "" : "s"} connected`}
           </p>
         </div>
 

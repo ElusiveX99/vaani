@@ -87,7 +87,9 @@ async function HomeContent() {
               {relevantSessions.map((session) => (
                 <Link
                   key={session.id}
-                  href={`/sessions/${session.id}`}
+                  href={session.status === "live" && joined.has(session.id)
+                    ? `/sessions/${session.id}/conference`
+                    : `/sessions/${session.id}`}
                   className="surface-card group p-5 transition hover:border-[var(--rose)]"
                 >
                   <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
@@ -100,6 +102,9 @@ async function HomeContent() {
                       ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(session.scheduled_start_at))
                       : "Time not set"}
                   </p>
+                  {session.status === "live" && joined.has(session.id) && (
+                    <p className="mt-4 text-xs font-semibold text-[var(--plum)]">Join gathering →</p>
+                  )}
                 </Link>
               ))}
             </div>

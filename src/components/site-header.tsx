@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import ProfileAvatar from "./profile-avatar";
 import { BrandMark } from "./brand-lockup";
+import InstallVaani from "./install-vaani";
 
 type Props = {
   name: string;
@@ -41,6 +42,7 @@ export default function SiteHeader({ name, avatarUrl }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
+          <InstallVaani />
           <a href="/account" className="button-secondary !min-h-9 !gap-2 !px-3 !py-1.5 text-xs sm:!min-h-10 sm:!px-4 sm:!py-2 sm:text-sm">
             <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
             <span>Manage account</span>
