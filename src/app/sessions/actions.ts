@@ -49,7 +49,7 @@ function isValidSessionId(value: string) {
 
 async function updateSessionLifecycle(
   formData: FormData,
-  operation: "start_session" | "end_session" | "cancel_session",
+  operation: "start_session" | "end_session" | "cancel_session" | "resume_session",
   success: string,
   failure: string
 ) {
@@ -461,4 +461,8 @@ export async function cancelJoinRequest(formData: FormData) {
   revalidatePath("/sessions");
   revalidatePath(`/sessions/${sessionId}`);
   redirect(`/sessions/${sessionId}?success=join_request_cancelled`);
+}
+
+export async function resumeSession(formData: FormData) {
+  await updateSessionLifecycle(formData, "resume_session", "session_resumed", "resume_failed");
 }

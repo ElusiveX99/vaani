@@ -21,7 +21,7 @@ import {
   updateSessionDetails,
   approveJoinRequest,
   rejectJoinRequest,
-  revokeInviteLink,
+  revokeInviteLink,\n  resumeSession,
   cancelJoinRequest,
 } from "../actions";
 
@@ -52,7 +52,7 @@ type Session = {
   waiting_room_enabled: boolean;
   allow_participant_invites: boolean;
   recurrence_rule: string | null;
-  recurrence_until: string | null;
+  recurrence_until: string | null;\n  recurrence_parent_id: string | null;
 };
 
 type Membership = {
@@ -71,7 +71,7 @@ type Profile = {
 const successMessages: Record<string, string> = {
   session_started: "The session has started.",
   session_ended: "The session has ended.",
-  session_cancelled: "The session has been cancelled.",
+  session_cancelled: "The session has been cancelled.",\n  session_resumed: "The gathering has been resumed.",
   joined: "You have joined the session.",
   invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
@@ -91,7 +91,7 @@ const successMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   start_failed: "The session could not be started.",
   end_failed: "The session could not be ended.",
-  cancel_failed: "The session could not be cancelled.",
+  cancel_failed: "The session could not be cancelled.",\n  resume_failed: "The gathering could not be resumed.",
   invalid_invitee: "Enter a valid member email address.",
   invite_member_failed: "That member could not be invited.",
   invalid_invite_link: "The invitation link could not be created.",
@@ -188,7 +188,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
   const { data: sessionData, error: sessionError } = await supabase
     .from("sessions")
     .select(
-      "id, title, description, access_type, status, scheduled_start_at, started_at, ended_at, created_by, is_draft, time_zone, duration_minutes, instructions, participant_limit, waiting_room_enabled, allow_participant_invites, recurrence_rule, recurrence_until"
+      "id, title, description, access_type, status, scheduled_start_at, started_at, ended_at, created_by, is_draft, time_zone, duration_minutes, instructions, participant_limit, waiting_room_enabled, allow_participant_invites, recurrence_rule, recurrence_until, recurrence_parent_id"
     )
     .eq("id", sessionId)
     .maybeSingle();
@@ -418,7 +418,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </form>
             )}
 
-            {/* Role information */}
+            {isOrganizer && session.status === "cancelled" && session.scheduled_start_at && new Date(session.scheduled_start_at).getTime() > Date.now() && (
+              <form action={resumeSession}>
+                <input type="hidden" name="session_id" value={session.id}/>
+                <button className="button-primary">Resume gathering</button>
+              </form>
+            )}
+\n            {/* Role information */}
 
             {isOrganizer && (
               <span className="text-sm font-medium text-[var(--forest)]">
@@ -818,7 +824,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </div>
             {session.duration_minutes && <div><dt className="text-[var(--muted)]">Expected duration</dt><dd className="mt-1 text-[var(--ink)]">{session.duration_minutes} minutes</dd></div>}
             {session.instructions && <div className="sm:col-span-2"><dt className="text-[var(--muted)]">Participant instructions</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ink)]">{session.instructions}</dd></div>}
-            {session.recurrence_rule && <div><dt className="text-[var(--muted)]">Repeats</dt><dd className="mt-1 text-[var(--ink)]">{session.recurrence_rule === "DAILY" ? "Every day" : session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : session.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : session.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"} until {formatDate(session.recurrence_until, session.time_zone)}</dd></div>}
+            {session.recurrence_parent_id && <div><dt className="text-[var(--muted)]">Series</dt><dd className="mt-1 text-[var(--ink)]">This is one occurrence in a recurring gathering.</dd></div>}\n            {session.recurrence_rule && <div><dt className="text-[var(--muted)]">Repeats</dt><dd className="mt-1 text-[var(--ink)]">{session.recurrence_rule === "DAILY" ? "Every day" : session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : session.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : session.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"} until {formatDate(session.recurrence_until, session.time_zone)}</dd></div>}
 
             {session.started_at && (
               <div>
