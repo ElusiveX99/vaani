@@ -255,22 +255,21 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <h1 className="font-display text-3xl text-[var(--plum)] sm:text-4xl">Edit draft</h1>
               <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">Draft</span>
             </div>
-            <form action={updateSessionDraft} className="mt-8 grid gap-5">
+            <form action={updateSessionDetails} className="mt-8 grid gap-5 sm:grid-cols-2">
               <input type="hidden" name="session_id" value={session.id} />
               <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"} />
-              <div>
-                <label className="field-label mb-2" htmlFor="draft-title">Gathering title</label>
-                <input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input" />
-              </div>
-              <div>
-                <label className="field-label mb-2" htmlFor="draft-description">Description</label>
-                <textarea id="draft-description" name="description" rows={4} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y" />
-              </div>
-              <div className="max-w-md">
-                <label className="field-label mb-2" htmlFor="draft-start">Start date and time</label>
-                <input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" />
-              </div>
-              <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-title">Gathering title</label><input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input" /></div>
+              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-description">Description</label><textarea id="draft-description" name="description" rows={3} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y" /></div>
+              <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
+              <div><label className="field-label mb-2" htmlFor="draft-duration">Expected duration</label><select id="draft-duration" name="duration_minutes" defaultValue={session.duration_minutes ?? ""} className="field-input"><option value="">Not specified</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><select id="draft-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="invitation_only">Invite-only</option><option value="link">Anyone with an invitation link</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="draft-limit">Participant limit</label><input id="draft-limit" name="participant_limit" type="number" min="2" max="500" placeholder="No limit" defaultValue={session.participant_limit ?? ""} className="field-input" /></div>
+              <div><label className="field-label mb-2" htmlFor="draft-repeat">Repeat</label><select id="draft-repeat" name="recurrence_rule" defaultValue={session.recurrence_rule || ""} className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="draft-repeat-until">Repeat until</label><input id="draft-repeat-until" name="recurrence_until_local" type="date" defaultValue={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
+              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled} /> Use waiting room</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites} /> Allow participant invitations</label>
+              <div className="sm:col-span-2 flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <ConfirmSubmitButton
                   formAction={deleteSessionDraft}
                   name="session_id"
@@ -808,13 +807,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <input type="hidden" name="session_id" value={session.id}/>
               <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"}/>
               <div><label className="field-label mb-2" htmlFor="edit-title">Title</label><input id="edit-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input"/></div>
-              <div><label className="field-label mb-2" htmlFor="edit-start">Start date and time</label><input id="edit-start" name="scheduled_start_at" type="datetime-local" required defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="edit-start">Start date and time</label><input id="edit-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input"/></div>
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="edit-description">Description</label><textarea id="edit-description" name="description" rows={3} defaultValue={session.description || ""} className="field-input"/></div>
               <div><label className="field-label mb-2" htmlFor="edit-access">Access</label><select id="edit-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="invitation_only">Invite-only</option><option value="link">Anyone with an invitation link</option></select></div>
               <div><label className="field-label mb-2" htmlFor="edit-duration">Duration (minutes)</label><input id="edit-duration" name="duration_minutes" type="number" min="15" max="480" defaultValue={session.duration_minutes ?? ""} className="field-input"/></div>
               <div><label className="field-label mb-2" htmlFor="edit-limit">Participant limit</label><input id="edit-limit" name="participant_limit" type="number" min="2" max="500" defaultValue={session.participant_limit ?? ""} className="field-input"/></div>
               <div><label className="field-label mb-2" htmlFor="edit-repeat">Repeat</label><select id="edit-repeat" name="recurrence_rule" defaultValue={session.recurrence_rule || ""} className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div>
-              <div><label className="field-label mb-2" htmlFor="edit-repeat-until">Repeat until</label><input id="edit-repeat-until" name="recurrence_until" type="date" defaultValue={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="edit-repeat-until">Repeat until</label><input id="edit-repeat-until" name="recurrence_until_local" type="date" defaultValue={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} className="field-input"/></div>
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="edit-instructions">Participant instructions</label><textarea id="edit-instructions" name="instructions" rows={2} defaultValue={session.instructions || ""} className="field-input"/></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled}/> Use waiting room</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites}/> Allow participant invitations</label>

@@ -369,7 +369,7 @@ export async function updateSessionDetails(formData: FormData) {
   const sessionId = String(formData.get("session_id") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
+  const scheduledValue = String(formData.get("scheduled_start_local") ?? formData.get("scheduled_start_at") ?? "");
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
   if (!isValidTimeZone(timeZone)) redirect(`/sessions/${sessionId}?error=invalid_options`);
   const scheduled = parseLocalDateTime(scheduledValue, timeZone);
@@ -379,11 +379,11 @@ export async function updateSessionDetails(formData: FormData) {
   const duration = durationValue ? Number(durationValue) : null;
   const limit = limitValue ? Number(limitValue) : null;
   if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  if (!title || title.length > 120 || description.length > 2000 || !scheduledValue || Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()) redirect(`/sessions/${sessionId}?error=invalid_edit`);
+  if (!title || title.length > 120 || description.length > 2000 || (scheduledValue && (Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()))) redirect(`/sessions/${sessionId}?error=invalid_edit`);
   if (!["community","invitation_only","link"].includes(accessType)) redirect(`/sessions/${sessionId}?error=invalid_access`);
   if ((duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) || (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))) redirect(`/sessions/${sessionId}?error=invalid_options`);
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
-  const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
+  const recurrenceUntilValue = String(formData.get("recurrence_until_local") ?? formData.get("recurrence_until") ?? "");
   const recurrenceUntil = recurrenceUntilValue ? (recurrenceUntilValue.length === 10 ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : new Date(recurrenceUntilValue)) : null;
   if (recurrenceRule !== null && (!["DAILY", "WEEKLY", "BIWEEKLY", "EVERY_3_WEEKS", "EVERY_4_WEEKS", "MONTHLY"].includes(recurrenceRule) || !recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || recurrenceUntil <= scheduled || recurrenceUntil.getTime() > scheduled.getTime() + 366 * 24 * 60 * 60 * 1000)) redirect(`/sessions/${sessionId}?error=invalid_recurrence`);
   const { error } = await supabase.rpc("update_session_details", {
@@ -391,7 +391,7 @@ export async function updateSessionDetails(formData: FormData) {
     p_title: title,
     p_description: description || null,
     p_access_type: accessType,
-    p_scheduled_start_at: scheduled.toISOString(),
+    p_scheduled_start_at: scheduledValue ? scheduled.toISOString() : null,
     p_time_zone: timeZone,
     p_duration_minutes: duration,
     p_participant_limit: limit,
@@ -512,32 +512,5 @@ export async function deleteSessionDraft(formData: FormData) {
 
 
 export async function updateSessionDraft(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
-  const sessionId = String(formData.get("session_id") ?? "");
-  const title = String(formData.get("title") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
-  const localStart = String(formData.get("scheduled_start_local") ?? "");
-  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  if (!title || title.length > 120 || description.length > 2000 || !isValidTimeZone(timeZone)) {
-    redirect(`/sessions/${sessionId}?error=draft_update_failed`);
-  }
-  const scheduled = localStart ? parseLocalDateTime(localStart, timeZone) : null;
-  if (localStart && (!scheduled || Number.isNaN(scheduled.getTime()))) {
-    redirect(`/sessions/${sessionId}?error=draft_update_failed`);
-  }
-  const { error } = await supabase.rpc("update_session_draft", {
-    p_session_id: sessionId,
-    p_title: title,
-    p_description: description || null,
-    p_scheduled_start_at: scheduled?.toISOString() ?? null,
-    p_time_zone: timeZone,
-  });
-  if (error) {
-    console.error("Draft update failed:", error.code, error.message, error.details);
-    redirect(`/sessions/${sessionId}?error=draft_update_failed`);
-  }
-  revalidatePath("/sessions");
-  revalidatePath(`/sessions/${sessionId}`);
-  redirect(`/sessions/${sessionId}?success=draft_saved`);
+  return updateSessionDetails(formData);
 }
