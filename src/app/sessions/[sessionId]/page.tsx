@@ -542,6 +542,44 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </div>
           </section>
 
+          {session.status === "ended" && (
+            <section className="surface-card mt-7 border border-[var(--line)] p-6">
+              <p className="text-sm font-medium text-[var(--ink)]">
+                This gathering has ended.
+              </p>
+              {isOrganizer && (
+                <form action={deleteEndedSession} className="mt-4">
+                  <input type="hidden" name="session_id" value={session.id} />
+                  <ConfirmSubmitButton
+                    message="Permanently delete this ended gathering and its associated history? This cannot be undone."
+                    className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
+                  >
+                    Permanently delete gathering
+                  </ConfirmSubmitButton>
+                </form>
+              )}
+            </section>
+          )}
+
+          {session.status === "cancelled" && (
+            <section className="surface-card mt-7 border border-red-200 bg-[#fbefed] p-6">
+              <p className="text-sm font-medium text-red-900">
+                This gathering was cancelled.
+              </p>
+              {isOrganizer && (
+                <form action={deleteCancelledSession} className="mt-4">
+                  <input type="hidden" name="session_id" value={session.id} />
+                  <ConfirmSubmitButton
+                    message="Permanently delete this cancelled gathering and its associated records? This cannot be undone."
+                    className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-white"
+                  >
+                    Permanently delete gathering
+                  </ConfirmSubmitButton>
+                </form>
+              )}
+            </section>
+          )}
+
         {canViewInviteLinks&&(
           <section className="surface-card mt-7 p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Invitation links</h2>
