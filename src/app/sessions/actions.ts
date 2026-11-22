@@ -429,7 +429,7 @@ export async function updateSessionDetails(formData: FormData) {
   const duration = durationValue ? Number(durationValue) : null;
   const limit = limitValue ? Number(limitValue) : null;
   if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  if (!title || title.length > 120 || description.length > 2000 || (scheduledValue && (Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()))) redirect(`/sessions/${sessionId}?error=invalid_edit`);
+  if (!title || title.length > 120 || description.length > 2000 || (scheduledValue && Number.isNaN(scheduled.getTime()))) redirect(`/sessions/${sessionId}?error=invalid_edit`);
   if (!["community","link"].includes(accessType)) redirect(`/sessions/${sessionId}?error=invalid_access`);
   if ((duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) || (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))) redirect(`/sessions/${sessionId}?error=invalid_options`);
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
