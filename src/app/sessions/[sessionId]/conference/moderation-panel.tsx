@@ -6,7 +6,6 @@ import { Track } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
 import InlineFeedback from "@/components/inline-feedback";
-import InlineFeedback from "@/components/inline-feedback";
 import { getLiveKitUserId } from "@/lib/livekit/identity";
 
 type Props = {
