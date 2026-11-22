@@ -336,7 +336,7 @@ export default function ModerationPanel({
                           }
                           className="rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-200 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {busy === `${participant.identity}-role`
+                          {busy === `${targetUserId}-role`
                             ? "Updating..."
                             : targetRole === "admin"
                               ? "Remove admin"
@@ -356,7 +356,7 @@ export default function ModerationPanel({
                           }
                           className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {busy === `${participant.identity}-reader`
+                          {busy === `${targetUserId}-reader`
                             ? "Updating..."
                             : readerAccess[targetUserId]
                               ? "Revoke reader control"

@@ -362,6 +362,7 @@ function ConferenceWorkspace({
 
   const localRole = localParticipant.attributes?.role ?? "participant";
   const [membershipRole, setMembershipRole] = useState(localRole);
+  const [membershipCanControlReader, setMembershipCanControlReader] = useState(canControlReader);
   const [connectionState, setConnectionState] = useState(room.state);
 
   const updateConnectionState = useCallback(() => {
@@ -384,13 +385,21 @@ function ConferenceWorkspace({
     const refreshRole = async () => {
       const { data, error } = await supabase
         .from("session_members")
-        .select("role, status")
+        .select("role, status, can_control_reader")
         .eq("session_id", sessionId)
         .eq("user_id", identity)
         .maybeSingle();
 
       if (!active || error) return;
-      setMembershipRole(data?.status === "accepted" ? data.role : "participant");
+      const accepted = data?.status === "accepted";
+      setMembershipRole(accepted ? data.role : "participant");
+      setMembershipCanControlReader(
+        accepted && (
+          data.role === "organizer" ||
+          data.role === "in_charge" ||
+          (data.role === "admin" && data.can_control_reader === true)
+        )
+      );
     };
 
     void refreshRole();
@@ -425,6 +434,8 @@ function ConferenceWorkspace({
     isOrganizer ||
     membershipRole === "in_charge" ||
     membershipRole === "admin";
+  const canManageDocuments = canManageParticipants;
+  const canControlReader = membershipCanControlReader;
 
   const handleDocumentAvailabilityChange =
     useCallback(
