@@ -7,6 +7,7 @@ import SessionMembers from "./session-members";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import SiteHeader from "@/components/site-header";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
+import CopyInviteLink from "./copy-invite-link";
 
 import {
   joinCommunitySession,
@@ -16,8 +17,6 @@ import {
   endSession,
   cancelSession,
   createInviteLink,
-  inviteSessionMember,
-  revokeMemberInvitation,
   publishSessionDraft,
   updateSessionDetails,
   approveJoinRequest,
@@ -44,7 +43,7 @@ type Session = {
   id: string;
   title: string;
   description: string | null;
-  access_type: "community" | "invitation_only" | "link";
+  access_type: "community" | "link";
   status: "scheduled" | "live" | "ended" | "cancelled";
   scheduled_start_at: string | null;
   started_at: string | null;
@@ -83,10 +82,6 @@ const successMessages: Record<string, string> = {
   joined: "You have joined the session.",
   invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
-  invite_link_created: "Invitation link created. Copy it below.",
-  member_invited: "The Vaani member has been invited.",
-  invitation_revoked: "The invitation has been revoked.",
-  joined_by_invite: "You have joined the gathering.",
   draft_saved: "Your draft has been saved.",
   published: "Your gathering has been published.",
   session_updated: "Gathering details updated.",
@@ -106,10 +101,8 @@ const errorMessages: Record<string, string> = {
   draft_update_failed: "The draft could not be saved. Please try again.",
   resume_failed: "The gathering could not be resumed.",
 
-  invite_member_failed: "That Vaani member could not be invited.",
   invalid_invite_link: "The invitation link could not be created.",
   invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
-  revoke_invitation_failed: "The invitation could not be revoked.",
   publish_failed: "The draft could not be published. Check that its start time is in the future.",
   invalid_edit: "Check the title, access, and future start time.",
   update_failed: "The gathering could not be updated.",
@@ -265,7 +258,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-description">Description</label><textarea id="draft-description" name="description" rows={3} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y" /></div>
               <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
               <div><label className="field-label mb-2" htmlFor="draft-duration">Expected duration</label><select id="draft-duration" name="duration_minutes" defaultValue={session.duration_minutes ?? ""} className="field-input"><option value="">Not specified</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></div>
-              <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><select id="draft-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="invitation_only">Invite-only</option><option value="link">Anyone with an invitation link</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><select id="draft-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="link">Anyone with an invitation link</option></select></div>
               <div><label className="field-label mb-2" htmlFor="draft-limit">Participant limit</label><input id="draft-limit" name="participant_limit" type="number" min="2" max="500" placeholder="No limit" defaultValue={session.participant_limit ?? ""} className="field-input" /></div>
               <div><label className="field-label mb-2" htmlFor="draft-repeat">Repeat</label><select id="draft-repeat" name="recurrence_rule" defaultValue={session.recurrence_rule || ""} className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div>
               <div><label className="field-label mb-2" htmlFor="draft-repeat-until">Repeat until</label><input id="draft-repeat-until" name="recurrence_until_local" type="date" defaultValue={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
@@ -336,9 +329,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
     joinRequests = requests ?? [];
   }
   const memberIds = [...new Set([...members.map((member) => member.user_id), ...joinRequests.map((request) => request.user_id)])];
-  const { data: invitableProfiles } = canManage ? await supabase
-    .from("profiles").select("id, display_name").neq("id", userId)
-    .order("display_name", { ascending: true }).limit(250) : { data: [] };
   if (memberIds.length > 0) {
     const { data: profileData } = await supabase.from("profiles")
       .select("id, display_name, avatar_url, avatar_path").in("id", memberIds);
@@ -358,11 +348,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
     .eq("session_id", session.id)
     .order("created_at", { ascending: false }) : { data: [] };
 
-  const { data: invitations } = canManage ? await supabase
-    .from("session_invitations")
-    .select("id, user_id, status, created_at, responded_at")
-    .eq("session_id", session.id)
-    .order("created_at", { ascending: false }) : { data: [] };
 
   const acceptedCount = members.filter(
     (member) => member.status === "accepted"
@@ -376,19 +361,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
 
 
-        {paramsData.success &&
-          successMessages[paramsData.success] && (
-            <div className="mt-6 rounded-lg border border-[#d4e1d1] bg-[#edf3eb] p-4 text-sm text-[var(--forest)]">
-              {successMessages[paramsData.success]}
-            </div>
-          )}
 
 
         <section className="surface-card mt-8 p-6 sm:p-9">
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-medium text-[var(--ink)]">
-              {session.access_type === "community" ? "Community session" : session.access_type === "link" ? "Invitation link" : "Invitation only"}
+              {session.access_type === "community" ? "All Vaani members" : "Invitation link"}
             </span>
 
             <span
@@ -703,103 +682,44 @@ async function SessionContent({ params, searchParams }: PageProps) {
         </section>
 
 
-        {canManage && session.status !== "ended" && session.status !== "cancelled" && !session.is_draft && (
+        {canManage && !session.is_draft && session.status !== "ended" && session.status !== "cancelled" && (
           <section className="surface-card mt-7 p-6 sm:p-8">
-            <div>
-              <h2 className="text-xl font-semibold">Invite Sakhis</h2>
-              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                Select a Vaani member to send a private invitation.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Invitation links</h2>
+              <span className="text-xs text-[var(--muted)]">Share privately with the intended participants</span>
             </div>
-
-            {["invite_link_failed","invalid_invite_link","invite_member_failed","revoke_invitation_failed"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && (
-              <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>
+            {["invite_link_failed","invalid_invite_link"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && (
+              <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-[#fbefed] p-3 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</p>
             )}
-
-            <div className={`mt-6 grid gap-6 ${session.access_type === "link" ? "lg:grid-cols-2" : ""}`}>
-              <div className="rounded-xl border border-[var(--line)] p-5">
-                <h3 className="font-semibold">Invite a member</h3>
-                <form action={inviteSessionMember} className="mt-4 flex flex-col gap-3">
-                  <input type="hidden" name="session_id" value={session.id} />
-                  <select name="user_id" required defaultValue="" className="field-input">
-                    <option value="" disabled>Select a Vaani member</option>
-                    {(invitableProfiles ?? []).map((profile: {id:string;display_name:string|null}) => (
-                      <option key={profile.id} value={profile.id}>{profile.display_name || "Vaani member"}</option>
-                    ))}
-                  </select>
-                  <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Send invitation</button>
-                </form>
-              </div>
-
-              {session.access_type === "link" && (
-              <div className="rounded-xl border border-[var(--line)] p-5">
-                <h3 className="font-semibold">Create invitation link</h3>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  Anyone with the link can use it while it is valid. They still need a Vaani account.
-                </p>
-                {["invite_link_failed","invalid_invite_link"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-[#fbefed] p-3 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>}
-            <form action={createInviteLink} className="mt-4 space-y-3">
-                  <input type="hidden" name="session_id" value={session.id} />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <select name="expiry_hours" defaultValue="168" className="field-input">
-                      <option value="24">Expires in 24 hours</option>
-                      <option value="72">Expires in 3 days</option>
-                      <option value="168">Expires in 7 days</option>
-                      <option value="720">Expires in 30 days</option>
-                      <option value="0">No expiry</option>
-                    </select>
-                    <input name="max_uses" type="number" min="1" max="500" placeholder="Uses: unlimited" className="field-input" />
-                  </div>
-                  <input name="label" maxLength={80} placeholder="Optional label, e.g. Sakhi Sang" className="field-input" />
-                  <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Create link</button>
-                </form>
-              </div>
-              )}
-            </div>
-
-            {paramsData.success === "invite_link_created" && paramsData.invite && (
-              <div className="mt-5 rounded-xl border border-[#d4e1d1] bg-[#edf3eb] p-5">
-                <p className="text-sm font-medium text-[var(--forest)]">Invitation link</p>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-xs" aria-label="Invitation link" /><span className="text-xs text-[var(--muted)]">Select and copy the link to share it.</span></div>
-                <p className="mt-2 text-xs text-[var(--muted)]">Copy this link and share it with the intended participants.</p>
+            <form action={createInviteLink} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+              <input type="hidden" name="session_id" value={session.id} />
+              <select name="expiry_hours" defaultValue="168" className="field-input" aria-label="Link expiry">
+                <option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option><option value="720">30 days</option><option value="0">No expiry</option>
+              </select>
+              <input name="max_uses" type="number" min="1" max="500" placeholder="Unlimited uses" className="field-input" aria-label="Maximum uses" />
+              <button className="button-primary">Create link</button>
+            </form>
+            {paramsData.invite && (
+              <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                <label className="field-label mb-2" htmlFor="generated-invite-link">Ready to share</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input id="generated-invite-link" readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" />
+                  <CopyInviteLink value={paramsData.invite} />
+                </div>
               </div>
             )}
-
-            {((inviteLinks ?? []).length > 0 || (invitations ?? []).length > 0) && (
-              <div className="mt-6 space-y-5">
+            {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).length > 0 && (
+              <div className="mt-5 space-y-3">
                 {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).map((link: any) => (
-                  <div key={link.id} className="flex flex-col gap-2 rounded-xl border border-[var(--line)] p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">{link.label || "Invitation link"}</p>
-                      <p className="mt-1 text-xs text-[var(--muted)]">
-                        {link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}
-                        {link.expires_at ? ` · expires ${formatDate(link.expires_at, session.time_zone)}` : " · no expiry"}
-                      </p>
-                    </div>
-                    <form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke link</button></form>
-                  </div>
-                ))}
-
-                {(invitations ?? []).map((invitation: any) => (
-                  <div key={invitation.id} className="flex flex-col gap-3 rounded-xl border border-[var(--line)] p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{profileMap.get(invitation.user_id)?.display_name ?? "Vaani member"}</p>
-                      <p className="mt-1 text-xs capitalize text-[var(--muted)]">{invitation.status}</p>
-                    </div>
-                    {invitation.status === "pending" && invitation.user_id && (
-                      <form action={revokeMemberInvitation}>
-                        <input type="hidden" name="session_id" value={session.id} />
-                        <input type="hidden" name="user_id" value={invitation.user_id} />
-                        <button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke</button>
-                      </form>
-                    )}
+                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] p-4 text-sm">
+                    <div><p className="font-medium">{link.label || "Invitation link"}</p><p className="mt-1 text-xs text-[var(--muted)]">{link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}{link.expires_at ? ` · expires ${formatDate(link.expires_at, session.time_zone)}` : " · no expiry"}</p></div>
+                    <form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke</button></form>
                   </div>
                 ))}
               </div>
             )}
           </section>
         )}
-
         {canManage && session.waiting_room_enabled && (
           <section className="surface-card mt-7 p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Join requests</h2>
@@ -886,7 +806,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </dt>
 
               <dd className="mt-1 text-[var(--ink)]">
-                {session.access_type === "community" ? "All Vaani members" : session.access_type === "link" ? "Invitation link" : "Invite-only"}
+                {session.access_type === "community" ? "All Vaani members" : "Invitation link"}
               </dd>
             </div>
 

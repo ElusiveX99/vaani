@@ -103,7 +103,7 @@ export async function createSession(formData: FormData) {
     redirect("/sessions/new?error=invalid_input");
   }
 
-  if (accessType !== "community" && accessType !== "invitation_only" && accessType !== "link") {
+  if (accessType !== "community" && accessType !== "link") {
     redirect("/sessions/new?error=invalid_access");
   }
 
@@ -289,45 +289,6 @@ export async function createInviteLink(formData: FormData) {
   redirect(`/sessions/${sessionId}?success=invite_link_created&invite=${encodeURIComponent(inviteUrl)}`);
 }
 
-export async function inviteSessionMember(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
-  const sessionId = String(formData.get("session_id") ?? "");
-  const userId = String(formData.get("user_id") ?? "");
-  if (!isValidSessionId(sessionId) || !isValidSessionId(userId)) redirect("/sessions?error=invalid_session");
-  const { error } = await supabase.rpc("invite_session_member", {
-    p_session_id: sessionId,
-    p_user_id: userId,
-  });
-  if (error) {
-    console.error("Member invitation failed:", error.code, error.message, error.details);
-    redirect(`/sessions/${sessionId}?error=invite_member_failed`);
-  }
-  revalidatePath(`/sessions/${sessionId}`);
-  revalidatePath("/sessions");
-  redirect(`/sessions/${sessionId}?success=member_invited`);
-}
-
-export async function revokeMemberInvitation(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
-  const sessionId = String(formData.get("session_id") ?? "");
-  const userId = String(formData.get("user_id") ?? "");
-
-  if (!isValidSessionId(sessionId) || !isValidSessionId(userId)) {
-    redirect("/sessions?error=invalid_session");
-  }
-
-  const { error } = await supabase.rpc("revoke_session_invitation", {
-    p_session_id: sessionId,
-    p_user_id: userId,
-  });
-
-  if (error) redirect(`/sessions/${sessionId}?error=revoke_invitation_failed`);
-
-  revalidatePath(`/sessions/${sessionId}`);
-  revalidatePath("/sessions");
-  redirect(`/sessions/${sessionId}?success=invitation_revoked`);
-}
-
 export async function redeemInviteLink(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const token = String(formData.get("token") ?? "").trim();
@@ -376,7 +337,7 @@ export async function updateSessionDetails(formData: FormData) {
   const limit = limitValue ? Number(limitValue) : null;
   if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
   if (!title || title.length > 120 || description.length > 2000 || (scheduledValue && (Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()))) redirect(`/sessions/${sessionId}?error=invalid_edit`);
-  if (!["community","invitation_only","link"].includes(accessType)) redirect(`/sessions/${sessionId}?error=invalid_access`);
+  if (!["community","link"].includes(accessType)) redirect(`/sessions/${sessionId}?error=invalid_access`);
   if ((duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) || (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))) redirect(`/sessions/${sessionId}?error=invalid_options`);
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
   const recurrenceUntilValue = String(formData.get("recurrence_until_local") ?? formData.get("recurrence_until") ?? "");

@@ -120,7 +120,6 @@ export default function CreateSessionForm({ action, error }: Props) {
           <label htmlFor="access_type" className="field-label mb-2">Who can join?</label>
           <select id="access_type" name="access_type" defaultValue="community" className="field-input">
             <option value="community">All Vaani members</option>
-            <option value="invitation_only">Invite-only</option>
             <option value="link">Anyone with an invitation link</option>
           </select>
         </div>
