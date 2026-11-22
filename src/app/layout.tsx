@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import FormPendingFeedback from "@/components/form-pending-feedback";
+import ToastViewport from "@/components/toast-viewport";
 
 const display = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <SessionRealtimeRefresh />
         <FormPendingFeedback />
+        <ToastViewport />
         {children}
       </body>
     </html>
