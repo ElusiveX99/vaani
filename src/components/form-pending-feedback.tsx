@@ -17,7 +17,7 @@ export default function FormPendingFeedback() {
       const saved = JSON.parse(raw) as { y: number; path: string; focusId?: string; focusName?: string };
       if (saved.path !== window.location.pathname) return;
       requestAnimationFrame(() => {
-        window.scrollTo({ top: saved.y, behavior: "instant" as ScrollBehavior });
+        window.scrollTo(0, saved.y);
         const target = saved.focusId
           ? document.getElementById(saved.focusId)
           : saved.focusName
