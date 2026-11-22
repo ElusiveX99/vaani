@@ -122,14 +122,14 @@ function SessionCard({
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
-          {session.access_type === "community" ? "Open to all members" : session.access_type === "link" ? "Invitation link" : "Invitation only"}
+          {!session.is_draft && (session.access_type === "community" ? "Open to all members" : session.access_type === "link" ? "Invitation link" : "Invitation only")}
         </span>
 
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
-          {formatSchedule(session.scheduled_start_at)}
+          {session.scheduled_start_at ? formatSchedule(session.scheduled_start_at) : null}
         </span>
 
-        {membership && (
+        {membership && !session.is_draft && (
           <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
             {membership.role.replace("_", " ")}
           </span>
@@ -143,7 +143,7 @@ function SessionCard({
 	>
 	  View details
 	</a>
-        {isOrganizer && (
+        {isOrganizer && !session.is_draft && (
           <span className="text-sm font-medium text-[var(--forest)]">
             You organize this session.
           </span>
