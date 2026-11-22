@@ -90,7 +90,7 @@ const SynchronizedReader = memo(
 
     const room = useRoomContext();
     const { localParticipant } = useLocalParticipant();
-    const localUserId = localParticipant.attributes?.user_id ?? localUserId;
+    const localUserId = localParticipant.attributes?.user_id ?? localParticipant.identity;
     const remoteParticipants = useRemoteParticipants();
 
     const [syncStatus, setSyncStatus] =
