@@ -292,3 +292,31 @@ main:has(> .site-mobile-header) { padding-bottom: calc(4.8rem + env(safe-area-in
   .site-account-link { padding: .45rem; }
   main:has(> .site-mobile-header) { padding-left: 16rem; }
 }
+
+/* Immediate, accessible feedback for server-backed form submissions. */
+form[data-submitting="true"] button[data-submitting="true"] {
+  cursor: progress;
+  opacity: .86;
+  pointer-events: none;
+}
+form[data-submitting="true"] button:not([data-submitting="true"])[type="submit"],
+form[data-submitting="true"] button:not([data-submitting="true"]):not([type]) {
+  cursor: not-allowed;
+  opacity: .55;
+}
+button[data-submitting="true"]::before {
+  content: "";
+  display: inline-block;
+  width: .9em;
+  height: .9em;
+  margin-right: .55em;
+  vertical-align: -.08em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  animation: vaani-submit-spin .7s linear infinite;
+}
+@keyframes vaani-submit-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  button[data-submitting="true"]::before { animation-duration: 1.8s; }
+}

@@ -16,7 +16,7 @@ import {
   endSession,
   cancelSession,
   createInviteLink,
-  inviteMemberByEmail,
+  inviteSessionMember,
   revokeMemberInvitation,
   publishSessionDraft,
   updateSessionDetails,
@@ -26,6 +26,7 @@ import {
   resumeSession,
   cancelJoinRequest,
   deleteEndedSession,
+  deleteCancelledSession,
   deleteSessionDraft,
   updateSessionDraft,
 } from "../actions";
@@ -100,11 +101,12 @@ const errorMessages: Record<string, string> = {
   end_failed: "The session could not be ended.",
   cancel_failed: "The session could not be cancelled.",
   delete_failed: "This ended gathering could not be permanently deleted.",
+  delete_cancelled_failed: "This cancelled gathering could not be permanently deleted.",
   draft_delete_failed: "This draft could not be deleted.",
   draft_update_failed: "The draft could not be saved. Please try again.",
   resume_failed: "The gathering could not be resumed.",
-  invalid_invitee: "Enter a valid member email address.",
-  invite_member_failed: "That member could not be invited.",
+
+  invite_member_failed: "That Vaani member could not be invited.",
   invalid_invite_link: "The invitation link could not be created.",
   invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
   revoke_invitation_failed: "The invitation could not be revoked.",
@@ -251,6 +253,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
           )}
 
           <section className="surface-card mt-6 p-6 sm:p-9">
+            {["invalid_edit","update_failed","invalid_options","invalid_recurrence","publish_failed","draft_delete_failed"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="font-display text-3xl text-[var(--plum)] sm:text-4xl">Edit draft</h1>
               <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">Draft</span>
@@ -333,6 +336,9 @@ async function SessionContent({ params, searchParams }: PageProps) {
     joinRequests = requests ?? [];
   }
   const memberIds = [...new Set([...members.map((member) => member.user_id), ...joinRequests.map((request) => request.user_id)])];
+  const { data: invitableProfiles } = canManage ? await supabase
+    .from("profiles").select("id, display_name").neq("id", userId)
+    .order("display_name", { ascending: true }).limit(250) : { data: [] };
   if (memberIds.length > 0) {
     const { data: profileData } = await supabase.from("profiles")
       .select("id, display_name, avatar_url, avatar_path").in("id", memberIds);
@@ -354,7 +360,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
   const { data: invitations } = canManage ? await supabase
     .from("session_invitations")
-    .select("id, user_id, email, status, created_at, responded_at")
+    .select("id, user_id, status, created_at, responded_at")
     .eq("session_id", session.id)
     .order("created_at", { ascending: false }) : { data: [] };
 
@@ -377,12 +383,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </div>
           )}
 
-        {paramsData.error &&
-          errorMessages[paramsData.error] && (
-            <div className="mt-6 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
-              {errorMessages[paramsData.error]}
-            </div>
-          )}
 
         <section className="surface-card mt-8 p-6 sm:p-9">
 
@@ -441,6 +441,9 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-6">
+            {["start_failed","end_failed","cancel_failed","resume_failed","delete_failed"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && (
+              <div role="alert" className="w-full rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>
+            )}
 
             {/* Organizer lifecycle controls */}
 
@@ -674,9 +677,16 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
             {session.status === "cancelled" && (
               <div className="w-full rounded-lg border border-red-200 bg-[#fbefed] p-4">
-                <p className="text-sm font-medium text-red-900">
-                  This session was cancelled.
-                </p>
+                <p className="text-sm font-medium text-red-900">This session was cancelled.</p>
+                {isOrganizer && (
+                  <form action={deleteCancelledSession} className="mt-4">
+                    <input type="hidden" name="session_id" value={session.id} />
+                    <ConfirmSubmitButton message="Permanently delete this cancelled gathering and its associated records? This cannot be undone." className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]">
+                      Permanently delete gathering
+                    </ConfirmSubmitButton>
+                  </form>
+                )}
+                {paramsData.error === "delete_cancelled_failed" && <p role="alert" className="mt-3 text-sm text-red-800">{errorMessages.delete_cancelled_failed}</p>}
               </div>
             )}
 
@@ -698,29 +708,37 @@ async function SessionContent({ params, searchParams }: PageProps) {
             <div>
               <h2 className="text-xl font-semibold">Invite Sakhis</h2>
               <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                Find an existing Vaani member by email or create a secure invitation link. Members receive an in-app notification.
+                Select a Vaani member to send a private invitation.
               </p>
             </div>
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            {["invite_link_failed","invalid_invite_link","invite_member_failed","revoke_invitation_failed"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && (
+              <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>
+            )}
+
+            <div className="mt-6 grid gap-6 ${session.access_type === "link" ? "lg:grid-cols-2" : ""}">
               <div className="rounded-xl border border-[var(--line)] p-5">
-                <h3 className="font-semibold">Invite by email</h3>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  The email must belong to an existing Vaani account.
-                </p>
-                <form action={inviteMemberByEmail} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <h3 className="font-semibold">Invite a member</h3>
+                <form action={inviteSessionMember} className="mt-4 flex flex-col gap-3">
                   <input type="hidden" name="session_id" value={session.id} />
-                  <input name="email" type="email" required placeholder="member@example.com" className="field-input min-w-0 flex-1" />
-                  <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Invite</button>
+                  <select name="user_id" required defaultValue="" className="field-input">
+                    <option value="" disabled>Select a Vaani member</option>
+                    {(invitableProfiles ?? []).map((profile: {id:string;display_name:string|null}) => (
+                      <option key={profile.id} value={profile.id}>{profile.display_name || "Vaani member"}</option>
+                    ))}
+                  </select>
+                  <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Send invitation</button>
                 </form>
               </div>
 
+              {session.access_type === "link" && (
               <div className="rounded-xl border border-[var(--line)] p-5">
                 <h3 className="font-semibold">Create invitation link</h3>
                 <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
                   Anyone with the link can use it while it is valid. They still need a Vaani account.
                 </p>
-                <form action={createInviteLink} className="mt-4 space-y-3">
+                {["invite_link_failed","invalid_invite_link"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-[#fbefed] p-3 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>}
+            <form action={createInviteLink} className="mt-4 space-y-3">
                   <input type="hidden" name="session_id" value={session.id} />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <select name="expiry_hours" defaultValue="168" className="field-input">
@@ -736,12 +754,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
                   <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Create link</button>
                 </form>
               </div>
+              )}
             </div>
 
             {paramsData.success === "invite_link_created" && paramsData.invite && (
               <div className="mt-5 rounded-xl border border-[#d4e1d1] bg-[#edf3eb] p-5">
                 <p className="text-sm font-medium text-[var(--forest)]">Invitation link</p>
-                <input readOnly value={paramsData.invite} className="field-input mt-3 text-xs" onFocus={(event) => event.currentTarget.select()} />
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-xs" aria-label="Invitation link" /><span className="text-xs text-[var(--muted)]">Select and copy the link to share it.</span></div>
                 <p className="mt-2 text-xs text-[var(--muted)]">Copy this link and share it with the intended participants.</p>
               </div>
             )}
@@ -764,7 +783,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 {(invitations ?? []).map((invitation: any) => (
                   <div key={invitation.id} className="flex flex-col gap-3 rounded-xl border border-[var(--line)] p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-medium">{invitation.email}</p>
+                      <p className="text-sm font-medium">{profileMap.get(invitation.user_id)?.display_name ?? "Vaani member"}</p>
                       <p className="mt-1 text-xs capitalize text-[var(--muted)]">{invitation.status}</p>
                     </div>
                     {invitation.status === "pending" && invitation.user_id && (
@@ -803,6 +822,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
         {isOrganizer && session.status === "scheduled" && !session.is_draft && (
           <section className="surface-card mt-7 p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Edit gathering</h2>
+            {["invalid_edit","update_failed","invalid_options","invalid_recurrence"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>}
             <form action={updateSessionDetails} className="mt-5 grid gap-4 sm:grid-cols-2">
               <input type="hidden" name="session_id" value={session.id}/>
               <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"}/>
@@ -823,7 +843,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </section>
         )}
 
-        {isAccepted && session.allow_participant_invites && !canManage && session.status !== "ended" && session.status !== "cancelled" && (
+        {isAccepted && session.access_type === "link" && session.allow_participant_invites && !canManage && session.status !== "ended" && session.status !== "cancelled" && (
           <section className="surface-card mt-7 p-6">
             <h2 className="text-lg font-semibold">Invite someone</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">The organizer has allowed participants to share invitation links.</p>
@@ -835,7 +855,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </div>
               <button className="button-primary">Create invitation link</button>
             </form>
-            {paramsData.success === "invite_link_created" && paramsData.invite && <div className="mt-4"><input readOnly value={paramsData.invite} className="field-input text-xs" onFocus={(event)=>event.currentTarget.select()}/><p className="mt-2 text-xs text-[var(--muted)]">Copy and share this link.</p></div>}
+            {paramsData.success === "invite_link_created" && paramsData.invite && <div className="mt-4"><input readOnly value={paramsData.invite} className="field-input text-xs" aria-label="Invitation link"/><p className="mt-2 text-xs text-[var(--muted)]">Copy and share this link.</p></div>}
           </section>
         )}
 

@@ -147,11 +147,11 @@ export default function CreateSessionForm({ action, error }: Props) {
           <textarea id="instructions" name="instructions" maxLength={2000} rows={3} placeholder="Anything participants should know before joining" className="field-input min-h-24 resize-y" />
         </div>
         <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <button type="submit" name="intent" value="draft" disabled={submitting} className="button-secondary">
-            Save as draft
-          </button>
           <button type="submit" name="intent" value="publish" disabled={submitting} className="button-primary">
             {submitting ? "Saving..." : "Schedule gathering"}
+          </button>
+          <button type="submit" name="intent" value="draft" disabled={submitting} className="button-secondary">
+            {submitting ? "Saving..." : "Save as draft"}
           </button>
         </div>
       </section>

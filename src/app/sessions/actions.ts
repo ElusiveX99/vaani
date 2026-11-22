@@ -289,23 +289,19 @@ export async function createInviteLink(formData: FormData) {
   redirect(`/sessions/${sessionId}?success=invite_link_created&invite=${encodeURIComponent(inviteUrl)}`);
 }
 
-export async function inviteMemberByEmail(formData: FormData) {
+export async function inviteSessionMember(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const sessionId = String(formData.get("session_id") ?? "");
-  const email = String(formData.get("email") ?? "").trim();
-
-  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  if (!email || email.length > 320) redirect(`/sessions/${sessionId}?error=invalid_invitee`);
-
-  const { error } = await supabase.rpc("invite_user_to_session", {
+  const userId = String(formData.get("user_id") ?? "");
+  if (!isValidSessionId(sessionId) || !isValidSessionId(userId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("invite_session_member", {
     p_session_id: sessionId,
-    p_email: email,
+    p_user_id: userId,
   });
-
   if (error) {
+    console.error("Member invitation failed:", error.code, error.message, error.details);
     redirect(`/sessions/${sessionId}?error=invite_member_failed`);
   }
-
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath("/sessions");
   redirect(`/sessions/${sessionId}?success=member_invited`);
@@ -490,6 +486,20 @@ export async function deleteEndedSession(formData: FormData) {
   redirect("/sessions?success=session_deleted");
 }
 
+
+export async function deleteCancelledSession(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("delete_cancelled_session", { p_session_id: sessionId });
+  if (error) {
+    console.error("Cancelled gathering deletion failed:", error.code, error.message, error.details);
+    redirect(`/sessions/${sessionId}?error=delete_cancelled_failed`);
+  }
+  revalidatePath("/sessions");
+  revalidatePath("/home");
+  redirect("/sessions?success=session_deleted");
+}
 
 export async function deleteSessionDraft(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
