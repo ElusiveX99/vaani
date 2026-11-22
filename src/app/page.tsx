@@ -30,7 +30,7 @@ export default function LandingPage() {
           <div className="max-w-2xl">
             <p className="eyebrow">Shree Harivansh</p>
             <h1 className="font-display mt-6 max-w-xl text-5xl leading-[1.04] text-[var(--plum)] sm:text-6xl lg:text-7xl">
-              श्री हित Chaturasi Ji Gaayan
+              Vaani Gaayan
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
               A quiet space for Sakhis to gather for Chaturasi Ji gaayan and Vaani paath.
