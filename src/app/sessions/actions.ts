@@ -67,8 +67,6 @@ export async function createSession(formData: FormData) {
   const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
   const scheduledStart = scheduledValue ? new Date(scheduledValue) : null;
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
-  const gatheringType = String(formData.get("gathering_type") ?? "");
-  const language = String(formData.get("language") ?? "").trim();
   const instructions = String(formData.get("instructions") ?? "").trim();
   const durationValue = String(formData.get("duration_minutes") ?? "");
   const participantLimitValue = String(formData.get("participant_limit") ?? "");
@@ -79,18 +77,13 @@ export async function createSession(formData: FormData) {
     redirect("/sessions/new?error=invalid_input");
   }
 
-  if (accessType !== "community" && accessType !== "invitation_only") {
+  if (accessType !== "community" && accessType !== "invitation_only" && accessType !== "link") {
     redirect("/sessions/new?error=invalid_access");
-  }
-
-  if (!["chaturasi_gaayan", "vaani_paath", "other"].includes(gatheringType)) {
-    redirect("/sessions/new?error=invalid_type");
   }
 
   if (
     timeZone.length < 1 ||
     timeZone.length > 80 ||
-    (language && language.length > 40) ||
     (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
     (participantLimit !== null && (!Number.isInteger(participantLimit) || participantLimit < 2 || participantLimit > 500))
   ) {
@@ -112,8 +105,6 @@ export async function createSession(formData: FormData) {
       scheduled_start_at: scheduledStart?.toISOString() ?? null,
       time_zone: timeZone,
       duration_minutes: duration,
-      gathering_type: gatheringType,
-      language: language || null,
       instructions: instructions || null,
       participant_limit: participantLimit,
       waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
