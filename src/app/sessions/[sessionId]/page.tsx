@@ -88,7 +88,10 @@ const errorMessages: Record<string, string> = {
   invite_member_failed: "That member could not be invited.",
   invalid_invite_link: "The invitation link could not be created.",
   invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
-  revoke_invitation_failed: "The invitation could not be revoked.",\n  publish_failed: "The draft could not be published. Check that its start time is in the future.",\n  invalid_edit: "Check the title, access, and future start time.",\n  update_failed: "The gathering could not be updated.",
+  revoke_invitation_failed: "The invitation could not be revoked.",
+  publish_failed: "The draft could not be published. Check that its start time is in the future.",
+  invalid_edit: "Check the title, access, and future start time.",
+  update_failed: "The gathering could not be updated.",
 };
 
 function formatDate(value: string | null) {
@@ -585,7 +588,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
             <form action={publishSessionDraft} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><button className="button-primary">Publish gathering</button></form>
           </section>
         )}
-\n        {canManage && session.status !== "ended" && session.status !== "cancelled" && !session.is_draft && (
+
+        {canManage && session.status !== "ended" && session.status !== "cancelled" && !session.is_draft && (
           <section className="surface-card mt-7 p-6 sm:p-8">
             <div>
               <h2 className="text-xl font-semibold">Invite Sakhis</h2>
