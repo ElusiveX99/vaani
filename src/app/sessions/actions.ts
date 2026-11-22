@@ -176,33 +176,6 @@ export async function joinCommunitySession(formData: FormData) {
   redirect(`/sessions?success=${sessionInfo?.waiting_room_enabled ? "join_request_sent" : "joined"}`);
 }
 
-export async function respondToInvitation(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
-
-  const sessionId = String(formData.get("session_id") ?? "");
-  const accept = String(formData.get("accept") ?? "") === "true";
-
-  if (!isValidSessionId(sessionId)) {
-    redirect("/sessions?error=invalid_session");
-  }
-
-  const { error } = await supabase.rpc(
-    "respond_to_session_invitation",
-    {
-      p_session_id: sessionId,
-      p_accept: accept,
-    }
-  );
-
-  if (error) {
-    redirect("/sessions?error=invitation_failed");
-  }
-
-  revalidatePath("/sessions");
-  revalidatePath(`/sessions/${sessionId}`);
-  redirect("/sessions?success=invitation_updated");
-}
-
 export async function leaveSession(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
 

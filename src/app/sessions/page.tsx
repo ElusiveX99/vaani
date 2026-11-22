@@ -8,7 +8,6 @@ import Link from "next/link";
 
 import {
   joinCommunitySession,
-  respondToInvitation,
   leaveSession,
   markSessionNotificationRead,
 } from "./actions";
@@ -42,7 +41,6 @@ const successMessages: Record<string, string> = {
   created: "Your gathering has been scheduled.",
   draft_saved: "Your gathering draft has been saved.",
   joined: "You have joined the session.",
-  invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
   join_request_sent: "Your request has been sent to the organizer.",
   notification_read: "Notification marked as read.",
@@ -56,7 +54,6 @@ const errorMessages: Record<string, string> = {
   invalid_schedule: "Choose a future start date and time.",
   create_failed: "The session could not be created.",
   join_failed: "You could not join this session.",
-  invitation_failed: "Your invitation response could not be saved.",
   leave_failed: "You could not leave this session.",
   notification_failed: "The notification could not be updated.",
 };
@@ -85,14 +82,12 @@ function SessionCard({
   membership?: Membership;
 }) {
   const isOrganizer = membership?.role === "organizer";
-  const isInvited = membership?.status === "invited";
   const isAccepted = membership?.status === "accepted";
 
   const canJoin =
     session.status !== "ended" &&
     session.access_type === "community" &&
     (!membership ||
-      membership.status === "declined" ||
       membership.status === "removed");
 
   return (
@@ -127,7 +122,7 @@ function SessionCard({
         </span>
 
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
-          {session.scheduled_start_at ? formatSchedule(session.scheduled_start_at) : null}
+          {session.scheduled_start_at ? formatSchedule(session.scheduled_start_at) : "Time not set"}
         </span>
 
         {membership && !session.is_draft && (
@@ -148,42 +143,6 @@ function SessionCard({
           <span className="text-sm font-medium text-[var(--forest)]">
             You organize this session.
           </span>
-        )}
-
-        {isInvited && (
-          <>
-            <form action={respondToInvitation}>
-              <input
-                type="hidden"
-                name="session_id"
-                value={session.id}
-              />
-              <input
-                type="hidden"
-                name="accept"
-                value="true"
-              />
-              <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">
-                Accept invitation
-              </button>
-            </form>
-
-            <form action={respondToInvitation}>
-              <input
-                type="hidden"
-                name="session_id"
-                value={session.id}
-              />
-              <input
-                type="hidden"
-                name="accept"
-                value="false"
-              />
-              <button className="button-secondary !min-h-9 !px-4 !py-1.5 text-xs">
-                Decline
-              </button>
-            </form>
-          </>
         )}
 
         {canJoin && (
@@ -329,10 +288,6 @@ async function SessionsContent({
     ])
   );
 
-  const invitations = visibleSessions.filter(
-    (session) => membershipMap.get(session.id)?.status === "invited"
-  );
-
   const yourSessions = visibleSessions.filter((session) => {
     const membership = membershipMap.get(session.id);
 
@@ -348,7 +303,6 @@ async function SessionsContent({
     return (
       session.access_type === "community" &&
       membership?.status !== "accepted" &&
-      membership?.status !== "invited"
     );
   });
 
@@ -448,12 +402,6 @@ async function SessionsContent({
             <p className="mt-1 text-xs text-[var(--muted)]">Upcoming</p>
           </div>
 
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-            <p className="text-2xl font-semibold tabular-nums">
-              {invitations.length}
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted)]">Invitations</p>
-          </div>
         </div>
 
         {sessionsError || membershipError || historyError || draftsError ? (
@@ -469,14 +417,6 @@ async function SessionsContent({
                 emptyMessage="You have no saved drafts."
               />
             )}
-
-            <SessionSection
-              title="Your invitations"
-              description="Sessions you have been personally invited to."
-              sessions={invitations}
-              membershipMap={membershipMap}
-              emptyMessage="You have no pending invitations."
-            />
 
             <SessionSection
               title="Your sessions"
