@@ -24,6 +24,7 @@ import {
   revokeInviteLink,
   resumeSession,
   cancelJoinRequest,
+  deleteEndedSession,
 } from "../actions";
 
 type PageProps = {
@@ -95,6 +96,7 @@ const errorMessages: Record<string, string> = {
   start_failed: "The session could not be started.",
   end_failed: "The session could not be ended.",
   cancel_failed: "The session could not be cancelled.",
+  delete_failed: "This ended gathering could not be permanently deleted.",
   resume_failed: "The gathering could not be resumed.",
   invalid_invitee: "Enter a valid member email address.",
   invite_member_failed: "That member could not be invited.",
@@ -585,6 +587,20 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <p className="text-sm font-medium text-[var(--ink)]">
                   This session has ended.
                 </p>
+                {isOrganizer && (
+                  <form action={deleteEndedSession} className="mt-4">
+                    <input type="hidden" name="session_id" value={session.id} />
+                    <button
+                      type="submit"
+                      onClick={(event) => {
+                        if (!window.confirm("Permanently delete this ended gathering and its associated history? This cannot be undone.")) event.preventDefault();
+                      }}
+                      className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
+                    >
+                      Permanently delete gathering
+                    </button>
+                  </form>
+                )}
               </div>
             )}
 

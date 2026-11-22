@@ -45,6 +45,7 @@ const successMessages: Record<string, string> = {
   left: "You have left the session.",
   join_request_sent: "Your request has been sent to the organizer.",
   notification_read: "Notification marked as read.",
+  session_deleted: "The ended gathering was permanently deleted.",
 };
 
 const errorMessages: Record<string, string> = {

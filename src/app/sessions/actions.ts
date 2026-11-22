@@ -459,3 +459,23 @@ export async function cancelJoinRequest(formData: FormData) {
 export async function resumeSession(formData: FormData) {
   await updateSessionLifecycle(formData, "resume_session", "session_resumed", "resume_failed");
 }
+
+
+export async function deleteEndedSession(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+
+  const { error } = await supabase.rpc("delete_ended_session", {
+    p_session_id: sessionId,
+  });
+
+  if (error) {
+    console.error("Ended gathering deletion failed:", error.code, error.message, error.details);
+    redirect(`/sessions/${sessionId}?error=delete_failed`);
+  }
+
+  revalidatePath("/sessions");
+  revalidatePath("/home");
+  redirect("/sessions?success=session_deleted");
+}
