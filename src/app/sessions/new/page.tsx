@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +11,7 @@ type Props = {
   searchParams: Promise<{ error?: string }>;
 };
 
-export default async function NewSessionPage({ searchParams }: Props) {
+async function NewSessionContent({ searchParams }: Props) {
   await connection();
   const params = await searchParams;
   const supabase = await createClient();
@@ -49,5 +50,25 @@ export default async function NewSessionPage({ searchParams }: Props) {
         </section>
       </div>
     </main>
+  );
+}
+
+
+function NewSessionLoading() {
+  return (
+    <main className="min-h-screen bg-[var(--background)] px-4 py-10">
+      <div className="mx-auto max-w-4xl">
+        <div className="h-10 w-56 animate-pulse rounded bg-[var(--surface-soft)]" />
+        <div className="mt-8 h-96 animate-pulse rounded-2xl bg-[var(--surface-soft)]" />
+      </div>
+    </main>
+  );
+}
+
+export default function NewSessionPage(props: Props) {
+  return (
+    <Suspense fallback={<NewSessionLoading />}>
+      <NewSessionContent searchParams={props.searchParams} />
+    </Suspense>
   );
 }
