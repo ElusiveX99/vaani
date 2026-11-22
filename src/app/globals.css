@@ -293,10 +293,13 @@ main:has(> .site-mobile-header) { padding-bottom: calc(4.8rem + env(safe-area-in
   main:has(> .site-mobile-header) { padding-left: 16rem; }
 }
 
-/* Immediate, accessible feedback for server-backed form submissions. */
+
+/* Modern, inline progress feedback for server-backed form submissions. */
 form[data-submitting="true"] button[data-submitting="true"] {
+  position: relative;
+  overflow: hidden;
   cursor: progress;
-  opacity: .86;
+  opacity: .92;
   pointer-events: none;
 }
 form[data-submitting="true"] button:not([data-submitting="true"])[type="submit"],
@@ -304,19 +307,19 @@ form[data-submitting="true"] button:not([data-submitting="true"]):not([type]) {
   cursor: not-allowed;
   opacity: .55;
 }
-button[data-submitting="true"]::before {
+button[data-submitting="true"]::after {
   content: "";
-  display: inline-block;
-  width: .9em;
-  height: .9em;
-  margin-right: .55em;
-  vertical-align: -.08em;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 9999px;
-  animation: vaani-submit-spin .7s linear infinite;
+  position: absolute;
+  inset: 0 auto 0 -45%;
+  width: 42%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.24), transparent);
+  animation: vaani-submit-sheen 1.15s ease-in-out infinite;
 }
-@keyframes vaani-submit-spin { to { transform: rotate(360deg); } }
+@keyframes vaani-submit-sheen {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(350%); }
+}
 @media (prefers-reduced-motion: reduce) {
-  button[data-submitting="true"]::before { animation-duration: 1.8s; }
+  button[data-submitting="true"]::after { animation-duration: 2.8s; }
 }
