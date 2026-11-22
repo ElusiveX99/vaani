@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Cormorant_Garamond, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
@@ -84,7 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <SessionRealtimeRefresh />
-        <FormPendingFeedback />
+        <Suspense fallback={null}><FormPendingFeedback /></Suspense>
         <ToastViewport />
         {children}
       </body>
