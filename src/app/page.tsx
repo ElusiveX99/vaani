@@ -4,7 +4,7 @@ import { BrandMark } from "@/components/brand-lockup";
 const practices = [
   {
     title: "Vaani Gaayan",
-    detail: "Sing the padas of Shri Hit Chaturasi Ji together.",
+    detail: "Sing the padas of Shree Hit Chaturasi Ji together.",
   },
   {
     title: "Vaani Paath",
@@ -77,7 +77,7 @@ export default function LandingPage() {
 
       <footer className="page-shell flex flex-col gap-2 py-7 sm:flex-row sm:items-center sm:justify-between">
         <BrandMark />
-        <p className="text-xs text-[var(--muted)]">Jai Jai Shree Hita Harivansh</p>
+        <p className="text-xs text-[var(--muted)]">जय जय श्री हित हरिवंश</p>
       </footer>
     </main>
   );
