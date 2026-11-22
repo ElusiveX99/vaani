@@ -744,7 +744,7 @@ const SynchronizedReader = memo(
     const claimReaderControl = useCallback(async () => {
       if (claimInFlight.current) return;
       claimInFlight.current = true;
-      setControlMessage("");
+      setError("");
 
       try {
         const response = await fetch(
@@ -764,14 +764,13 @@ const SynchronizedReader = memo(
         }
 
         if (!result.granted) {
-          setControlMessage("Another assigned member currently controls the shared reader.");
+          setError("Another assigned member currently controls the shared reader.");
           return;
         }
 
-        setControlMessage("You now control the shared reader.");
         await loadReaderState(true, false);
       } catch (err) {
-        setControlMessage(
+        setError(
           err instanceof Error ? err.message : "Unable to claim reader control."
         );
       } finally {
