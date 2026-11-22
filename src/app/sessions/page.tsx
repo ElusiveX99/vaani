@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
+import Link from "next/link";
 
 import {
   joinCommunitySession,
@@ -42,6 +43,7 @@ const successMessages: Record<string, string> = {
   invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
   join_request_sent: "Your request has been sent to the organizer.",
+  notification_read: "Notification marked as read.",
   notification_read: "Notification marked as read.",
 };
 
@@ -292,7 +294,7 @@ async function SessionsContent({
   const displayName = profile?.display_name || authUser.user?.user_metadata?.full_name || authUser.user?.user_metadata?.name || email.split("@")[0] || "Sakhi";
   const avatarUrl = profile?.avatar_url || (profile?.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) || authUser.user?.user_metadata?.avatar_url || authUser.user?.user_metadata?.picture || null;
 
-  const { data: sessions, error: sessionsError } = await supabase
+  const { data: notifications } = await supabase.from("session_notifications")\n    .select("id, session_id, type, title, body, read_at, created_at")\n    .eq("user_id", userId).order("created_at", { ascending: false }).limit(8);\n\n  const { data: sessions, error: sessionsError } = await supabase
     .from("sessions")
     .select(
       "id, title, description, access_type, status, scheduled_start_at, created_by, is_draft"
@@ -410,7 +412,26 @@ async function SessionsContent({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
+
+        {notifications && notifications.length > 0 && (
+          <section className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Updates</h2><span className="text-xs text-[var(--muted)]">{notifications.filter((item) => !item.read_at).length} unread</span></div>
+            <div className="mt-3 divide-y divide-[var(--line)]">
+              {notifications.map((item) => (
+                <div key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{item.title}{!item.read_at && <span className="ml-2 inline-block size-2 rounded-full bg-[var(--plum)] align-middle"/>}</p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">{item.body}</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">{formatSchedule(item.created_at)}</p>
+                    {item.session_id && <Link href={`/sessions/${item.session_id}`} className="mt-2 inline-block text-xs font-semibold text-[var(--plum)] hover:underline">Open gathering</Link>}
+                  </div>
+                  {!item.read_at && <form action={markSessionNotificationRead}><input type="hidden" name="notification_id" value={item.id}/><button className="text-xs font-semibold text-[var(--plum)] hover:underline">Mark read</button></form>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+\n        <div className="grid grid-cols-3 gap-3">
           <div className="surface-card p-4">
             <p className="text-2xl font-semibold tabular-nums">
               {liveCount}
