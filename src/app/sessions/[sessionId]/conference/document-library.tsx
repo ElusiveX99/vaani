@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import InlineFeedback from "@/components/inline-feedback";
-import InlineFeedback from "@/components/inline-feedback";
 
 type DocumentItem = {
   id: string;
