@@ -25,7 +25,8 @@ import {
   revokeInviteLink,
   resumeSession,
   cancelJoinRequest,
-  deleteEndedSession,\n  deleteSessionDraft,
+  deleteEndedSession,
+  deleteSessionDraft,
 } from "../actions";
 
 type PageProps = {
