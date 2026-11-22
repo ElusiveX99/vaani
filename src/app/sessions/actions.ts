@@ -450,3 +450,15 @@ export async function markSessionNotificationRead(formData: FormData) {
   revalidatePath("/sessions");
   redirect("/sessions?success=notification_read");
 }
+
+export async function cancelJoinRequest(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const requestId = String(formData.get("request_id") ?? "");
+  if (!isValidSessionId(sessionId) || !isValidSessionId(requestId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("cancel_session_join_request", { p_request_id: requestId });
+  if (error) redirect(`/sessions/${sessionId}?error=join_request_action_failed`);
+  revalidatePath("/sessions");
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=join_request_cancelled`);
+}

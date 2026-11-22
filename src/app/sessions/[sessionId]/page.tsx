@@ -21,7 +21,7 @@ import {
   updateSessionDetails,
   approveJoinRequest,
   rejectJoinRequest,
-  revokeInviteLink,
+  revokeInviteLink,\n  cancelJoinRequest,
 } from "../actions";
 
 type PageProps = {
@@ -81,7 +81,7 @@ const successMessages: Record<string, string> = {
   draft_saved: "Your draft has been saved.",
   published: "Your gathering has been published.",
   session_updated: "Gathering details updated.",
-  join_request_sent: "Your request has been sent to the organizer.",
+  join_request_sent: "Your request has been sent to the organizer.",\n  join_request_cancelled: "Your join request has been cancelled.",
   join_request_approved: "The join request was approved.",
   join_request_rejected: "The join request was declined.",
 };
@@ -204,6 +204,9 @@ async function SessionContent({ params, searchParams }: PageProps) {
     .maybeSingle();
 
   const ownMembership = ownMembershipData as Membership | null;
+  const { data: ownJoinRequest } = session.waiting_room_enabled && ownMembership?.status !== "accepted"
+    ? await supabase.from("session_join_requests").select("id").eq("session_id", session.id).eq("user_id", userId).eq("status", "pending").maybeSingle()
+    : { data: null };
 
   const isOrganizer =
     ownMembership?.role === "organizer" &&
@@ -222,7 +225,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
     session.status !== "cancelled" &&
     (!ownMembership ||
       ownMembership.status === "declined" ||
-      ownMembership.status === "removed");
+      ownMembership.status === "removed") && !ownJoinRequest;
 
   const isAdmin =
     ownMembership?.role === "admin" &&
@@ -499,7 +502,14 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </form>
             )}
 
-            {/* Leave */}
+            {ownJoinRequest && !isAccepted && (
+              <div className="w-full rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-medium text-amber-900">Your request is awaiting approval.</p>
+                <p className="mt-1 text-sm text-amber-800">The organizer will review your request before you can enter.</p>
+                <form action={cancelJoinRequest} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={ownJoinRequest.id}/><button className="text-sm font-semibold text-amber-900 underline">Cancel request</button></form>
+              </div>
+            )}
+\n            {/* Leave */}
 
             {isAccepted &&
               !isOrganizer &&
