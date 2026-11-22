@@ -183,6 +183,7 @@ export default function PersistentChat({
             if (status === "SUBSCRIBED") {
               realtimeConnected = true;
               setConnectionStatus("");
+              void loadMessages();
             } else if (
               status === "CHANNEL_ERROR" ||
               status === "TIMED_OUT" ||

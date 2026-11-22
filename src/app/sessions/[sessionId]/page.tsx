@@ -183,21 +183,14 @@ async function SessionContent({ params, searchParams }: PageProps) {
     redirect("/login");
   }
 
-  const [{ data: authUser }, { data: ownProfile }] = await Promise.all([
+  const [{data:authUser},{data:ownProfile},{data:sessionData,error:sessionError}]=await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("profiles").select("display_name, avatar_url, avatar_path").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("display_name,avatar_url,avatar_path").eq("id",userId).maybeSingle(),
+    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,allow_participant_invites,recurrence_rule,recurrence_until,recurrence_parent_id").eq("id",sessionId).maybeSingle(),
   ]);
-  const email = authUser.user?.email || "";
-  const displayName = ownProfile?.display_name || authUser.user?.user_metadata?.full_name || authUser.user?.user_metadata?.name || email.split("@")[0] || "Sakhi";
-  const avatarUrl = ownProfile?.avatar_url || (ownProfile?.avatar_path ? (ownProfile.avatar_path.startsWith("http") ? ownProfile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(ownProfile.avatar_path).data.publicUrl) : null) || authUser.user?.user_metadata?.avatar_url || authUser.user?.user_metadata?.picture || null;
-
-  const { data: sessionData, error: sessionError } = await supabase
-    .from("sessions")
-    .select(
-      "id, title, description, access_type, status, scheduled_start_at, started_at, ended_at, created_by, is_draft, time_zone, duration_minutes, instructions, participant_limit, waiting_room_enabled, allow_participant_invites, recurrence_rule, recurrence_until, recurrence_parent_id"
-    )
-    .eq("id", sessionId)
-    .maybeSingle();
+  const email=authUser.user?.email||"";
+  const displayName=ownProfile?.display_name||authUser.user?.user_metadata?.full_name||authUser.user?.user_metadata?.name||email.split("@")[0]||"Sakhi";
+  const avatarUrl=ownProfile?.avatar_url||(ownProfile?.avatar_path?(ownProfile.avatar_path.startsWith("http")?ownProfile.avatar_path:supabase.storage.from("profile-avatars").getPublicUrl(ownProfile.avatar_path).data.publicUrl):null)||authUser.user?.user_metadata?.avatar_url||authUser.user?.user_metadata?.picture||null;
 
   if (sessionError || !sessionData) {
     notFound();
@@ -205,17 +198,14 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
   const session = sessionData as Session;
 
-  const { data: ownMembershipData } = await supabase
-    .from("session_members")
-    .select("user_id, role, status")
-    .eq("session_id", session.id)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  const ownMembership = ownMembershipData as Membership | null;
-  const { data: ownJoinRequest } = session.waiting_room_enabled && ownMembership?.status !== "accepted"
-    ? await supabase.from("session_join_requests").select("id").eq("session_id", session.id).eq("user_id", userId).eq("status", "pending").maybeSingle()
-    : { data: null };
+  const [ownMembershipResult,ownJoinRequestResult]=await Promise.all([
+    supabase.from("session_members").select("user_id,role,status").eq("session_id",session.id).eq("user_id",userId).maybeSingle(),
+    session.waiting_room_enabled
+      ? supabase.from("session_join_requests").select("id").eq("session_id",session.id).eq("user_id",userId).eq("status","pending").maybeSingle()
+      : Promise.resolve({data:null,error:null}),
+  ]);
+  const ownMembership=ownMembershipResult.data as Membership|null;
+  const ownJoinRequest=ownJoinRequestResult.data;
 
   const isOrganizer =
     ownMembership?.role === "organizer" &&
