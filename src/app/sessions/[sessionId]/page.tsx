@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import SessionMembers from "./session-members";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import SiteHeader from "@/components/site-header";
+import ConfirmSubmitButton from "@/components/confirm-submit-button";
 
 import {
   joinCommunitySession,
@@ -590,15 +591,12 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 {isOrganizer && (
                   <form action={deleteEndedSession} className="mt-4">
                     <input type="hidden" name="session_id" value={session.id} />
-                    <button
-                      type="submit"
-                      onClick={(event) => {
-                        if (!window.confirm("Permanently delete this ended gathering and its associated history? This cannot be undone.")) event.preventDefault();
-                      }}
+                    <ConfirmSubmitButton
+                      message="Permanently delete this ended gathering and its associated history? This cannot be undone."
                       className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
                     >
                       Permanently delete gathering
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 )}
               </div>
