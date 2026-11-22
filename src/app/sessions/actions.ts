@@ -479,3 +479,23 @@ export async function deleteEndedSession(formData: FormData) {
   revalidatePath("/home");
   redirect("/sessions?success=session_deleted");
 }
+
+
+export async function deleteSessionDraft(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+
+  const { error } = await supabase.rpc("delete_session_draft", {
+    p_session_id: sessionId,
+  });
+
+  if (error) {
+    console.error("Draft deletion failed:", error.code, error.message, error.details);
+    redirect(`/sessions/${sessionId}?error=draft_delete_failed`);
+  }
+
+  revalidatePath("/sessions");
+  revalidatePath("/home");
+  redirect("/sessions?success=draft_deleted");
+}

@@ -25,7 +25,7 @@ import {
   revokeInviteLink,
   resumeSession,
   cancelJoinRequest,
-  deleteEndedSession,
+  deleteEndedSession,\n  deleteSessionDraft,
 } from "../actions";
 
 type PageProps = {
@@ -97,7 +97,7 @@ const errorMessages: Record<string, string> = {
   start_failed: "The session could not be started.",
   end_failed: "The session could not be ended.",
   cancel_failed: "The session could not be cancelled.",
-  delete_failed: "This ended gathering could not be permanently deleted.",
+  delete_failed: "This ended gathering could not be permanently deleted.",\n  draft_delete_failed: "This draft could not be deleted.",
   resume_failed: "The gathering could not be resumed.",
   invalid_invitee: "Enter a valid member email address.",
   invite_member_failed: "That member could not be invited.",
@@ -374,7 +374,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
             {/* Organizer lifecycle controls */}
 
-            {isOrganizer && session.status === "scheduled" && (
+            {isOrganizer && session.status === "scheduled" && !session.is_draft && (
               <>
                 <form action={startSession}>
                   <input
@@ -644,6 +644,15 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div className="sm:col-span-2 flex flex-wrap gap-3"><button className="button-secondary">Save draft details</button></div>
             </form>
             <form action={publishSessionDraft} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><button className="button-primary">Publish gathering</button></form>
+            <form action={deleteSessionDraft} className="mt-3">
+              <input type="hidden" name="session_id" value={session.id}/>
+              <ConfirmSubmitButton
+                message="Permanently delete this draft? This cannot be undone."
+                className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
+              >
+                Delete draft
+              </ConfirmSubmitButton>
+            </form>
           </section>
         )}
 
