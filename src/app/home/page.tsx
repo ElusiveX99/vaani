@@ -112,7 +112,7 @@ async function HomeContent() {
                       <button className="button-primary !min-h-9 !px-4 !py-1.5 text-xs">Start conference</button>
                     </form>
                   )}
-                </article>         </Link>
+                </article>
               ))}
             </div>
           ) : (
