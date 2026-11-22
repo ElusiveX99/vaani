@@ -108,7 +108,7 @@ export async function createSession(formData: FormData) {
   if (
     timeZone.length < 1 ||
     timeZone.length > 80 ||
-    (recurrenceRule !== null && !["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(recurrenceRule)) ||
+    (recurrenceRule !== null && !["DAILY", "WEEKLY", "BIWEEKLY", "EVERY_3_WEEKS", "EVERY_4_WEEKS", "MONTHLY"].includes(recurrenceRule)) ||
     (recurrenceRule !== null && (!recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || !scheduledStart || recurrenceUntil <= scheduledStart || recurrenceUntil.getTime() > scheduledStart.getTime() + 366 * 24 * 60 * 60 * 1000)) ||
     (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
     (participantLimit !== null && (!Number.isInteger(participantLimit) || participantLimit < 2 || participantLimit > 500))
@@ -382,7 +382,7 @@ export async function updateSessionDetails(formData: FormData) {
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
   const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
   const recurrenceUntil = recurrenceUntilValue ? (recurrenceUntilValue.length === 10 ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : new Date(recurrenceUntilValue)) : null;
-  if (recurrenceRule !== null && (!["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(recurrenceRule) || !recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || recurrenceUntil <= scheduled || recurrenceUntil.getTime() > scheduled.getTime() + 366 * 24 * 60 * 60 * 1000)) redirect(`/sessions/${sessionId}?error=invalid_recurrence`);
+  if (recurrenceRule !== null && (!["DAILY", "WEEKLY", "BIWEEKLY", "EVERY_3_WEEKS", "EVERY_4_WEEKS", "MONTHLY"].includes(recurrenceRule) || !recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || recurrenceUntil <= scheduled || recurrenceUntil.getTime() > scheduled.getTime() + 366 * 24 * 60 * 60 * 1000)) redirect(`/sessions/${sessionId}?error=invalid_recurrence`);
   const { error } = await supabase.rpc("update_session_details", {
     p_session_id: sessionId,
     p_title: title,
