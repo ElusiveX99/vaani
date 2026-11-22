@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";\nimport { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { redeemInviteLink } from "../../actions";
 
 type Props = { params: Promise<{ token: string }> };
 
-export default async function InviteJoinPage({ params }: Props) {
+async function InviteJoinContent({ params }: Props) {
   const { token } = await params;
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
@@ -29,5 +29,13 @@ export default async function InviteJoinPage({ params }: Props) {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function InviteJoinPage(props: Props) {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[var(--background)]" />}>
+      <InviteJoinContent params={props.params} />
+    </Suspense>
   );
 }

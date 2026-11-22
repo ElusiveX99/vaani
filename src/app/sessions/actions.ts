@@ -141,7 +141,7 @@ export async function joinCommunitySession(formData: FormData) {
 
   revalidatePath("/sessions");
   revalidatePath(`/sessions/${sessionId}`);
-  redirect("/sessions?success=joined");
+  redirect(`/sessions?success=${sessionInfo?.waiting_room_enabled ? "join_request_sent" : "joined"}`);
 }
 
 export async function respondToInvitation(formData: FormData) {
@@ -317,4 +317,55 @@ export async function redeemInviteLink(formData: FormData) {
   revalidatePath("/sessions");
   revalidatePath(`/sessions/${sessionId}`);
   redirect(`/sessions/${sessionId}?success=joined_by_invite`);
+}
+
+
+export async function publishSessionDraft(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("publish_session_draft", { p_session_id: sessionId });
+  if (error) redirect(`/sessions/${sessionId}?error=publish_failed`);
+  revalidatePath("/sessions");
+  revalidatePath("/home");
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=published`);
+}
+
+export async function updateSessionDetails(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
+  const scheduled = new Date(scheduledValue);
+  const accessType = String(formData.get("access_type") ?? "");
+  const durationValue = String(formData.get("duration_minutes") ?? "");
+  const limitValue = String(formData.get("participant_limit") ?? "");
+  const duration = durationValue ? Number(durationValue) : null;
+  const limit = limitValue ? Number(limitValue) : null;
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  if (!title || title.length > 120 || description.length > 2000 || !scheduledValue || Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()) redirect(`/sessions/${sessionId}?error=invalid_edit`);
+  if (!["community","invitation_only","link"].includes(accessType)) redirect(`/sessions/${sessionId}?error=invalid_access`);
+  if ((duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) || (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))) redirect(`/sessions/${sessionId}?error=invalid_options`);
+  const { error } = await supabase.rpc("update_session_details", {
+    p_session_id: sessionId,
+    p_title: title,
+    p_description: description || null,
+    p_access_type: accessType,
+    p_scheduled_start_at: scheduled.toISOString(),
+    p_time_zone: String(formData.get("time_zone") ?? "Asia/Kolkata"),
+    p_duration_minutes: duration,
+    p_participant_limit: limit,
+    p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
+    p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
+    p_instructions: String(formData.get("instructions") ?? "").trim() || null,
+    p_recurrence_rule: String(formData.get("recurrence_rule") ?? "") || null,
+    p_recurrence_until: String(formData.get("recurrence_until") ?? "") ? new Date(String(formData.get("recurrence_until"))).toISOString() : null,
+  });
+  if (error) redirect(`/sessions/${sessionId}?error=update_failed`);
+  revalidatePath("/sessions");
+  revalidatePath("/home");
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=session_updated`);
 }

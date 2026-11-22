@@ -32,7 +32,7 @@ type Session = {
   id: string;
   title: string;
   description: string | null;
-  access_type: "community" | "invitation_only";
+  access_type: "community" | "invitation_only" | "link";
   status: "scheduled" | "live" | "ended" | "cancelled";
   scheduled_start_at: string | null;
   started_at: string | null;
@@ -63,7 +63,7 @@ const successMessages: Record<string, string> = {
   invite_link_created: "Invitation link created. Copy it below.",
   member_invited: "The Vaani member has been invited.",
   invitation_revoked: "The invitation has been revoked.",
-  joined_by_invite: "You have joined the gathering.",
+  joined_by_invite: "You have joined the gathering.",\n  draft_saved: "Your draft has been saved.",\n  published: "Your gathering has been published.",\n  session_updated: "Gathering details updated.",
 };
 
 const errorMessages: Record<string, string> = {
@@ -74,7 +74,7 @@ const errorMessages: Record<string, string> = {
   invite_member_failed: "That member could not be invited.",
   invalid_invite_link: "The invitation link could not be created.",
   invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
-  revoke_invitation_failed: "The invitation could not be revoked.",
+  revoke_invitation_failed: "The invitation could not be revoked.",\n  publish_failed: "The draft could not be published. Check that its start time is in the future.",\n  invalid_edit: "Check the title, access, and future start time.",\n  update_failed: "The gathering could not be updated.",
 };
 
 function formatDate(value: string | null) {
@@ -146,7 +146,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
   const { data: sessionData, error: sessionError } = await supabase
     .from("sessions")
     .select(
-      "id, title, description, access_type, status, scheduled_start_at, started_at, ended_at, created_by"
+      "id, title, description, access_type, status, scheduled_start_at, started_at, ended_at, created_by, is_draft, time_zone, duration_minutes, instructions, participant_limit, waiting_room_enabled, allow_participant_invites, recurrence_rule, recurrence_until"
     )
     .eq("id", sessionId)
     .maybeSingle();
@@ -547,7 +547,31 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </div>
         </section>
 
-        {canManage && session.status !== "ended" && session.status !== "cancelled" && (
+
+        {canManage && session.is_draft && (
+          <section className="surface-card mt-7 p-6 sm:p-8">
+            <h2 className="text-xl font-semibold">Finish this draft</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Add a future start time, then publish it so invited members can see it.</p>
+            <form action={updateSessionDetails} className="mt-5 grid gap-4 sm:grid-cols-2">
+              <input type="hidden" name="session_id" value={session.id}/>
+              <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"}/>
+              <div><label className="field-label mb-2" htmlFor="draft-title">Title</label><input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><input id="draft-start" name="scheduled_start_at" type="datetime-local" required defaultValue={session.scheduled_start_at ? new Date(session.scheduled_start_at).toISOString().slice(0,16) : ""} className="field-input"/></div>
+              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-description">Description</label><textarea id="draft-description" name="description" rows={3} defaultValue={session.description || ""} className="field-input"/></div>
+              <input type="hidden" name="access_type" value={session.access_type}/>
+              <input type="hidden" name="duration_minutes" value={session.duration_minutes ?? ""}/>
+              <input type="hidden" name="participant_limit" value={session.participant_limit ?? ""}/>
+              <input type="hidden" name="waiting_room_enabled" value={session.waiting_room_enabled ? "on" : ""}/>
+              <input type="hidden" name="allow_participant_invites" value={session.allow_participant_invites ? "on" : ""}/>
+              <input type="hidden" name="instructions" value={session.instructions || ""}/>
+              <input type="hidden" name="recurrence_rule" value={session.recurrence_rule || ""}/>
+              <input type="hidden" name="recurrence_until" value={session.recurrence_until ? new Date(session.recurrence_until).toISOString() : ""}/>
+              <div className="sm:col-span-2 flex flex-wrap gap-3"><button className="button-secondary">Save draft details</button></div>
+            </form>
+            <form action={publishSessionDraft} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><button className="button-primary">Publish gathering</button></form>
+          </section>
+        )}
+\n        {canManage && session.status !== "ended" && session.status !== "cancelled" && !session.is_draft && (
           <section className="surface-card mt-7 p-6 sm:p-8">
             <div>
               <h2 className="text-xl font-semibold">Invite Sakhis</h2>
