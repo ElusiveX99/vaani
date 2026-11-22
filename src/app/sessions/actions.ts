@@ -499,3 +499,35 @@ export async function deleteSessionDraft(formData: FormData) {
   revalidatePath("/home");
   redirect("/sessions?success=draft_deleted");
 }
+
+
+export async function updateSessionDraft(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
+  const localStart = String(formData.get("scheduled_start_local") ?? "");
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  if (!title || title.length > 120 || description.length > 2000 || !isValidTimeZone(timeZone)) {
+    redirect(`/sessions/${sessionId}?error=draft_update_failed`);
+  }
+  const scheduled = localStart ? parseLocalDateTime(localStart, timeZone) : null;
+  if (localStart && (!scheduled || Number.isNaN(scheduled.getTime()))) {
+    redirect(`/sessions/${sessionId}?error=draft_update_failed`);
+  }
+  const { error } = await supabase.rpc("update_session_draft", {
+    p_session_id: sessionId,
+    p_title: title,
+    p_description: description || null,
+    p_scheduled_start_at: scheduled?.toISOString() ?? null,
+    p_time_zone: timeZone,
+  });
+  if (error) {
+    console.error("Draft update failed:", error.code, error.message, error.details);
+    redirect(`/sessions/${sessionId}?error=draft_update_failed`);
+  }
+  revalidatePath("/sessions");
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=draft_saved`);
+}

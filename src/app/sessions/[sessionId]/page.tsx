@@ -27,6 +27,7 @@ import {
   cancelJoinRequest,
   deleteEndedSession,
   deleteSessionDraft,
+  updateSessionDraft,
 } from "../actions";
 
 type PageProps = {
@@ -100,6 +101,7 @@ const errorMessages: Record<string, string> = {
   cancel_failed: "The session could not be cancelled.",
   delete_failed: "This ended gathering could not be permanently deleted.",
   draft_delete_failed: "This draft could not be deleted.",
+  draft_update_failed: "The draft could not be saved. Please try again.",
   resume_failed: "The gathering could not be resumed.",
   invalid_invitee: "Enter a valid member email address.",
   invite_member_failed: "That member could not be invited.",
@@ -223,6 +225,71 @@ async function SessionContent({ params, searchParams }: PageProps) {
   const isOrganizer =
     ownMembership?.role === "organizer" &&
     ownMembership.status === "accepted";
+
+  if (session.is_draft) {
+    if (!isOrganizer || session.created_by !== userId) notFound();
+
+    return (
+      <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+        <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
+        <div className="page-shell py-8 sm:py-10">
+          <Link href="/sessions" className="text-sm font-medium text-[var(--plum)] hover:underline">
+            ← Back to Gatherings
+          </Link>
+
+          {paramsData.error && errorMessages[paramsData.error] && (
+            <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
+              {errorMessages[paramsData.error]}
+            </div>
+          )}
+          {paramsData.success && successMessages[paramsData.success] && (
+            <div role="status" className="mt-6 rounded-lg border border-[#d4e1d1] bg-[#edf3eb] p-4 text-sm text-[var(--forest)]">
+              {successMessages[paramsData.success]}
+            </div>
+          )}
+
+          <section className="surface-card mt-6 p-6 sm:p-9">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="font-display text-3xl text-[var(--plum)] sm:text-4xl">Edit draft</h1>
+              <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">Draft</span>
+            </div>
+            <form action={updateSessionDraft} className="mt-8 grid gap-5">
+              <input type="hidden" name="session_id" value={session.id} />
+              <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"} />
+              <div>
+                <label className="field-label mb-2" htmlFor="draft-title">Gathering title</label>
+                <input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input" />
+              </div>
+              <div>
+                <label className="field-label mb-2" htmlFor="draft-description">Description</label>
+                <textarea id="draft-description" name="description" rows={4} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y" />
+              </div>
+              <div className="max-w-md">
+                <label className="field-label mb-2" htmlFor="draft-start">Start date and time</label>
+                <input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" />
+              </div>
+              <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <ConfirmSubmitButton
+                  formAction={deleteSessionDraft}
+                  name="session_id"
+                  value={session.id}
+                  message="Permanently delete this draft? This cannot be undone."
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] transition hover:bg-[#fbefed]"
+                >
+                  Delete draft
+                </ConfirmSubmitButton>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <button type="submit" name="intent" value="save" className="button-secondary">Save draft</button>
+                  <button formAction={publishSessionDraft} formMethod="post" name="session_id" value={session.id} className="button-primary">Publish gathering</button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
 
   const isInCharge =
     ownMembership?.role === "in_charge" &&
@@ -624,39 +691,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </div>
         </section>
 
-
-        {isOrganizer && session.is_draft && (
-          <section className="surface-card mt-7 p-6 sm:p-8">
-            <h2 className="text-xl font-semibold">Finish this draft</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Add a future start time, then publish it so invited members can see it.</p>
-            <form action={updateSessionDetails} className="mt-5 grid gap-4 sm:grid-cols-2">
-              <input type="hidden" name="session_id" value={session.id}/>
-              <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"}/>
-              <div><label className="field-label mb-2" htmlFor="draft-title">Title</label><input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input"/></div>
-              <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><input id="draft-start" name="scheduled_start_at" type="datetime-local" required defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input"/></div>
-              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-description">Description</label><textarea id="draft-description" name="description" rows={3} defaultValue={session.description || ""} className="field-input"/></div>
-              <input type="hidden" name="access_type" value={session.access_type}/>
-              <input type="hidden" name="duration_minutes" value={session.duration_minutes ?? ""}/>
-              <input type="hidden" name="participant_limit" value={session.participant_limit ?? ""}/>
-              <input type="hidden" name="waiting_room_enabled" value={session.waiting_room_enabled ? "on" : ""}/>
-              <input type="hidden" name="allow_participant_invites" value={session.allow_participant_invites ? "on" : ""}/>
-              <input type="hidden" name="instructions" value={session.instructions || ""}/>
-              <input type="hidden" name="recurrence_rule" value={session.recurrence_rule || ""}/>
-              <input type="hidden" name="recurrence_until" value={session.recurrence_until ? new Date(session.recurrence_until).toISOString() : ""}/>
-              <div className="sm:col-span-2 flex flex-wrap gap-3"><button className="button-secondary">Save draft details</button></div>
-            </form>
-            <form action={publishSessionDraft} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><button className="button-primary">Publish gathering</button></form>
-            <form action={deleteSessionDraft} className="mt-3">
-              <input type="hidden" name="session_id" value={session.id}/>
-              <ConfirmSubmitButton
-                message="Permanently delete this draft? This cannot be undone."
-                className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
-              >
-                Delete draft
-              </ConfirmSubmitButton>
-            </form>
-          </section>
-        )}
 
         {canManage && session.status !== "ended" && session.status !== "cancelled" && !session.is_draft && (
           <section className="surface-card mt-7 p-6 sm:p-8">
