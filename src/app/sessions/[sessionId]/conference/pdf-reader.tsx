@@ -165,9 +165,7 @@ function PdfCanvas({
           className="absolute inset-0 flex items-center justify-center rounded-sm bg-white text-xs text-slate-500"
           style={{ minHeight: Math.max(160, width / DEFAULT_RATIO) }}
         >
-          {status === "error"
-            ? "Page " + pageNumber + " could not be rendered"
-            : "Rendering page " + pageNumber + "…"}
+          {status === "error" ? "Page unavailable" : ""}
         </div>
       )}
     </div>
@@ -208,7 +206,7 @@ export default function PdfReader({
   const [zoom, setZoom] = useState(1);
   const [retryToken, setRetryToken] = useState(0);
   const [pageRetryToken, setPageRetryToken] = useState(0);
-  const [controlsVisible, setControlsVisible] = useState(true);
+  const [controlsVisible, setControlsVisible] = useState(false);
 
   const pageWidth = Math.max(1, Math.min(MAX_RENDER_WIDTH, width * zoom));
   const offsets = useMemo(() => pageOffsetsFor(metrics, pageWidth), [metrics, pageWidth]);
@@ -529,16 +527,11 @@ export default function PdfReader({
         </button>
       )}
 
-      {controlsVisible && phase === "error" && (
-        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-300/15 bg-red-950/30 px-3 py-2 text-xs text-red-100/85">
+      {phase === "error" && (
+        <div role="alert" className="absolute inset-x-3 bottom-3 z-10 mx-auto flex max-w-xl items-center justify-between gap-3 rounded-lg border border-red-300/15 bg-[#17151a]/95 px-3 py-2 text-xs text-red-100/85 shadow-lg">
           <span className="min-w-0 flex-1">The PDF could not be opened. {error}</span>
           <button type="button" onClick={() => setRetryToken(value => value + 1)} className="shrink-0 rounded-md border border-red-200/20 px-3 py-1.5 text-red-50 hover:bg-white/10">Retry</button>
-        </div>
-      )}
-      {controlsVisible && Object.keys(pageErrors).length > 0 && (
-        <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-300/10 bg-amber-300/[0.05] px-3 py-2 text-[11px] text-amber-100/75">
-          <span className="min-w-0 flex-1">{Object.keys(pageErrors).length} page(s) could not be rendered. {Object.values(pageErrors)[0]}</span>
-          <button type="button" onClick={() => { setPageErrors({}); setPageRetryToken(value => value + 1); }} className="shrink-0 rounded-md border border-amber-100/15 px-2.5 py-1 text-amber-50 hover:bg-white/10">Retry pages</button>
+          <button type="button" onClick={() => setError("")} aria-label="Dismiss error" className="shrink-0 rounded-md px-2 py-1 text-white/60 hover:bg-white/10">×</button>
         </div>
       )}
 
@@ -584,10 +577,7 @@ export default function PdfReader({
         )}
       </div>
 
-      {controlsVisible && <footer className="flex shrink-0 items-center justify-between border-t border-white/[0.06] bg-[#1d1a20] px-3 py-1.5">
-        <span className="text-[10px] text-white/35">{canControl ? "You are guiding the shared reading" : "Your reading position is local"}</span>
-        <span className="text-[10px] tabular-nums text-white/30">{phase === "loading" ? "Loading document" : pageCount ? pageCount + " pages" : ""}</span>
-      </footer>}
+
     </section>
   );
 }

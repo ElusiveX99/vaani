@@ -85,7 +85,6 @@ const SynchronizedReader = memo(
     const [error, setError] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [currentOffset, setCurrentOffset] = useState(0);
-    const [controlMessage, setControlMessage] = useState("");
     const [personalPosition, setPersonalPosition] = useState<PersonalPosition | null>(null);
 
     const room = useRoomContext();
@@ -1049,36 +1048,16 @@ const SynchronizedReader = memo(
           </div>
         </div>
 
-        {personalPosition &&
-          !readerData.canControl &&
-          personalPosition.documentId === readerData.document.id &&
-          (personalPosition.page !== currentPage ||
-            Math.abs(personalPosition.offset - currentOffset) > 0.01) && (
-            <button
-              type="button"
-              onClick={() => {
-                changePosition(personalPosition.page, personalPosition.offset);
-                setControlMessage(`Returned to your last place on page ${personalPosition.page}. This position is visible only to you.`);
-              }}
-              className="w-fit shrink-0 rounded-md border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
-            >
-              Return to your last place · page {personalPosition.page}
-            </button>
-          )}
-
-        {controlMessage && (
-          <p className="shrink-0 text-xs text-white/55" role="status">
-            {controlMessage}
-          </p>
-        )}
-
         {error && (
-          <p
+          <button
+            type="button"
+            onClick={() => setError("")}
             role="alert"
-            className="shrink-0 text-xs text-red-300"
+            className="absolute right-3 top-12 z-20 max-w-[min(90%,28rem)] truncate rounded-lg border border-red-300/15 bg-[#17151a]/95 px-3 py-2 text-left text-[11px] text-red-200 shadow-lg"
+            title={error}
           >
-            {error}
-          </p>
+            {error} <span aria-hidden="true">×</span>
+          </button>
         )}
 
         <div className="min-h-0 flex-1">
