@@ -23,8 +23,8 @@ async function getAuthenticatedClient() {
 
 
 function parseLocalDateTime(value: string, timeZone: string) {
-  if (/[zZ]$|[+-]\\d{2}:?\\d{2}$/.test(value)) return new Date(value);
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/.exec(value);
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) return new Date(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!match) return new Date(Number.NaN);
   const target = Date.UTC(Number(match[1]), Number(match[2])-1, Number(match[3]), Number(match[4]), Number(match[5]));
   let guess = target;
@@ -375,7 +375,7 @@ export async function updateSessionDetails(formData: FormData) {
   if ((duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) || (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))) redirect(`/sessions/${sessionId}?error=invalid_options`);
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
   const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
-  const recurrenceUntil = recurrenceUntilValue ? new Date(recurrenceUntilValue) : null;
+  const recurrenceUntil = recurrenceUntilValue ? (recurrenceUntilValue.length === 10 ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : new Date(recurrenceUntilValue)) : null;
   if (recurrenceRule !== null && (!["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(recurrenceRule) || !recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || recurrenceUntil <= scheduled || recurrenceUntil.getTime() > scheduled.getTime() + 366 * 24 * 60 * 60 * 1000)) redirect(`/sessions/${sessionId}?error=invalid_recurrence`);
   const { error } = await supabase.rpc("update_session_details", {
     p_session_id: sessionId,

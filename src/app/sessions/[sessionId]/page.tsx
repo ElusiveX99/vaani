@@ -100,7 +100,6 @@ const errorMessages: Record<string, string> = {
   update_failed: "The gathering could not be updated.",
   invalid_recurrence: "Choose a valid repeat pattern and end date within one year.",
   join_request_action_failed: "The join request could not be updated.",
-  invalid_recurrence: "Choose a valid repeat pattern and end date within one year.",
 };
 
 
