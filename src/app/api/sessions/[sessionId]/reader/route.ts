@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody } from "@/lib/security/request";
 
 const SIGNED_URL_LIFETIME = 6 * 60 * 60;
 
@@ -372,22 +373,15 @@ export async function PATCH(
     );
   }
 
-  let body: {
+  const parsed = await readJsonBody<{
     documentId?: unknown;
     currentPage?: unknown;
     expectedDocumentId?: unknown;
     currentOffset?: unknown;
     controllerEpoch?: unknown;
-  };
-
-  try {
-    body = await request.json();
-  } catch {
-    return json(
-      { error: "Invalid JSON body." },
-      400
-    );
-  }
+  }>(request, 4096);
+  if (!parsed.ok) return json({ error: "Invalid JSON body." }, parsed.status);
+  const body = parsed.data;
 
   const documentId =
     typeof body.documentId === "string"

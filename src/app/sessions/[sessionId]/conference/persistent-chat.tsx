@@ -77,20 +77,25 @@ export default function PersistentChat({
     const supabase = createClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let historyRequest = 0;
+    let realtimeConnected = false;
+    let historyLoading = false;
 
     async function loadMessages() {
+      if (historyLoading) return;
+      historyLoading = true;
       const request = ++historyRequest;
       try {
         const { data, error: queryError } = await supabase
           .from("session_messages")
           .select("id, session_id, sender_id, body, created_at")
           .eq("session_id", sessionId)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false })
+          .limit(100);
 
         if (queryError) throw queryError;
         if (!active || request !== historyRequest) return;
 
-        const rows = (data ?? []) as Message[];
+        const rows = ((data ?? []) as Message[]).reverse();
         const senderIds = [...new Set(rows.map((message) => message.sender_id))];
         const { data: profiles } = senderIds.length
           ? await supabase.from("profiles").select("id, display_name, avatar_url, avatar_path").in("id", senderIds)
@@ -122,6 +127,8 @@ export default function PersistentChat({
         console.error("Unable to load session chat:", err);
         setError("The gathering chat could not be loaded. Please try again.");
         setLoading(false);
+      } finally {
+        historyLoading = false;
       }
     }
 
@@ -174,15 +181,17 @@ export default function PersistentChat({
           .subscribe((status) => {
             if (!active) return;
             if (status === "SUBSCRIBED") {
+              realtimeConnected = true;
               setConnectionStatus("");
-              void loadMessages();
             } else if (
               status === "CHANNEL_ERROR" ||
               status === "TIMED_OUT" ||
               status === "CLOSED"
             ) {
+              realtimeConnected = false;
               setConnectionStatus("Live updates paused");
             } else if (status === "JOINING") {
+              realtimeConnected = false;
               setConnectionStatus("Connecting...");
             }
           });
@@ -198,8 +207,8 @@ export default function PersistentChat({
 
     // Poll as a fallback and to recover messages missed during websocket drops.
     const poll = window.setInterval(() => {
-      if (active && document.visibilityState === "visible") void loadMessages();
-    }, 5000);
+      if (active && !realtimeConnected && document.visibilityState === "visible") void loadMessages();
+    }, 30000);
     const handleVisibility = () => {
       if (active && document.visibilityState === "visible") void loadMessages();
     };

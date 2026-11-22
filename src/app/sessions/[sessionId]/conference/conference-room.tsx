@@ -423,6 +423,7 @@ function ConferenceWorkspace({
 
     void refreshRole();
 
+    let realtimeConnected = false;
     const channel = supabase
       .channel(`session-member-role-${sessionId}-${localUserId}`)
       .on(
@@ -441,10 +442,12 @@ function ConferenceWorkspace({
         }
       )
       .subscribe((status) => {
-        if (status !== "SUBSCRIBED") console.warn("Membership realtime status:", status);
+        realtimeConnected = status === "SUBSCRIBED";
       });
 
-    const fallback = window.setInterval(() => void refreshRole(), 4000);
+    const fallback = window.setInterval(() => {
+      if (!realtimeConnected && document.visibilityState === "visible") void refreshRole();
+    }, 30000);
 
     return () => {
       active = false;

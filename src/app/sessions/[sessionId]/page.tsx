@@ -492,6 +492,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
             )}
 
             </div>
+          </section>
 
         {canManage && session.waiting_room_enabled && (
           <section className="surface-card mt-7 p-6 sm:p-8">

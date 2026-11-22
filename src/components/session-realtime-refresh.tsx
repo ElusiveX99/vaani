@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Props = { sessionId?: string };
 
-/** Refreshes server-rendered session views when their database state changes. */
+/** Refresh only the current session or the signed-in user's gathering summaries. */
 export default function SessionRealtimeRefresh({ sessionId }: Props) {
   const router = useRouter();
 
@@ -20,51 +20,28 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
         if (active) router.refresh();
-      }, 120);
+      }, 100);
     };
 
     const subscribe = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!active) return;
+      const { data: auth } = await supabase.auth.getUser();
+      if (!active || !auth.user?.id) return;
 
       let next = supabase.channel(
-        sessionId ? `session-page-updates-${sessionId}` : "vaani-global-session-updates"
+        sessionId ? `session-page-updates-${sessionId}` : `user-gathering-updates-${auth.user.id}`
       );
 
       if (sessionId) {
         next = next
-          .on("postgres_changes", {
-            event: "*", schema: "public", table: "sessions",
-            filter: `id=eq.${sessionId}`,
-          }, refresh)
-          .on("postgres_changes", {
-            event: "*", schema: "public", table: "session_members",
-            filter: `session_id=eq.${sessionId}`,
-          }, refresh)
-          .on("postgres_changes", {
-            event: "*", schema: "public", table: "session_join_requests",
-            filter: `session_id=eq.${sessionId}`,
-          }, refresh)
-          .on("postgres_changes", {
-            event: "*", schema: "public", table: "session_notifications",
-            filter: `session_id=eq.${sessionId}`,
-          }, refresh);
+          .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `id=eq.${sessionId}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_join_requests", filter: `session_id=eq.${sessionId}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_notifications", filter: `session_id=eq.${sessionId}` }, refresh);
       } else {
-        next = next.on("postgres_changes", {
-          event: "*", schema: "public", table: "sessions",
-        }, refresh);
-
-        if (data.user?.id) {
-          next = next
-            .on("postgres_changes", {
-              event: "*", schema: "public", table: "session_members",
-              filter: `user_id=eq.${data.user.id}`,
-            }, refresh)
-            .on("postgres_changes", {
-              event: "*", schema: "public", table: "session_notifications",
-              filter: `user_id=eq.${data.user.id}`,
-            }, refresh);
-        }
+        next = next
+          .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `created_by=eq.${auth.user.id}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `user_id=eq.${auth.user.id}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_notifications", filter: `user_id=eq.${auth.user.id}` }, refresh);
       }
 
       channel = next;
@@ -72,7 +49,6 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
     };
 
     void subscribe();
-
     return () => {
       active = false;
       if (refreshTimer) clearTimeout(refreshTimer);

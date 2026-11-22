@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody } from "@/lib/security/request";
 
 function isUuid(value: unknown): value is string {
   return typeof value === "string" &&
@@ -19,9 +20,9 @@ export async function POST(
     return NextResponse.json({ error: "Invalid session ID." }, { status: 400 });
   }
 
-  let body: { targetUserId?: unknown; makeAdmin?: unknown };
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
+  const parsed = await readJsonBody<{ targetUserId?: unknown; makeAdmin?: unknown }>(request, 4096);
+  if (!parsed.ok) return NextResponse.json({ error: "Invalid request body." }, { status: parsed.status });
+  const body = parsed.data;
 
   if (!isUuid(body.targetUserId) || typeof body.makeAdmin !== "boolean") {
     return NextResponse.json({ error: "Invalid role assignment." }, { status: 400 });

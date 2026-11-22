@@ -1,5 +1,7 @@
 "use client";
 
+import InlineFeedback from "@/components/inline-feedback";
+
 import Link from "next/link";
 
 import { useRouter } from "next/navigation";
@@ -180,8 +182,8 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
               <input id="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="field-input mt-2" placeholder="Enter your password" />
             </label>
             {mode === "login" && <div className="text-right"><a href="/login/forgot-password" className="text-xs font-semibold text-[var(--plum)] hover:underline">Forgot password?</a></div>}
-            {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-            {message && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
+            {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
+            {message && <InlineFeedback tone="success">{message}</InlineFeedback>}
             <button type="submit" disabled={loading} className="button-primary mt-2 w-full">{loading ? "Please wait…" : mode === "login" ? "Sign in to Vaani" : "Create your account"}</button>
           </form>
         </section>

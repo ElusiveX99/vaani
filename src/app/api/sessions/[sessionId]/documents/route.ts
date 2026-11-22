@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody } from "@/lib/security/request";
 
 function json(body: unknown, status = 200) {
   return NextResponse.json(body, {
@@ -97,9 +98,9 @@ export async function PATCH(
   const auth = await getContext(sessionId);
   if ("response" in auth) return auth.response;
 
-  let body: { documentId?: unknown };
-  try { body = await request.json(); }
-  catch { return json({ error: "Invalid request body." }, 400); }
+  const parsed = await readJsonBody<{ documentId?: unknown }>(request, 4096);
+  if (!parsed.ok) return json({ error: "Invalid request body." }, parsed.status);
+  const body = parsed.data;
 
   if (body.documentId !== null && !isUuid(body.documentId)) {
     return json({ error: "Invalid document ID." }, 400);

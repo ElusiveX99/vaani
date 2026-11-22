@@ -381,11 +381,12 @@ const SynchronizedReader = memo(
 
       // Realtime is the primary update path. This lightweight fallback makes
       // document switches recover automatically if a client misses an event.
+      let stateRealtimeConnected = false;
       const stateFallbackInterval = window.setInterval(() => {
-        if (active && document.visibilityState === "visible") {
+        if (active && !stateRealtimeConnected && document.visibilityState === "visible") {
           void loadReaderState(true, false);
         }
-      }, 15000);
+      }, 30000);
 
       const membershipChannel = supabase
         .channel(`reader-membership-${sessionId}`)
@@ -505,7 +506,7 @@ const SynchronizedReader = memo(
             setError("");
           }
         )
-        .subscribe();
+        .subscribe((status) => { stateRealtimeConnected = status === "SUBSCRIBED"; });
 
       return () => {
         active = false;

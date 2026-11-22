@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import InlineFeedback from "@/components/inline-feedback";
 
 type DocumentItem = {
   id: string;
@@ -191,8 +192,8 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
           })
         )}
 
-        {error && <p role="alert" className="rounded-md bg-red-950/50 px-3 py-2 text-[11px] text-red-100">{error}</p>}
-        {notice && <p role="status" className="rounded-md bg-white/[0.06] px-3 py-2 text-[11px] text-white/75">{notice}</p>}
+        {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
+        {notice && <InlineFeedback tone="success">{notice}</InlineFeedback>}
       </div>
     </details>
   );

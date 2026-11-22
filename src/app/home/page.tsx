@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
+import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 
 function HomeLoading() {
   return (
@@ -47,18 +48,18 @@ async function HomeContent() {
     authUser.user?.user_metadata?.picture ||
     null;
 
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("id, title, status, scheduled_start_at, access_type")
-    .eq("is_draft", false)
-    .in("status", ["scheduled", "live"])
-    .order("created_at", { ascending: false })
-    .limit(8);
-  const { data: memberships } = await supabase
-    .from("session_members")
-    .select("session_id")
-    .eq("user_id", userId)
-    .eq("status", "accepted");
+  const [{ data: sessions }, { data: memberships }] = await Promise.all([
+    supabase.from("sessions")
+      .select("id, title, status, scheduled_start_at, access_type")
+      .eq("is_draft", false)
+      .in("status", ["scheduled", "live"])
+      .order("created_at", { ascending: false })
+      .limit(8),
+    supabase.from("session_members")
+      .select("session_id")
+      .eq("user_id", userId)
+      .eq("status", "accepted"),
+  ]);
 
   const joined = new Set((memberships ?? []).map((item) => item.session_id));
   const relevantSessions = (sessions ?? [])
@@ -67,6 +68,7 @@ async function HomeContent() {
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+      <SessionRealtimeRefresh />
       <SiteHeader name={name} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-10 sm:py-14">
         <section className="flex flex-col gap-5 border-b border-[var(--line)] pb-8 sm:flex-row sm:items-end sm:justify-between">

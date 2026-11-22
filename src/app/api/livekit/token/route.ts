@@ -117,23 +117,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const {
-      data: profile,
-      error: profileError,
-    } = await supabase
-      .from("profiles")
-      .select("display_name, avatar_url, avatar_path")
-      .eq("id", userId)
-      .maybeSingle();
+    const [{ data: profile, error: profileError }, { data: authUserData }] = await Promise.all([
+      supabase.from("profiles")
+        .select("display_name, avatar_url, avatar_path")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase.auth.getUser(),
+    ]);
 
-    if (profileError) {
-      console.error(
-        "LiveKit profile lookup failed:",
-        profileError
-      );
-    }
-
-    const { data: authUserData } = await supabase.auth.getUser();
+    if (profileError) console.error("LiveKit profile lookup failed:", profileError);
     const metadata = authUserData.user?.user_metadata ?? {};
     const displayName =
       String(profile?.display_name ?? metadata.full_name ?? metadata.name ?? "")

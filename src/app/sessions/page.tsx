@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
 import InlineFeedback from "@/components/inline-feedback";
 import Link from "next/link";
+import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 
 import {
   joinCommunitySession,
@@ -254,30 +255,33 @@ async function SessionsContent({
   const displayName = profile?.display_name || authUser.user?.user_metadata?.full_name || authUser.user?.user_metadata?.name || email.split("@")[0] || "Sakhi";
   const avatarUrl = profile?.avatar_url || (profile?.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) || authUser.user?.user_metadata?.avatar_url || authUser.user?.user_metadata?.picture || null;
 
-  const { data: notifications } = await supabase.from("session_notifications")
-    .select("id, session_id, type, title, body, read_at, created_at")
-    .eq("user_id", userId).order("created_at", { ascending: false }).limit(8);
-
-  const { data: sessions, error: sessionsError } = await supabase
-    .from("sessions")
-    .select(
-      "id, title, description, access_type, status, scheduled_start_at, created_by, is_draft"
-    )
-    .eq("is_draft", false)
-    .in("status", ["scheduled", "live"])
-    .order("created_at", { ascending: false });
-
-  const { data: drafts, error: draftsError } = await supabase
-    .from("sessions")
-    .select("id, title, description, access_type, status, scheduled_start_at, created_by, is_draft")
-    .eq("created_by", userId)
-    .eq("is_draft", true)
-    .order("updated_at", { ascending: false });
-
-  const { data: memberships, error: membershipError } = await supabase
-    .from("session_members")
-    .select("session_id, role, status")
-    .eq("user_id", userId);
+  const [notificationsResult, sessionsResult, draftsResult, membershipsResult] = await Promise.all([
+    supabase.from("session_notifications")
+      .select("id, session_id, type, title, body, read_at, created_at")
+      .eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("sessions")
+      .select("id, title, description, access_type, status, scheduled_start_at, created_by, is_draft")
+      .eq("is_draft", false)
+      .in("status", ["scheduled", "live"])
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase.from("sessions")
+      .select("id, title, description, access_type, status, scheduled_start_at, created_by, is_draft")
+      .eq("created_by", userId)
+      .eq("is_draft", true)
+      .order("updated_at", { ascending: false })
+      .limit(50),
+    supabase.from("session_members")
+      .select("session_id, role, status")
+      .eq("user_id", userId),
+  ]);
+  const notifications = notificationsResult.data;
+  const sessions = sessionsResult.data;
+  const sessionsError = sessionsResult.error;
+  const drafts = draftsResult.data;
+  const draftsError = draftsResult.error;
+  const memberships = membershipsResult.data;
+  const membershipError = membershipsResult.error;
 
   const visibleSessions = (sessions ?? []) as Session[];
 
@@ -349,6 +353,7 @@ async function SessionsContent({
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+      <SessionRealtimeRefresh />
       <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-8 sm:py-10">
         <header className="mb-8 flex flex-col gap-5 pt-2 sm:flex-row sm:items-end sm:justify-between">

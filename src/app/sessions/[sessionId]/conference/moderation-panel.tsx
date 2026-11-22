@@ -5,6 +5,7 @@ import { useParticipants } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
+import InlineFeedback from "@/components/inline-feedback";
 import { getLiveKitUserId } from "@/lib/livekit/identity";
 
 type Props = {
@@ -370,15 +371,7 @@ export default function ModerationPanel({
             </div>
           )}
 
-          {message && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-xs text-white/75"
-            >
-              {message}
-            </p>
-          )}
+          {message && <div className="mt-4"><InlineFeedback tone="info">{message}</InlineFeedback></div>}
         </div>
 
         <footer className="shrink-0 border-t border-white/10 px-4 py-3">

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
+import InlineFeedback from "@/components/inline-feedback";
 
 type Props = {
   userId: string;
@@ -65,48 +66,12 @@ export default function ProfileEditor({
     supabase: ReturnType<typeof createClient>,
     values: { display_name: string; avatar_url: string | null; avatar_path: string | null }
   ) {
-    const { data: existing, error: lookupError } = await supabase
+    const { error } = await supabase
       .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (lookupError) throw lookupError;
-
-    if (existing) {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update(values)
-        .eq("id", userId);
-      if (updateError) throw updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from("profiles")
-        .insert({ id: userId, ...values });
-      if (insertError) throw insertError;
-    }
+      .upsert({ id: userId, ...values }, { onConflict: "id" });
+    if (error) throw error;
   }
 
-  async function syncMetadata(
-    supabase: ReturnType<typeof createClient>,
-    values: { display_name?: string; avatar_url?: string | null }
-  ) {
-    const { error: metadataError } = await supabase.auth.updateUser({
-      data: {
-        ...(values.display_name !== undefined
-          ? { display_name: values.display_name, full_name: values.display_name }
-          : {}),
-        ...(values.avatar_url !== undefined
-          ? { avatar_url: values.avatar_url }
-          : {}),
-      },
-    });
-    // The profiles row is the source of truth for Vaani's UI. A metadata
-    // refresh failure must not misreport a successful profile write.
-    if (metadataError) {
-      console.error("Vaani profile metadata refresh failed:", metadataError);
-    }
-  }
 
   function notifyProfileUpdated() {
     window.dispatchEvent(new CustomEvent("vaani:profile-updated"));
@@ -130,7 +95,6 @@ export default function ProfileEditor({
         avatar_url: avatarUrl,
         avatar_path: avatarPath,
       });
-      await syncMetadata(supabase, { display_name: cleanName, avatar_url: avatarUrl });
       setName(cleanName);
       setMessage("Your profile has been saved.");
       notifyProfileUpdated();
@@ -184,7 +148,6 @@ export default function ProfileEditor({
       setAvatarUrl(nextUrl);
       setAvatarPath(path);
       setName(cleanName);
-      await syncMetadata(supabase, { display_name: cleanName, avatar_url: nextUrl });
 
       if (avatarPath && avatarPath.startsWith(`${userId}/`) && avatarPath !== path) {
         const { error: cleanupError } = await supabase.storage
@@ -226,7 +189,6 @@ export default function ProfileEditor({
       });
       setAvatarUrl(null);
       setAvatarPath(null);
-      await syncMetadata(supabase, { avatar_url: null });
 
       if (avatarPath && avatarPath.startsWith(`${userId}/`)) {
         const { error: cleanupError } = await supabase.storage
@@ -296,8 +258,8 @@ export default function ProfileEditor({
             placeholder="How should other members see you?"
           />
         </label>
-        {error && <p role="alert" aria-live="assertive" className="text-sm text-red-700">{error}</p>}
-        {message && <p role="status" aria-live="polite" className="text-sm text-[var(--forest)]">{message}</p>}
+        {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
+        {message && <InlineFeedback tone="success">{message}</InlineFeedback>}
         <button type="submit" disabled={busy} className="button-primary">
           {busy ? "Saving…" : "Save changes"}
         </button>
