@@ -306,9 +306,7 @@ function MediaButton({
 function ConferenceWorkspace({
   sessionId,
   title,
-  canManageDocuments,
-  canControlReader,
-}: Props) {
+}: Pick<Props, "sessionId" | "title">) {
   const room = useRoomContext();
 
   const {
@@ -362,7 +360,7 @@ function ConferenceWorkspace({
 
   const localRole = localParticipant.attributes?.role ?? "participant";
   const [membershipRole, setMembershipRole] = useState(localRole);
-  const [membershipCanControlReader, setMembershipCanControlReader] = useState(canControlReader);
+  const [membershipCanControlReader, setMembershipCanControlReader] = useState(false);
   const [connectionState, setConnectionState] = useState(room.state);
 
   const updateConnectionState = useCallback(() => {
@@ -1268,12 +1266,6 @@ export default function ConferenceRoom({
           }
           title={
             title
-          }
-          canManageDocuments={
-            canManageDocuments
-          }
-          canControlReader={
-            canControlReader
           }
         />
 
