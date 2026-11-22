@@ -491,9 +491,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </span>
             )}
 
-            {/* Invitation controls */}
+            </div>
 
-            
         {canManage && session.waiting_room_enabled && (
           <section className="surface-card mt-7 p-6 sm:p-8">
             <h2 className="text-xl font-semibold">Join requests</h2>
