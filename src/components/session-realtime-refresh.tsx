@@ -40,6 +40,14 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
           .on("postgres_changes", {
             event: "*", schema: "public", table: "session_members",
             filter: `session_id=eq.${sessionId}`,
+          }, refresh)
+          .on("postgres_changes", {
+            event: "*", schema: "public", table: "session_join_requests",
+            filter: `session_id=eq.${sessionId}`,
+          }, refresh)
+          .on("postgres_changes", {
+            event: "*", schema: "public", table: "session_notifications",
+            filter: `session_id=eq.${sessionId}`,
           }, refresh);
       } else {
         next = next.on("postgres_changes", {
@@ -47,10 +55,15 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
         }, refresh);
 
         if (data.user?.id) {
-          next = next.on("postgres_changes", {
-            event: "*", schema: "public", table: "session_members",
-            filter: `user_id=eq.${data.user.id}`,
-          }, refresh);
+          next = next
+            .on("postgres_changes", {
+              event: "*", schema: "public", table: "session_members",
+              filter: `user_id=eq.${data.user.id}`,
+            }, refresh)
+            .on("postgres_changes", {
+              event: "*", schema: "public", table: "session_notifications",
+              filter: `user_id=eq.${data.user.id}`,
+            }, refresh);
         }
       }
 

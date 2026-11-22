@@ -805,7 +805,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
             {session.duration_minutes && <div><dt className="text-[var(--muted)]">Expected duration</dt><dd className="mt-1 text-[var(--ink)]">{session.duration_minutes} minutes</dd></div>}
             {session.instructions && <div className="sm:col-span-2"><dt className="text-[var(--muted)]">Participant instructions</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ink)]">{session.instructions}</dd></div>}
             {session.recurrence_rule && <div><dt className="text-[var(--muted)]">Repeats</dt><dd className="mt-1 text-[var(--ink)]">{session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : "Every month"} until {formatDate(session.recurrence_until, session.time_zone)}</dd></div>}
-\n            {session.started_at && (
+
+            {session.started_at && (
               <div>
                 <dt className="text-[var(--muted)]">
                   Started
