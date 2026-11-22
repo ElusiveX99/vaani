@@ -479,7 +479,7 @@ const SynchronizedReader = memo(
               ? {
                   ...dataRef.current,
                   canControl:
-                    controllerId === localUserId && leaseActive,
+                    dataRef.current?.canRequestControl === true && controllerId === localUserId && leaseActive,
                   readerState: {
                     ...dataRef.current.readerState,
                     ...newState,

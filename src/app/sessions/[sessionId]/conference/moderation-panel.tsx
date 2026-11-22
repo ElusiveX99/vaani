@@ -103,7 +103,7 @@ export default function ModerationPanel({
   const remoteParticipants = participants.filter((participant) => {
     if (participant.isLocal) return false;
     const userId = getLiveKitUserId(participant);
-    return Boolean(userId) && memberRoles[userId!] !== "organizer";
+    return Boolean(userId && memberRoles[userId] && memberRoles[userId] !== "organizer");
   });
 
   if (!open || !canManageParticipants) return null;
@@ -175,7 +175,9 @@ export default function ModerationPanel({
         ...previous,
         [targetUserId]: makeAdmin ? "admin" : "participant",
       }));
-      setReaderAccess((previous) => ({ ...previous, [targetUserId]: false }));
+      if (!makeAdmin) {
+        setReaderAccess((previous) => ({ ...previous, [targetUserId]: false }));
+      }
       setMessage(makeAdmin ? "Session admin assigned." : "Session admin removed.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Role update failed.");

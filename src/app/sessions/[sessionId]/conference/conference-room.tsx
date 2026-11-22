@@ -413,7 +413,7 @@ function ConferenceWorkspace({
     void refreshRole();
 
     const channel = supabase
-      .channel(`session-member-role-${sessionId}-${identity}`)
+      .channel(`session-member-role-${sessionId}-${localUserId}`)
       .on(
         "postgres_changes",
         {
@@ -424,7 +424,7 @@ function ConferenceWorkspace({
         },
         (payload) => {
           const changed = (payload.new ?? payload.old) as { user_id?: string };
-          if (changed.user_id === identity) {
+          if (changed.user_id === localUserId) {
             void refreshRole();
           }
         }
