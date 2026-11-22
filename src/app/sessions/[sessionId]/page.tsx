@@ -109,6 +109,11 @@ const errorMessages: Record<string, string> = {
   invalid_options: "Check the time zone, duration, and participant limit.",
   invalid_recurrence: "Choose a valid repeat pattern and end date within one year.",
   join_request_action_failed: "The join request could not be updated.",
+  conference_access_denied: "You do not currently have access to this conference.",
+  conference_not_live: "This conference is not live yet.",
+  join_failed: "You could not join this gathering. Please try again.",
+  joined_by_invite: "You have joined the gathering.",
+  created: "Your gathering has been created.",
 };
 
 
@@ -289,27 +294,45 @@ async function SessionContent({ params, searchParams }: PageProps) {
   let members: Membership[] = [];
   let profiles: Profile[] = [];
   let joinRequests: { id: string; user_id: string; created_at: string }[] = [];
+  let memberLookupFailed = false;
+  let joinRequestLookupFailed = false;
+  let profileLookupFailed = false;
 
   if (isAccepted || canManage) {
-    const { data: memberData } = await supabase
+    const { data: memberData, error: memberError } = await supabase
       .from("session_members")
       .select("user_id, role, status")
       .eq("session_id", session.id)
       .eq("status", "accepted")
       .order("created_at", { ascending: true });
-    members = (memberData ?? []) as Membership[];
+    if (memberError) {
+      memberLookupFailed = true;
+      console.error("Gathering member lookup failed:", memberError);
+    } else {
+      members = (memberData ?? []) as Membership[];
+    }
   }
   if (canManage && session.waiting_room_enabled) {
-    const { data: requests } = await supabase.from("session_join_requests")
+    const { data: requests, error: requestError } = await supabase.from("session_join_requests")
       .select("id, user_id, created_at").eq("session_id", session.id)
       .eq("status", "pending").order("created_at", { ascending: true });
-    joinRequests = requests ?? [];
+    if (requestError) {
+      joinRequestLookupFailed = true;
+      console.error("Gathering join-request lookup failed:", requestError);
+    } else {
+      joinRequests = requests ?? [];
+    }
   }
   const memberIds = [...new Set([...members.map((member) => member.user_id), ...joinRequests.map((request) => request.user_id)])];
   if (memberIds.length > 0) {
-    const { data: profileData } = await supabase.from("profiles")
+    const { data: profileData, error: profileError } = await supabase.from("profiles")
       .select("id, display_name, avatar_url, avatar_path").in("id", memberIds);
-    profiles = (profileData ?? []) as Profile[];
+    if (profileError) {
+      profileLookupFailed = true;
+      console.error("Gathering profile lookup failed:", profileError);
+    } else {
+      profiles = (profileData ?? []) as Profile[];
+    }
   }
 
   const profileMap = new Map(
@@ -460,6 +483,42 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </form>
             )}
 
+            {isAccepted && session.status === "live" && (
+              <Link
+                href={`/sessions/${session.id}/conference`}
+                className="button-primary"
+              >
+                Enter Conference
+              </Link>
+            )}
+
+            {canJoin && (
+              <form action={joinCommunitySession}>
+                <input type="hidden" name="session_id" value={session.id} />
+                <button type="submit" className="button-primary">
+                  Join Gathering
+                </button>
+              </form>
+            )}
+
+            {ownJoinRequest && (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-[var(--muted)]">Your request is waiting for approval.</span>
+                <form action={cancelJoinRequest}>
+                  <input type="hidden" name="session_id" value={session.id} />
+                  <input type="hidden" name="request_id" value={ownJoinRequest.id} />
+                  <button type="submit" className="button-secondary">Cancel Request</button>
+                </form>
+              </div>
+            )}
+
+            {isAccepted && !isOrganizer && (
+              <form action={leaveSession}>
+                <input type="hidden" name="session_id" value={session.id} />
+                <button type="submit" className="button-secondary">Leave Gathering</button>
+              </form>
+            )}
+
             {/* Role information */}
 
             {isOrganizer && (
@@ -517,6 +576,16 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </div>
             )}
           </section>
+        )}
+        {(memberLookupFailed || profileLookupFailed) && (isAccepted || canManage) && (
+          <p role="alert" className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Some gathering member details could not be loaded. Please refresh the page.
+          </p>
+        )}
+        {joinRequestLookupFailed && canManage && (
+          <p role="alert" className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Join requests could not be loaded. Please refresh the page.
+          </p>
         )}
         {(isAccepted || canManage) && (
           <SessionMembers

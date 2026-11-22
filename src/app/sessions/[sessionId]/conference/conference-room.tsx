@@ -507,7 +507,10 @@ function ConferenceWorkspace({
     const ids = participantUserKey ? participantUserKey.split("|") : [];
     if (ids.length === 0) { setParticipantProfiles({}); return; }
     const supabase = createClient();
-    void supabase.rpc("get_session_member_profiles", { p_session_id: sessionId }).then(({ data, error }) => {
+    void supabase.from("profiles")
+      .select("id, display_name, avatar_url, avatar_path")
+      .in("id", ids)
+      .then(({ data, error }) => {
       if (!active) return;
       if (error) { console.error("Conference participant profiles could not be loaded:", error); return; }
       const next: Record<string, { displayName: string; avatarUrl: string | null }> = {};
