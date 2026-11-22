@@ -9,6 +9,7 @@ import {
   joinCommunitySession,
   respondToInvitation,
   leaveSession,
+  markSessionNotificationRead,
 } from "./actions";
 
 type SessionsPageProps = {
@@ -44,19 +45,18 @@ const successMessages: Record<string, string> = {
   left: "You have left the session.",
   join_request_sent: "Your request has been sent to the organizer.",
   notification_read: "Notification marked as read.",
-  notification_read: "Notification marked as read.",
 };
 
 const errorMessages: Record<string, string> = {
   invalid_input: "Check your session title and description.",
   invalid_access: "Select a valid access setting.",
-  invalid_type: "Select a valid gathering type.",
-  invalid_options: "Check the duration, time zone, language, and participant limit.",
+  invalid_options: "Check the duration, time zone, and participant limit.",
   invalid_schedule: "Choose a future start date and time.",
   create_failed: "The session could not be created.",
   join_failed: "You could not join this session.",
   invitation_failed: "Your invitation response could not be saved.",
   leave_failed: "You could not leave this session.",
+  notification_failed: "The notification could not be updated.",
   notification_failed: "The notification could not be updated.",
 };
 

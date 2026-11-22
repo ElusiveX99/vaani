@@ -737,7 +737,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </form>
           </section>
         )}
-\n        {(isAccepted || canManage) && (
+
+        {(isAccepted || canManage) && (
           <SessionMembers
             sessionId={session.id}
             currentUserId={userId}
