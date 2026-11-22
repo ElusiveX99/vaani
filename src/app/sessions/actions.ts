@@ -131,7 +131,8 @@ export async function joinCommunitySession(formData: FormData) {
     redirect("/sessions?error=invalid_session");
   }
 
-  const { error } = await supabase.rpc("join_community_session", {
+  const { data: sessionInfo } = await supabase.from("sessions").select("waiting_room_enabled").eq("id", sessionId).maybeSingle();
+  const { error } = await supabase.rpc("request_session_join", {
     p_session_id: sessionId,
   });
 

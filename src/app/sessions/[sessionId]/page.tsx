@@ -17,6 +17,8 @@ import {
   createInviteLink,
   inviteMemberByEmail,
   revokeMemberInvitation,
+  publishSessionDraft,
+  updateSessionDetails,
 } from "../actions";
 
 type PageProps = {
@@ -38,6 +40,15 @@ type Session = {
   started_at: string | null;
   ended_at: string | null;
   created_by: string;
+  is_draft: boolean;
+  time_zone: string;
+  duration_minutes: number | null;
+  instructions: string | null;
+  participant_limit: number | null;
+  waiting_room_enabled: boolean;
+  allow_participant_invites: boolean;
+  recurrence_rule: string | null;
+  recurrence_until: string | null;
 };
 
 type Membership = {
@@ -63,7 +74,10 @@ const successMessages: Record<string, string> = {
   invite_link_created: "Invitation link created. Copy it below.",
   member_invited: "The Vaani member has been invited.",
   invitation_revoked: "The invitation has been revoked.",
-  joined_by_invite: "You have joined the gathering.",\n  draft_saved: "Your draft has been saved.",\n  published: "Your gathering has been published.",\n  session_updated: "Gathering details updated.",
+  joined_by_invite: "You have joined the gathering.",
+  draft_saved: "Your draft has been saved.",
+  published: "Your gathering has been published.",
+  session_updated: "Gathering details updated.",
 };
 
 const errorMessages: Record<string, string> = {

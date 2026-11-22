@@ -1,4 +1,5 @@
-import { Suspense } from "react";\nimport { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { redeemInviteLink } from "../../actions";
 
