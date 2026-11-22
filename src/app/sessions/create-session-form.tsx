@@ -10,8 +10,7 @@ type Props = {
 const errors: Record<string, string> = {
   invalid_input: "Check the title, description, and instructions.",
   invalid_access: "Select a valid access setting.",
-  invalid_type: "Select a gathering type.",
-  invalid_options: "Check the duration, time zone, language, and participant limit.",
+  invalid_options: "Check the duration, time zone, and participant limit.",
   invalid_schedule: "Choose a start time in the future.",
   create_failed: "The gathering could not be saved. Please try again.",
 };
@@ -64,20 +63,6 @@ export default function CreateSessionForm({ action, error }: Props) {
         <div>
           <label htmlFor="description" className="field-label mb-2">Description</label>
           <textarea id="description" name="description" maxLength={2000} rows={3} placeholder="A little about this gathering" className="field-input min-h-24 resize-y" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="gathering_type" className="field-label mb-2">Type of gathering</label>
-            <select id="gathering_type" name="gathering_type" defaultValue="chaturasi_gaayan" className="field-input">
-              <option value="chaturasi_gaayan">Chaturasi Ji Gaayan</option>
-              <option value="vaani_paath">Vaani Paath</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="language" className="field-label mb-2">Language (optional)</label>
-            <input id="language" name="language" maxLength={40} placeholder="e.g. Braj, Hindi" className="field-input" />
-          </div>
         </div>
       </section>
 
@@ -132,7 +117,7 @@ export default function CreateSessionForm({ action, error }: Props) {
         </label>
         <label className="flex items-start gap-3 text-sm text-[var(--ink)]">
           <input type="checkbox" name="allow_participant_invites" className="mt-1 size-4 accent-[var(--plum)]" />
-          <span><strong className="block">Allow participants to invite others</strong><span className="text-[var(--muted)]">This setting will be enforced when invitation links are introduced.</span></span>
+          <span><strong className="block">Allow participants to invite others</strong><span className="text-[var(--muted)]">Participants can invite others when the organizer allows it.</span></span>
         </label>
       </section>
 
