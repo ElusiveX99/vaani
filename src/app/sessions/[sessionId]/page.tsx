@@ -426,7 +426,320 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
             {/* Organizer lifecycle controls */}
 
-            {isAccepted && session.allow_participant_invites && !canManage && session.status !== "ended" && session.status !== "cancelled" && (
+            {isOrganizer && session.status === "scheduled" && !session.is_draft && (
+              <>
+                <form action={startSession}>
+                  <input
+                    type="hidden"
+                    name="session_id"
+                    value={session.id}
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-[var(--plum)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--plum-deep)]"
+                  >
+                    Start session
+                  </button>
+                </form>
+
+                <form action={cancelSession}>
+                  <input
+                    type="hidden"
+                    name="session_id"
+                    value={session.id}
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
+                  >
+                    Cancel session
+                  </button>
+                </form>
+              </>
+            )}
+
+            {isOrganizer && session.status === "live" && (
+              <form action={endSession}>
+                <input
+                  type="hidden"
+                  name="session_id"
+                  value={session.id}
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-600"
+                >
+                  End session
+                </button>
+              </form>
+            )}
+
+            {isOrganizer && session.status === "cancelled" && session.scheduled_start_at && new Date(session.scheduled_start_at).getTime() > Date.now() && (
+              <form action={resumeSession}>
+                <input type="hidden" name="session_id" value={session.id}/>
+                <button className="button-primary">Resume gathering</button>
+              </form>
+            )}
+
+            {/* Role information */}
+
+            {isOrganizer && (
+              <span className="text-sm font-medium text-[var(--forest)]">
+                You are the organizer.
+              </span>
+            )}
+
+            {isInCharge && (
+              <span className="text-sm font-medium text-[var(--forest)]">
+                You are an in-charge member.
+              </span>
+            )}
+
+            {isAdmin && (
+              <span className="text-sm font-medium text-blue-800">
+                You are a session admin.
+              </span>
+            )}
+
+            {/* Invitation controls */}
+
+            {isInvited && (
+              <>
+                <form action={respondToInvitation}>
+                  <input
+                    type="hidden"
+                    name="session_id"
+                    value={session.id}
+                  />
+
+                  <input
+                    type="hidden"
+                    name="accept"
+                    value="true"
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-[var(--plum)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--plum-deep)]"
+                  >
+                    Accept invitation
+                  </button>
+                </form>
+
+                <form action={respondToInvitation}>
+                  <input
+                    type="hidden"
+                    name="session_id"
+                    value={session.id}
+                  />
+
+                  <input
+                    type="hidden"
+                    name="accept"
+                    value="false"
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-[var(--line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--background)]"
+                  >
+                    Decline
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Community join */}
+
+            {canJoin && (
+              <form action={joinCommunitySession}>
+                <input
+                  type="hidden"
+                  name="session_id"
+                  value={session.id}
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[var(--plum)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--plum-deep)]"
+                >
+                  Join session
+                </button>
+              </form>
+            )}
+
+            {ownJoinRequest && !isAccepted && (
+              <div className="w-full rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-medium text-amber-900">Your request is awaiting approval.</p>
+                <p className="mt-1 text-sm text-amber-800">The organizer will review your request before you can enter.</p>
+                <form action={cancelJoinRequest} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={ownJoinRequest.id}/><button className="text-sm font-semibold text-amber-900 underline">Cancel request</button></form>
+              </div>
+            )}
+
+            {/* Leave */}
+
+            {isAccepted &&
+              !isOrganizer &&
+              session.status !== "ended" &&
+              session.status !== "cancelled" && (
+                <form action={leaveSession}>
+                  <input
+                    type="hidden"
+                    name="session_id"
+                    value={session.id}
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-[var(--line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--background)]"
+                  >
+                    Leave session
+                  </button>
+                </form>
+              )}
+
+            {/* Conference placeholder */}
+
+            {isAccepted && session.status === "scheduled" && (
+              <div className="w-full rounded-lg border border-[var(--line)] bg-[var(--background)] p-4">
+                <p className="text-sm font-medium text-[var(--ink)]">
+                  Conference room
+                </p>
+
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  The conference room will become available when the
+                  organizer starts the session.
+                </p>
+              </div>
+            )}
+
+            {isAccepted && session.status === "live" && (
+              <div className="w-full rounded-lg border border-[#d4e1d1] bg-[#edf3eb] p-4">
+                <p className="text-sm font-medium text-[var(--forest)]">
+                  Session is live
+                </p>
+
+                <p className="mt-1 text-sm text-[var(--forest)]">
+                  The conference room is ready.
+                </p>
+
+                <Link
+                  href={`/sessions/${session.id}/conference`}
+                  className="mt-4 inline-flex rounded-lg bg-[var(--plum)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--plum-deep)]"
+                >
+                  Enter conference
+                </Link>
+              </div>
+            )}
+
+            {session.status === "ended" && (
+              <div className="w-full rounded-lg border border-[var(--line)] bg-[var(--background)] p-4">
+                <p className="text-sm font-medium text-[var(--ink)]">
+                  This session has ended.
+                </p>
+                {isOrganizer && (
+                  <form action={deleteEndedSession} className="mt-4">
+                    <input type="hidden" name="session_id" value={session.id} />
+                    <ConfirmSubmitButton
+                      message="Permanently delete this ended gathering and its associated history? This cannot be undone."
+                      className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
+                    >
+                      Permanently delete gathering
+                    </ConfirmSubmitButton>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {session.status === "cancelled" && (
+              <div className="w-full rounded-lg border border-red-200 bg-[#fbefed] p-4">
+                <p className="text-sm font-medium text-red-900">This session was cancelled.</p>
+                {isOrganizer && (
+                  <form action={deleteCancelledSession} className="mt-4">
+                    <input type="hidden" name="session_id" value={session.id} />
+                    <ConfirmSubmitButton message="Permanently delete this cancelled gathering and its associated records? This cannot be undone." className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]">
+                      Permanently delete gathering
+                    </ConfirmSubmitButton>
+                  </form>
+                )}
+                {paramsData.error === "delete_cancelled_failed" && <p role="alert" className="mt-3 text-sm text-red-800">{errorMessages.delete_cancelled_failed}</p>}
+              </div>
+            )}
+
+            {!isAccepted &&
+              !isInvited &&
+              !canJoin &&
+              session.status !== "ended" &&
+              session.status !== "cancelled" && (
+                <p className="text-sm text-[var(--muted)]">
+                  This session is not currently available for joining.
+                </p>
+              )}
+          </div>
+        </section>
+
+
+        {canManage && !session.is_draft && session.status !== "ended" && session.status !== "cancelled" && (
+          <section className="surface-card mt-7 p-6 sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Invitation links</h2>
+              <span className="text-xs text-[var(--muted)]">Share privately with the intended participants</span>
+            </div>
+            {["invite_link_failed","invalid_invite_link"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && (
+              <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-[#fbefed] p-3 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</p>
+            )}
+            <form action={createInviteLink} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+              <input type="hidden" name="session_id" value={session.id} />
+              <select name="expiry_hours" defaultValue="168" className="field-input" aria-label="Link expiry">
+                <option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option><option value="720">30 days</option><option value="0">No expiry</option>
+              </select>
+              <input name="max_uses" type="number" min="1" max="500" placeholder="Unlimited uses" className="field-input" aria-label="Maximum uses" />
+              <button className="button-primary">Create link</button>
+            </form>
+            {paramsData.invite && (
+              <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                <label className="field-label mb-2" htmlFor="generated-invite-link">Ready to share</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input id="generated-invite-link" readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" />
+                  <CopyInviteLink value={paramsData.invite} />
+                </div>
+              </div>
+            )}
+            {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).length > 0 && (
+              <div className="mt-5 space-y-3">
+                {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).map((link: any) => (
+                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] p-4 text-sm">
+                    <div><p className="font-medium">{link.label || "Invitation link"}</p><p className="mt-1 text-xs text-[var(--muted)]">{link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}{link.expires_at ? ` · expires ${formatDate(link.expires_at, session.time_zone)}` : " · no expiry"}</p></div>
+                    <form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke</button></form>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+        {canManage && session.waiting_room_enabled && (
+          <section className="surface-card mt-7 p-6 sm:p-8">
+            <h2 className="text-xl font-semibold">Join requests</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Review members waiting for approval.</p>
+            {joinRequests.length === 0 ? <p className="mt-5 text-sm text-[var(--muted)]">No pending requests.</p> : (
+              <div className="mt-5 divide-y divide-[var(--line)]">
+                {joinRequests.map((request) => (
+                  <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                    <div><p className="font-medium">{profileMap.get(request.user_id)?.display_name ?? "Vaani member"}</p><p className="text-xs text-[var(--muted)]">Requested {formatDate(request.created_at, session.time_zone)}</p></div>
+                    <div className="flex gap-2">
+                      <form action={approveJoinRequest}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={request.id}/><button className="button-primary !min-h-9 !px-3 !py-1.5 text-xs">Approve</button></form>
+                      <form action={rejectJoinRequest}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={request.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Decline</button></form>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+        {isAccepted && session.allow_participant_invites && !canManage && session.status !== "ended" && session.status !== "cancelled" && (
           <section className="surface-card mt-7 p-6">
             <h2 className="text-lg font-semibold">Invite someone</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">The organizer has allowed participants to share invitation links.</p>

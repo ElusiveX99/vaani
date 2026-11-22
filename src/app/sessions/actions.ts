@@ -266,7 +266,6 @@ export async function createInviteLink(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
   }
 
-  // 128 bits of cryptographic entropy; the raw token is never stored in the database.
   const token = randomBytes(16).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = expiryHoursValue
