@@ -37,7 +37,7 @@ function parseLocalDateTime(value: string, timeZone: string) {
   return new Date(guess);
 }
 
-function isValidSessionId(value: string) {
+function isValidTimeZone(value: string) {\n  try { Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date()); return true; } catch { return false; }\n}\n\nfunction isValidSessionId(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value
   );
@@ -83,7 +83,7 @@ export async function createSession(formData: FormData) {
   const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
   const scheduledStart = scheduledValue ? new Date(scheduledValue) : null;
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
-  const instructions = String(formData.get("instructions") ?? "").trim();
+  if (!isValidTimeZone(timeZone)) redirect("/sessions/new?error=invalid_options");\n  const instructions = String(formData.get("instructions") ?? "").trim();
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
   const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
   const recurrenceUntil = recurrenceUntilValue ? (recurrenceUntilValue.length === 10 ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : new Date(recurrenceUntilValue)) : null;
@@ -363,7 +363,7 @@ export async function updateSessionDetails(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
-  const scheduled = parseLocalDateTime(scheduledValue, timeZone);
+  if (!isValidTimeZone(timeZone)) redirect(`/sessions/${sessionId}?error=invalid_options`);\n  const scheduled = parseLocalDateTime(scheduledValue, timeZone);
   const accessType = String(formData.get("access_type") ?? "");
   const durationValue = String(formData.get("duration_minutes") ?? "");
   const limitValue = String(formData.get("participant_limit") ?? "");

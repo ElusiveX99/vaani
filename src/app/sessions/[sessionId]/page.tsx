@@ -116,7 +116,7 @@ function dateInputValue(value: string | null, timeZone: string) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, timeZone = "Asia/Kolkata") {
   if (!value) return "Not scheduled";
 
   const date = new Date(value);
@@ -128,7 +128,7 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "full",
     timeStyle: "short",
-    timeZone: "Asia/Kolkata",
+    timeZone,
   }).format(date);
 }
 
@@ -319,7 +319,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                       : "bg-[var(--surface-soft)] text-[var(--ink)]"
               }`}
             >
-              {statusLabel(session.status)}
+              {session.is_draft ? "Draft" : statusLabel(session.status)}
             </span>
           </div>
 
@@ -340,7 +340,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </p>
 
               <p className="mt-2 text-sm font-medium text-[var(--ink)]">
-                {formatDate(session.scheduled_start_at)}
+                {formatDate(session.scheduled_start_at, session.time_zone)}
               </p>
             </div>
 
@@ -669,7 +669,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                       <p className="font-medium">{link.label || "Invitation link"}</p>
                       <p className="mt-1 text-xs text-[var(--muted)]">
                         {link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}
-                        {link.expires_at ? ` · expires ${formatDate(link.expires_at)}` : " · no expiry"}
+                        {link.expires_at ? ` · expires ${formatDate(link.expires_at, session.time_zone)}` : " · no expiry"}
                       </p>
                     </div>
                     <form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke link</button></form>
@@ -704,7 +704,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div className="mt-5 divide-y divide-[var(--line)]">
                 {joinRequests.map((request) => (
                   <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-                    <div><p className="font-medium">{profileMap.get(request.user_id)?.display_name ?? "Vaani member"}</p><p className="text-xs text-[var(--muted)]">Requested {formatDate(request.created_at)}</p></div>
+                    <div><p className="font-medium">{profileMap.get(request.user_id)?.display_name ?? "Vaani member"}</p><p className="text-xs text-[var(--muted)]">Requested {formatDate(request.created_at, session.time_zone)}</p></div>
                     <div className="flex gap-2">
                       <form action={approveJoinRequest}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={request.id}/><button className="button-primary !min-h-9 !px-3 !py-1.5 text-xs">Approve</button></form>
                       <form action={rejectJoinRequest}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={request.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Decline</button></form>
@@ -797,14 +797,22 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </dd>
             </div>
 
-            {session.started_at && (
+
+            <div>
+              <dt className="text-[var(--muted)]">Time zone</dt>
+              <dd className="mt-1 text-[var(--ink)]">{session.time_zone}</dd>
+            </div>
+            {session.duration_minutes && <div><dt className="text-[var(--muted)]">Expected duration</dt><dd className="mt-1 text-[var(--ink)]">{session.duration_minutes} minutes</dd></div>}
+            {session.instructions && <div className="sm:col-span-2"><dt className="text-[var(--muted)]">Participant instructions</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ink)]">{session.instructions}</dd></div>}
+            {session.recurrence_rule && <div><dt className="text-[var(--muted)]">Repeats</dt><dd className="mt-1 text-[var(--ink)]">{session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : "Every month"} until {formatDate(session.recurrence_until, session.time_zone)}</dd></div>}
+\n            {session.started_at && (
               <div>
                 <dt className="text-[var(--muted)]">
                   Started
                 </dt>
 
                 <dd className="mt-1 text-[var(--ink)]">
-                  {formatDate(session.started_at)}
+                  {formatDate(session.started_at, session.time_zone)}
                 </dd>
               </div>
             )}
@@ -816,7 +824,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 </dt>
 
                 <dd className="mt-1 text-[var(--ink)]">
-                  {formatDate(session.ended_at)}
+                  {formatDate(session.ended_at, session.time_zone)}
                 </dd>
               </div>
             )}
