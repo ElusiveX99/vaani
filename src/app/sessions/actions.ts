@@ -84,6 +84,7 @@ export async function createSession(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const accessType = String(formData.get("access_type") ?? "");
   const intent = String(formData.get("intent") ?? "publish");
+  if (intent !== "draft" && intent !== "publish") redirect("/sessions/new?error=invalid_options");
   const isDraft = intent === "draft";
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
   const scheduledValue = String(formData.get("scheduled_start_local") ?? "");
