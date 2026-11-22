@@ -613,7 +613,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
             <div>
               <h2 className="text-xl font-semibold">Invite Sakhis</h2>
               <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                Invite a Vaani member directly or create a secure link. The link does not expose the internal session ID.
+                Find an existing Vaani member by email or create a secure invitation link. Members receive an in-app notification.
               </p>
             </div>
 
@@ -735,6 +735,22 @@ async function SessionContent({ params, searchParams }: PageProps) {
               
               <div className="sm:col-span-2"><button className="button-primary">Save changes</button></div>
             </form>
+          </section>
+        )}
+
+        {isAccepted && session.allow_participant_invites && !canManage && session.status !== "ended" && session.status !== "cancelled" && (
+          <section className="surface-card mt-7 p-6">
+            <h2 className="text-lg font-semibold">Invite someone</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">The organizer has allowed participants to share invitation links.</p>
+            <form action={createInviteLink} className="mt-4 space-y-3">
+              <input type="hidden" name="session_id" value={session.id}/>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select name="expiry_hours" defaultValue="168" className="field-input"><option value="24">Expires in 24 hours</option><option value="72">Expires in 3 days</option><option value="168">Expires in 7 days</option><option value="720">Expires in 30 days</option><option value="0">No expiry</option></select>
+                <input name="max_uses" type="number" min="1" max="500" placeholder="Uses: unlimited" className="field-input"/>
+              </div>
+              <button className="button-primary">Create invitation link</button>
+            </form>
+            {paramsData.success === "invite_link_created" && paramsData.invite && <div className="mt-4"><input readOnly value={paramsData.invite} className="field-input text-xs" onFocus={(event)=>event.currentTarget.select()}/><p className="mt-2 text-xs text-[var(--muted)]">Copy and share this link.</p></div>}
           </section>
         )}
 
