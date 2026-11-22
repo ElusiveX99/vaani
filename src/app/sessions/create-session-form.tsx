@@ -84,7 +84,6 @@ export default function CreateSessionForm({ action, error }: Props) {
       <section className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-[var(--ink)]">Gathering details</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Give this gathering a name and let participants know what to expect.</p>
         </div>
         <div>
           <label htmlFor="title" className="field-label mb-2">Gathering title</label>
@@ -99,13 +98,11 @@ export default function CreateSessionForm({ action, error }: Props) {
       <section className="space-y-4 border-t border-[var(--line)] pt-7">
         <div>
           <h2 className="text-lg font-semibold text-[var(--ink)]">Schedule</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">The gathering will remain scheduled until you explicitly start it.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="scheduled_start_local" className="field-label mb-2">Start date and time (optional)</label>
+            <label htmlFor="scheduled_start_local" className="field-label mb-2">Start date and time</label>
             <input id="scheduled_start_local" name="scheduled_start_local" type="datetime-local" className="field-input" />
-            <p className="mt-2 text-xs text-[var(--muted)]">Leave this blank if the gathering has not been scheduled yet. You can set a time later.</p>
             <input type="hidden" name="scheduled_start_at" />
           </div>
           <div>
@@ -123,13 +120,11 @@ export default function CreateSessionForm({ action, error }: Props) {
           </div>
         </div>
         <input type="hidden" name="time_zone" value={timeZone} />
-        <p className="text-xs text-[var(--muted)]">Time zone: {timeZone}. The time is saved with its time zone so participants can see it in their own local time.</p>
       </section>
 
       <section className="space-y-4 border-t border-[var(--line)] pt-7">
         <div>
           <h2 className="text-lg font-semibold text-[var(--ink)]">Access and participation</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">You can manage individual invitations after creating the gathering.</p>
         </div>
         <div>
           <label htmlFor="access_type" className="field-label mb-2">Who can join?</label>
@@ -140,7 +135,7 @@ export default function CreateSessionForm({ action, error }: Props) {
           </select>
         </div>
         <div>
-          <label htmlFor="participant_limit" className="field-label mb-2">Participant limit (optional)</label>
+          <label htmlFor="participant_limit" className="field-label mb-2">Participant limit</label>
           <input id="participant_limit" name="participant_limit" type="number" min="2" max="500" placeholder="No limit" className="field-input" />
         </div>
         <label className="flex items-start gap-3 text-sm text-[var(--ink)]">
@@ -154,13 +149,12 @@ export default function CreateSessionForm({ action, error }: Props) {
       </section>
 
       <section className="space-y-4 border-t border-[var(--line)] pt-7">
-        <div><h2 className="text-lg font-semibold text-[var(--ink)]">Repeat (optional)</h2><p className="mt-1 text-sm text-[var(--muted)]">Create weekly, every-two-weeks, or monthly occurrences. You can end the series within one year.</p></div>
         <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="recurrence_rule" className="field-label mb-2">Repeat</label><select id="recurrence_rule" name="recurrence_rule" defaultValue="" className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div><div><label htmlFor="recurrence_until_local" className="field-label mb-2">Repeat until</label><input id="recurrence_until_local" name="recurrence_until_local" type="date" className="field-input"/></div></div>
         <input type="hidden" name="recurrence_until"/>
       </section>
       <section className="space-y-3 border-t border-[var(--line)] pt-7">
         <div>
-          <label htmlFor="instructions" className="field-label mb-2">Instructions for participants (optional)</label>
+          <label htmlFor="instructions" className="field-label mb-2">Instructions for participants</label>
           <textarea id="instructions" name="instructions" maxLength={2000} rows={3} placeholder="Anything participants should know before joining" className="field-input min-h-24 resize-y" />
         </div>
         <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-5 sm:flex-row sm:items-center sm:justify-between">

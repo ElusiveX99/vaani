@@ -116,36 +116,31 @@ export async function createSession(formData: FormData) {
     redirect("/sessions/new?error=invalid_recurrence");
   }
 
-  const { data: session, error } = await supabase
-    .from("sessions")
-    .insert({
-      title,
-      created_by: userId,
-      description: description || null,
-      access_type: accessType,
-      is_draft: isDraft,
-      published_at: isDraft ? null : new Date().toISOString(),
-      scheduled_start_at: scheduledStart?.toISOString() ?? null,
-      time_zone: timeZone,
-      duration_minutes: duration,
-      instructions: instructions || null,
-      participant_limit: participantLimit,
-      waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
-      allow_participant_invites: formData.get("allow_participant_invites") === "on",
-      recurrence_rule: recurrenceRule,
-      recurrence_until: recurrenceUntil?.toISOString() ?? null,
-    })
-    .select("id")
-    .single();
+  const { data: sessionId, error } = await supabase.rpc("create_gathering", {
+    p_title: title,
+    p_description: description || null,
+    p_access_type: accessType,
+    p_is_draft: isDraft,
+    p_published_at: isDraft ? null : new Date().toISOString(),
+    p_scheduled_start_at: scheduledStart?.toISOString() ?? null,
+    p_time_zone: timeZone,
+    p_duration_minutes: duration,
+    p_instructions: instructions || null,
+    p_participant_limit: participantLimit,
+    p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
+    p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
+    p_recurrence_rule: recurrenceRule,
+    p_recurrence_until: recurrenceUntil?.toISOString() ?? null,
+  });
 
-  if (error || !session) {
+  if (error || typeof sessionId !== "string") {
     console.error("Gathering creation failed:", error?.code, error?.message, error?.details, error?.hint);
     redirect("/sessions/new?error=create_failed");
   }
 
   revalidatePath("/sessions");
   revalidatePath("/home");
-  redirect(`/sessions/${session.id}?success=${isDraft ? "draft_saved" : "created"}`);
+  redirect(`/sessions/${sessionId}?success=${isDraft ? "draft_saved" : "created"}`);
 }
 
 export async function joinCommunitySession(formData: FormData) {
