@@ -26,6 +26,7 @@ export default function ModerationPanel({
   const [message, setMessage] = useState("");
   const [memberRoles, setMemberRoles] = useState<Record<string, string>>({});
   const [readerAccess, setReaderAccess] = useState<Record<string, boolean>>({});
+  const [memberProfiles, setMemberProfiles] = useState<Record<string, { name: string; avatarUrl: string | null }>>({});
   const [rolesLoaded, setRolesLoaded] = useState(false);
 
   const isOrganizer = localRole === "organizer";
@@ -47,14 +48,33 @@ export default function ModerationPanel({
 
       if (!active || error) return;
 
+      const rows = data ?? [];
+      const ids = rows.map((member) => member.user_id);
+      const { data: profiles, error: profileError } = ids.length
+        ? await supabase.from("profiles").select("id, display_name, avatar_url, avatar_path").in("id", ids)
+        : { data: [], error: null };
+      if (!active) return;
+      if (profileError) console.warn("Participant profile lookup failed:", profileError);
+
+      const profileMap: Record<string, { name: string; avatarUrl: string | null }> = {};
+      for (const profile of profiles ?? []) {
+        const avatarUrl = profile.avatar_url || (profile.avatar_path
+          ? profile.avatar_path.startsWith("http")
+            ? profile.avatar_path
+            : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl
+          : null);
+        profileMap[profile.id] = { name: profile.display_name || "Vaani member", avatarUrl };
+      }
+
       const next: Record<string, string> = {};
       const access: Record<string, boolean> = {};
-      for (const member of data ?? []) {
+      for (const member of rows) {
         next[member.user_id] = member.role;
         access[member.user_id] = member.can_control_reader === true;
       }
       setMemberRoles(next);
       setReaderAccess(access);
+      setMemberProfiles(profileMap);
       setRolesLoaded(true);
     };
 
@@ -105,6 +125,17 @@ export default function ModerationPanel({
     const userId = getLiveKitUserId(participant);
     return Boolean(userId && memberRoles[userId] && memberRoles[userId] !== "organizer");
   });
+  const connectedByUser = new Map<string, typeof remoteParticipants>();
+  for (const participant of remoteParticipants) {
+    const userId = getLiveKitUserId(participant);
+    if (!userId) continue;
+    const current = connectedByUser.get(userId) ?? [];
+    current.push(participant);
+    connectedByUser.set(userId, current);
+  }
+  const managedMembers = Object.entries(memberRoles)
+    .filter(([userId, role]) => userId !== getLiveKitUserId(participants.find((participant) => participant.isLocal) ?? { identity: "" } as never) && role !== "organizer")
+    .sort(([a], [b]) => (memberProfiles[a]?.name ?? "").localeCompare(memberProfiles[b]?.name ?? ""));
 
   if (!open || !canManageParticipants) return null;
 
@@ -234,8 +265,7 @@ export default function ModerationPanel({
             </h2>
 
             <p className="mt-1 text-xs text-white/50">
-              {remoteParticipants.length} participant
-              {remoteParticipants.length === 1 ? "" : "s"} connected
+              {remoteParticipants.length} device{remoteParticipants.length === 1 ? "" : "s"} connected · {managedMembers.length} member{managedMembers.length === 1 ? "" : "s"}
             </p>
           </div>
 
@@ -250,105 +280,76 @@ export default function ModerationPanel({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          {remoteParticipants.length === 0 ? (
+          {!rolesLoaded ? (
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-white/55">
+              Loading session members…
+            </p>
+          ) : managedMembers.length === 0 ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center">
-              <p className="text-sm font-medium text-white/80">
-                No other participants
-              </p>
-
-              <p className="mt-2 text-xs text-white/45">
-                Participants will appear here when they join.
-              </p>
+              <p className="text-sm font-medium text-white/80">No other session members</p>
+              <p className="mt-2 text-xs text-white/45">Accepted members will appear here.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {remoteParticipants.map((participant) => {
-                const microphone =
-                  participant.getTrackPublication(
-                    Track.Source.Microphone
-                  );
-
-                const trackSid = microphone?.trackSid;
-                const targetUserId = getLiveKitUserId(participant);
-                if (!targetUserId) return null;
-                const targetRole = memberRoles[targetUserId] ?? "participant";
-                const canModerateTarget =
-                  isOrganizer || targetRole === "participant";
-                const canChangeAdminRole =
-                  isOrganizer &&
-                  (targetRole === "participant" || targetRole === "admin");
-
-                const participantName =
-                  participant.name || participant.identity;
+              {managedMembers.map(([targetUserId, targetRole]) => {
+                const connections = connectedByUser.get(targetUserId) ?? [];
+                const canModerateTarget = isOrganizer || targetRole === "participant";
+                const canRemoveTarget = isOrganizer || targetRole === "participant";
+                const canChangeAdminRole = isOrganizer && (targetRole === "participant" || targetRole === "admin");
+                const participantName = memberProfiles[targetUserId]?.name || connections[0]?.name || "Vaani member";
+                const avatarUrl = memberProfiles[targetUserId]?.avatarUrl || connections[0]?.attributes?.avatar_url || null;
 
                 return (
-                  <article
-                    key={participant.identity}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-                  >
+                  <article key={targetUserId} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <ProfileAvatar name={participantName} avatarUrl={participant.attributes?.avatar_url || null} size="md" />
+                        <ProfileAvatar name={participantName} avatarUrl={avatarUrl} size="md" />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-white">{participantName}</p>
                           <p className="mt-1 text-xs capitalize text-white/45">{targetRole.replaceAll("_", " ")}</p>
                         </div>
                       </div>
-
-                      <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-medium text-emerald-300">
-                        Connected
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${connections.length ? "bg-emerald-400/10 text-emerald-300" : "bg-white/10 text-white/55"}`}>
+                        {connections.length ? `Connected · ${connections.length} device${connections.length === 1 ? "" : "s"}` : "Offline"}
                       </span>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={!rolesLoaded || !trackSid || busy !== "" || !canModerateTarget}
-                        onClick={() =>
-                          moderate(
-                            targetUserId,
-                            participant.identity,
-                            "mute",
-                            trackSid
-                          )
-                        }
-                        className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/85 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {busy === `${participant.identity}-mute`
-                          ? "Muting..."
-                          : "Mute microphone"}
-                      </button>
+                      {connections.map((participant) => {
+                        const microphone = participant.getTrackPublication(Track.Source.Microphone);
+                        const trackSid = microphone?.trackSid;
+                        return (
+                          <button
+                            key={participant.identity}
+                            type="button"
+                            disabled={!trackSid || busy !== "" || !canModerateTarget}
+                            onClick={() => moderate(targetUserId, participant.identity, "mute", trackSid)}
+                            className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/85 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Mute {connections.length > 1 ? "device" : "microphone"}
+                          </button>
+                        );
+                      })}
 
-                      <button
-                        type="button"
-                        disabled={!rolesLoaded || busy !== "" || !canModerateTarget}
-                        onClick={() =>
-                          moderate(targetUserId, participant.identity, "remove")
-                        }
-                        className="rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {busy === `${participant.identity}-remove`
-                          ? "Removing..."
-                          : "Remove"}
-                      </button>
+                      {canRemoveTarget && (
+                        <button
+                          type="button"
+                          disabled={busy !== ""}
+                          onClick={() => moderate(targetUserId, connections[0]?.identity ?? "", "remove")}
+                          className="rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {busy === `${targetUserId}-remove` ? "Removing…" : "Remove member"}
+                        </button>
+                      )}
 
                       {canChangeAdminRole && (
                         <button
                           type="button"
-                          disabled={!rolesLoaded || busy !== ""}
-                          onClick={() =>
-                            setAdmin(
-                              targetUserId,
-                              targetRole !== "admin"
-                            )
-                          }
+                          disabled={busy !== ""}
+                          onClick={() => setAdmin(targetUserId, targetRole !== "admin")}
                           className="rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-200 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {busy === `${targetUserId}-role`
-                            ? "Updating..."
-                            : targetRole === "admin"
-                              ? "Remove admin"
-                              : "Make admin"}
+                          {busy === `${targetUserId}-role` ? "Updating…" : targetRole === "admin" ? "Remove admin" : "Make admin"}
                         </button>
                       )}
 
@@ -356,19 +357,10 @@ export default function ModerationPanel({
                         <button
                           type="button"
                           disabled={busy !== ""}
-                          onClick={() =>
-                            updateReaderAccess(
-                              targetUserId,
-                              !readerAccess[targetUserId]
-                            )
-                          }
+                          onClick={() => updateReaderAccess(targetUserId, !readerAccess[targetUserId])}
                           className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {busy === `${targetUserId}-reader`
-                            ? "Updating..."
-                            : readerAccess[targetUserId]
-                              ? "Revoke reader control"
-                              : "Allow reader control"}
+                          {busy === `${targetUserId}-reader` ? "Updating…" : readerAccess[targetUserId] ? "Revoke reader control" : "Allow reader control"}
                         </button>
                       )}
                     </div>
@@ -391,7 +383,7 @@ export default function ModerationPanel({
 
         <footer className="shrink-0 border-t border-white/10 px-4 py-3">
           <p className="text-[11px] leading-relaxed text-white/40">
-            Moderation actions affect participants in this live conference.
+            Roles and reader permissions belong to session membership, even while a member is offline. Mute applies to a connected device; removing a member revokes their session access and disconnects their devices.
           </p>
         </footer>
       </aside>

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const action = String(body.action ?? "");
     const trackSid = String(body.trackSid ?? "");
 
-    if (!isUuid(sessionId) || !isUuid(targetUserId) || !targetIdentity || targetIdentity.length > 255) {
+    if (!isUuid(sessionId) || !isUuid(targetUserId) || (action === "mute" && !targetIdentity) || targetIdentity.length > 255) {
       return NextResponse.json(
         { error: "Invalid identifiers" },
         { status: 400 }
@@ -184,9 +184,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await Promise.all(targetConnections.map((participant) =>
+      const disconnectResults = await Promise.allSettled(targetConnections.map((participant) =>
         roomService.removeParticipant(roomName, participant.identity)
       ));
+      const disconnectFailures = disconnectResults.filter((result) => result.status === "rejected").length;
+      if (disconnectFailures > 0) {
+        console.error("Some removed member connections could not be immediately disconnected:", disconnectResults);
+      }
     } else {
       const targetConnection = targetConnections.find((participant) => participant.identity === targetIdentity);
       if (!targetConnection) {
