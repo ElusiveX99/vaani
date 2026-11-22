@@ -2,11 +2,9 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import CreateSessionForm from "./create-session-form";
 import SiteHeader from "@/components/site-header";
 
 import {
-  createSession,
   joinCommunitySession,
   respondToInvitation,
   leaveSession,
@@ -16,7 +14,6 @@ type SessionsPageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
-    create?: string;
   }>;
 };
 
@@ -29,6 +26,7 @@ type Session = {
   scheduled_start_at: string | null;
   ended_at?: string | null;
   created_by: string;
+  is_draft?: boolean;
 };
 
 type Membership = {
@@ -38,7 +36,8 @@ type Membership = {
 };
 
 const successMessages: Record<string, string> = {
-  created: "Your session has been created.",
+  created: "Your gathering has been scheduled.",
+  draft_saved: "Your gathering draft has been saved.",
   joined: "You have joined the session.",
   invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
@@ -46,7 +45,10 @@ const successMessages: Record<string, string> = {
 
 const errorMessages: Record<string, string> = {
   invalid_input: "Check your session title and description.",
-  invalid_access: "Select a valid session access type.",
+  invalid_access: "Select a valid access setting.",
+  invalid_type: "Select a valid gathering type.",
+  invalid_options: "Check the duration, time zone, language, and participant limit.",
+  invalid_schedule: "Choose a future start date and time.",
   create_failed: "The session could not be created.",
   join_failed: "You could not join this session.",
   invitation_failed: "Your invitation response could not be saved.",
@@ -109,7 +111,7 @@ function SessionCard({
               : "bg-[var(--surface-soft)] text-[var(--ink)]"
           }`}
         >
-          {session.status === "live" ? "Live now" : session.status === "ended" ? "Concluded" : "Upcoming"}
+          {session.is_draft ? "Draft" : session.status === "live" ? "Live now" : session.status === "ended" ? "Concluded" : "Scheduled"}
         </span>
       </div>
 
@@ -292,10 +294,18 @@ async function SessionsContent({
   const { data: sessions, error: sessionsError } = await supabase
     .from("sessions")
     .select(
-      "id, title, description, access_type, status, scheduled_start_at, created_by"
+      "id, title, description, access_type, status, scheduled_start_at, created_by, is_draft"
     )
+    .eq("is_draft", false)
     .in("status", ["scheduled", "live"])
     .order("created_at", { ascending: false });
+
+  const { data: drafts, error: draftsError } = await supabase
+    .from("sessions")
+    .select("id, title, description, access_type, status, scheduled_start_at, created_by, is_draft")
+    .eq("created_by", userId)
+    .eq("is_draft", true)
+    .order("updated_at", { ascending: false });
 
   const { data: memberships, error: membershipError } = await supabase
     .from("session_members")
@@ -379,8 +389,12 @@ async function SessionsContent({
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
       <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-8 sm:py-10">
-        <header className="mb-8 pt-2">
-          <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
+        <header className="mb-8 flex flex-col gap-5 pt-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
+            <p className="mt-2 text-sm text-[var(--muted)]">Plan, join, and manage gatherings with Sakhis.</p>
+          </div>
+          <a href="/sessions/new" className="button-primary w-fit">Create a Gathering</a>
         </header>
 
         {params.success && successMessages[params.success] && (
@@ -418,12 +432,22 @@ async function SessionsContent({
           </div>
         </div>
 
-        {sessionsError || membershipError || historyError ? (
+        {sessionsError || membershipError || historyError || draftsError ? (
           <p className="mt-8 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
             We could not load your sessions. Please refresh the page.
           </p>
         ) : (
           <>
+            {((drafts ?? []) as Session[]).length > 0 && (
+              <SessionSection
+                title="Your drafts"
+                description="Gatherings you have saved but not published."
+                sessions={(drafts ?? []) as Session[]}
+                membershipMap={membershipMap}
+                emptyMessage="You have no saved drafts."
+              />
+            )}
+
             <SessionSection
               title="Your invitations"
               description="Sessions you have been personally invited to."
@@ -460,25 +484,7 @@ async function SessionsContent({
           </>
         )}
 
-        <section className="mt-14 border-t border-[var(--line)] pt-9">
-          <details id="create-session" open={params.create === "1"} className="group surface-card">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6">
-              <div>
-                <h2 className="text-xl font-semibold">
-                  Host a gathering
-                </h2>
-              </div>
 
-              <span className="text-2xl text-[var(--muted)] transition-transform group-open:rotate-45">
-                +
-              </span>
-            </summary>
-
-            <div className="border-t border-[var(--line)] p-6">
-              <CreateSessionForm action={createSession} />
-            </div>
-          </details>
-        </section>
       </div>
     </main>
   );

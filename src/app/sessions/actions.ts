@@ -60,33 +60,73 @@ export async function createSession(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const accessType = String(formData.get("access_type") ?? "");
+  const intent = String(formData.get("intent") ?? "publish");
+  const isDraft = intent === "draft";
+  const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
+  const scheduledStart = scheduledValue ? new Date(scheduledValue) : null;
+  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
+  const gatheringType = String(formData.get("gathering_type") ?? "");
+  const language = String(formData.get("language") ?? "").trim();
+  const instructions = String(formData.get("instructions") ?? "").trim();
+  const durationValue = String(formData.get("duration_minutes") ?? "");
+  const participantLimitValue = String(formData.get("participant_limit") ?? "");
+  const duration = durationValue ? Number(durationValue) : null;
+  const participantLimit = participantLimitValue ? Number(participantLimitValue) : null;
 
-  if (!title || title.length > 120 || description.length > 2000) {
-    redirect("/sessions?error=invalid_input");
+  if (!title || title.length > 120 || description.length > 2000 || instructions.length > 2000) {
+    redirect("/sessions/new?error=invalid_input");
+  }
+
+  if (accessType !== "community" && accessType !== "invitation_only") {
+    redirect("/sessions/new?error=invalid_access");
+  }
+
+  if (!["chaturasi_gaayan", "vaani_paath", "other"].includes(gatheringType)) {
+    redirect("/sessions/new?error=invalid_type");
   }
 
   if (
-    accessType !== "community" &&
-    accessType !== "invitation_only"
+    timeZone.length < 1 ||
+    timeZone.length > 80 ||
+    (language && language.length > 40) ||
+    (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
+    (participantLimit !== null && (!Number.isInteger(participantLimit) || participantLimit < 2 || participantLimit > 500))
   ) {
-    redirect("/sessions?error=invalid_access");
+    redirect("/sessions/new?error=invalid_options");
   }
 
-  const { error } = await supabase
+  if (!isDraft && (!scheduledStart || Number.isNaN(scheduledStart.getTime()) || scheduledStart.getTime() <= Date.now())) {
+    redirect("/sessions/new?error=invalid_schedule");
+  }
+
+  const { data: session, error } = await supabase
     .from("sessions")
     .insert({
       title,
       description: description || null,
       access_type: accessType,
-    });
+      is_draft: isDraft,
+      published_at: isDraft ? null : new Date().toISOString(),
+      scheduled_start_at: scheduledStart?.toISOString() ?? null,
+      time_zone: timeZone,
+      duration_minutes: duration,
+      gathering_type: gatheringType,
+      language: language || null,
+      instructions: instructions || null,
+      participant_limit: participantLimit,
+      waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
+      allow_participant_invites: formData.get("allow_participant_invites") === "on",
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    redirect("/sessions?error=create_failed");
+  if (error || !session) {
+    redirect("/sessions/new?error=create_failed");
   }
 
   revalidatePath("/sessions");
   revalidatePath("/home");
-  redirect("/sessions?success=created");
+  redirect(`/sessions/${session.id}?success=${isDraft ? "draft_saved" : "created"}`);
 }
 
 export async function joinCommunitySession(formData: FormData) {
