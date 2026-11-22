@@ -226,6 +226,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
     ownMembership?.role === "organizer" &&
     ownMembership.status === "accepted";
 
+
+
   if (session.is_draft) {
     if (!isOrganizer || session.created_by !== userId) notFound();
 
@@ -269,15 +271,17 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" />
               </div>
               <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <ConfirmSubmitButton
+                <button
+                  type="submit"
                   formAction={deleteSessionDraft}
-                  name="session_id"
-                  value={session.id}
-                  message="Permanently delete this draft? This cannot be undone."
+                  formNoValidate
+                  onClick={(event) => {
+                    if (!window.confirm("Permanently delete this draft? This cannot be undone.")) event.preventDefault();
+                  }}
                   className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] transition hover:bg-[#fbefed]"
                 >
                   Delete draft
-                </ConfirmSubmitButton>
+                </button>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <button type="submit" name="intent" value="save" className="button-secondary">Save draft</button>
                   <button formAction={publishSessionDraft} formMethod="post" name="session_id" value={session.id} className="button-primary">Publish gathering</button>
