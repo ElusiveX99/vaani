@@ -103,6 +103,7 @@ export default function ModerationPanel({
 
   async function moderate(
     targetUserId: string,
+    targetIdentity: string,
     action: "remove" | "mute",
     trackSid?: string
   ) {
@@ -122,6 +123,7 @@ export default function ModerationPanel({
         body: JSON.stringify({
           sessionId,
           targetUserId,
+          targetIdentity,
           action,
           ...(trackSid ? { trackSid } : {}),
         }),
@@ -253,8 +255,9 @@ export default function ModerationPanel({
                   );
 
                 const trackSid = microphone?.trackSid;
+                const targetUserId = participant.attributes?.user_id ?? participant.identity;
                 const targetRole =
-                  memberRoles[participant.identity] ??
+                  memberRoles[targetUserId] ??
                   participant.attributes?.role ??
                   "participant";
                 const canModerateTarget =
@@ -291,6 +294,7 @@ export default function ModerationPanel({
                         disabled={!trackSid || busy !== "" || !canModerateTarget}
                         onClick={() =>
                           moderate(
+                            targetUserId,
                             participant.identity,
                             "mute",
                             trackSid
@@ -307,7 +311,7 @@ export default function ModerationPanel({
                         type="button"
                         disabled={busy !== "" || !canModerateTarget}
                         onClick={() =>
-                          moderate(participant.identity, "remove")
+                          moderate(targetUserId, participant.identity, "remove")
                         }
                         className="rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                       >
@@ -322,7 +326,7 @@ export default function ModerationPanel({
                           disabled={busy !== ""}
                           onClick={() =>
                             setAdmin(
-                              participant.identity,
+                              targetUserId,
                               targetRole !== "admin"
                             )
                           }
@@ -342,15 +346,15 @@ export default function ModerationPanel({
                           disabled={busy !== ""}
                           onClick={() =>
                             updateReaderAccess(
-                              participant.identity,
-                              !readerAccess[participant.identity]
+                              targetUserId,
+                              !readerAccess[targetUserId]
                             )
                           }
                           className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${participant.identity}-reader`
                             ? "Updating..."
-                            : readerAccess[participant.identity]
+                            : readerAccess[targetUserId]
                               ? "Revoke reader control"
                               : "Allow reader control"}
                         </button>

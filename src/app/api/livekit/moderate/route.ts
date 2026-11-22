@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const parsedBody = await readJsonBody<{
       sessionId?: unknown;
       targetUserId?: unknown;
+      targetIdentity?: unknown;
       action?: unknown;
       trackSid?: unknown;
     }>(request, 4096);
@@ -46,10 +47,11 @@ export async function POST(request: NextRequest) {
 
     const sessionId = String(body.sessionId ?? "");
     const targetUserId = String(body.targetUserId ?? "");
+    const targetIdentity = String(body.targetIdentity ?? "");
     const action = String(body.action ?? "");
     const trackSid = String(body.trackSid ?? "");
 
-    if (!isUuid(sessionId) || !isUuid(targetUserId)) {
+    if (!isUuid(sessionId) || !isUuid(targetUserId) || !targetIdentity || targetIdentity.length > 255) {
       return NextResponse.json(
         { error: "Invalid identifiers" },
         { status: 400 }
@@ -156,6 +158,11 @@ export async function POST(request: NextRequest) {
 
     const roomName = `vaani-${sessionId}`;
 
+    const participants = await roomService.listParticipants(roomName);
+    const targetConnections = participants.filter((participant) =>
+      participant.attributes?.user_id === targetUserId
+    );
+
     if (action === "remove") {
       const { error: membershipRemovalError } = await supabase.rpc(
         "remove_session_member",
@@ -176,17 +183,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await roomService.removeParticipant(
-        roomName,
-        targetUserId
-      );
+      await Promise.all(targetConnections.map((participant) =>
+        roomService.removeParticipant(roomName, participant.identity)
+      ));
     } else {
-      await roomService.mutePublishedTrack(
-        roomName,
-        targetUserId,
-        trackSid,
-        true
-      );
+      const targetConnection = targetConnections.find((participant) => participant.identity === targetIdentity);
+      if (!targetConnection) {
+        return NextResponse.json({ error: "That device is no longer connected." }, { status: 404 });
+      }
+      await roomService.mutePublishedTrack(roomName, targetIdentity, trackSid, true);
     }
 
     return NextResponse.json({ success: true });

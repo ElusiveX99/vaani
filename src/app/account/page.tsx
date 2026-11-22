@@ -27,7 +27,7 @@ async function AccountContent() {
   async function signOut() {
     "use server";
     const client = await createClient();
-    await client.auth.signOut();
+    await client.auth.signOut({ scope: "local" });
     redirect("/login");
   }
 

@@ -376,7 +376,7 @@ function ConferenceWorkspace({
   }, [room, updateConnectionState]);
 
   useEffect(() => {
-    const identity = localParticipant.identity;
+    const identity = localParticipant.attributes?.user_id ?? localParticipant.identity;
     if (!identity) return;
 
     let active = true;

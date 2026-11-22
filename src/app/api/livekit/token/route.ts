@@ -164,9 +164,10 @@ export async function POST(request: NextRequest) {
     }
 
     const token = new AccessToken(apiKey, apiSecret, {
-      identity: userId,
+      identity: `${userId}:${crypto.randomUUID()}`,
       name: displayName,
       attributes: {
+        user_id: userId,
         role: membership.role,
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       },

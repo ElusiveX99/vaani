@@ -90,6 +90,7 @@ const SynchronizedReader = memo(
 
     const room = useRoomContext();
     const { localParticipant } = useLocalParticipant();
+    const localUserId = localParticipant.attributes?.user_id ?? localUserId;
     const remoteParticipants = useRemoteParticipants();
 
     const [syncStatus, setSyncStatus] =
@@ -300,12 +301,12 @@ const SynchronizedReader = memo(
     );
 
     useEffect(() => {
-      if (!data || !data.document || !localParticipant.identity) {
+      if (!data || !data.document || !localUserId) {
         setPersonalPosition(null);
         return;
       }
 
-      const key = `vaani-reading-position:${sessionId}:${localParticipant.identity}:${data.document.id}`;
+      const key = `vaani-reading-position:${sessionId}:${localUserId}:${data.document.id}`;
       try {
         const stored = window.localStorage.getItem(key);
         if (!stored) {
@@ -335,7 +336,7 @@ const SynchronizedReader = memo(
         console.warn("Could not restore personal Vaani reading position:", storageError);
         setPersonalPosition(null);
       }
-    }, [data?.document?.id, sessionId, localParticipant.identity]);
+    }, [data?.document?.id, sessionId, localUserId]);
 
     useEffect(() => {
       let active = true;
@@ -478,7 +479,7 @@ const SynchronizedReader = memo(
               ? {
                   ...dataRef.current,
                   canControl:
-                    controllerId === localParticipant.identity && leaseActive,
+                    controllerId === localUserId && leaseActive,
                   readerState: {
                     ...dataRef.current.readerState,
                     ...newState,
@@ -538,7 +539,7 @@ const SynchronizedReader = memo(
         void supabase.removeChannel(channel);
         void supabase.removeChannel(membershipChannel);
       };
-    }, [sessionId, loadReaderState, localParticipant.identity]);
+    }, [sessionId, loadReaderState, localUserId]);
 
     // Persist only the active reader controller's position.
     useEffect(() => {
@@ -679,7 +680,7 @@ const SynchronizedReader = memo(
           setPersonalPosition(personalPosition);
           try {
             window.localStorage.setItem(
-              `vaani-reading-position:${sessionId}:${localParticipant.identity}:${documentId}`,
+              `vaani-reading-position:${sessionId}:${localUserId}:${documentId}`,
               JSON.stringify({ page, offset: safeOffset })
             );
           } catch (storageError) {
@@ -700,7 +701,7 @@ const SynchronizedReader = memo(
               type: "vaani-reader-position",
               sessionId,
               documentId,
-              senderId: localParticipant.identity,
+              senderId: localUserId,
               epoch: controllerEpochRef.current,
               sequence: ++broadcastSequence.current,
               page: pageRef.current,
@@ -733,7 +734,7 @@ const SynchronizedReader = memo(
 
         setSyncStatus(dataRef.current.canControl ? "syncing" : "local");
       },
-      [room, sessionId, localParticipant.identity]
+      [room, sessionId, localUserId]
     );
 
     const changePage = useCallback(
@@ -1002,10 +1003,10 @@ const SynchronizedReader = memo(
       : 0;
     const controllerActive = Boolean(controllerId && leaseExpiry > Date.now());
     const controllerParticipant = remoteParticipants.find(
-      (participant) => participant.identity === controllerId
+      (participant) => (participant.attributes?.user_id ?? participant.identity) === controllerId
     );
     const controllerName =
-      controllerId === localParticipant.identity
+      controllerId === localUserId
         ? "You are guiding the shared reading"
         : controllerParticipant?.name
           ? `${controllerParticipant.name} is guiding the shared reading`
