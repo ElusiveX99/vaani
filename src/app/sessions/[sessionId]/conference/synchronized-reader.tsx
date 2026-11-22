@@ -1026,7 +1026,7 @@ const SynchronizedReader = memo(
         <div className="flex shrink-0 items-center justify-between gap-2 px-1">
           <div className="min-w-0">
             <p className="truncate text-xs text-white/75">{readerData.document.title}</p>
-            <p className="mt-1 truncate text-[10px] text-white/40" role="status">{controllerName}</p>
+            {controllerName && <p className="mt-1 truncate text-[10px] text-white/40" role="status">{controllerName}</p>}
           </div>
 
           <div className="flex items-center gap-2">
@@ -1052,7 +1052,7 @@ const SynchronizedReader = memo(
             type="button"
             onClick={() => setError("")}
             role="alert"
-            className="absolute right-3 top-12 z-20 max-w-[min(90%,28rem)] truncate rounded-lg border border-red-300/15 bg-[#17151a]/95 px-3 py-2 text-left text-[11px] text-red-200 shadow-lg"
+            className="absolute right-3 top-12 z-20 max-w-[min(90%,28rem)] truncate rounded-lg border border-white/10 bg-[#17151a]/95 px-3 py-2 text-left text-[11px] text-white/80 shadow-lg"
             title={error}
           >
             {error} <span aria-hidden="true">×</span>

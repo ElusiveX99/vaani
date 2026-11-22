@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import InlineFeedback from "@/components/inline-feedback";
+import RecurrenceFields from "@/components/recurrence-fields";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -67,9 +69,9 @@ export default function CreateSessionForm({ action, error }: Props) {
   return (
     <form ref={formRef} action={action} onSubmit={handleSubmit} className="space-y-8">
       {error && errors[error] && (
-        <p role="alert" className="rounded-xl border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
+        <InlineFeedback tone="error" className="mb-1">
           {errors[error]}
-        </p>
+        </InlineFeedback>
       )}
 
       <section className="space-y-4">
@@ -138,7 +140,7 @@ export default function CreateSessionForm({ action, error }: Props) {
       </section>
 
       <section className="space-y-4 border-t border-[var(--line)] pt-7">
-        <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="recurrence_rule" className="field-label mb-2">Repeat</label><select id="recurrence_rule" name="recurrence_rule" defaultValue="" className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div><div><label htmlFor="recurrence_until_local" className="field-label mb-2">Repeat until</label><input id="recurrence_until_local" name="recurrence_until_local" type="date" className="field-input"/></div></div>
+        <RecurrenceFields />
       </section>
       <section className="space-y-3 border-t border-[var(--line)] pt-7">
         <div>

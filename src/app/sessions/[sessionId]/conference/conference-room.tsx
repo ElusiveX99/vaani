@@ -322,6 +322,9 @@ function ConferenceWorkspace({
         RoomEvent.ParticipantConnected,
         RoomEvent.ParticipantDisconnected,
         RoomEvent.ConnectionStateChanged,
+        RoomEvent.ActiveSpeakersChanged,
+        RoomEvent.TrackMuted,
+        RoomEvent.TrackUnmuted,
       ],
     });
 
@@ -362,6 +365,7 @@ function ConferenceWorkspace({
   const [membershipRole, setMembershipRole] = useState("participant");
   const [membershipCanControlReader, setMembershipCanControlReader] = useState(false);
   const [connectionState, setConnectionState] = useState(room.state);
+  const [, setAudioStateVersion] = useState(0);
 
   const updateConnectionState = useCallback(() => {
     setConnectionState(room.state);
@@ -369,8 +373,15 @@ function ConferenceWorkspace({
 
   useEffect(() => {
     room.on(RoomEvent.ConnectionStateChanged, updateConnectionState);
+    const refreshAudioState = () => setAudioStateVersion((value) => value + 1);
+    room.on(RoomEvent.ActiveSpeakersChanged, refreshAudioState);
+    room.on(RoomEvent.TrackMuted, refreshAudioState);
+    room.on(RoomEvent.TrackUnmuted, refreshAudioState);
     return () => {
       room.off(RoomEvent.ConnectionStateChanged, updateConnectionState);
+      room.off(RoomEvent.ActiveSpeakersChanged, refreshAudioState);
+      room.off(RoomEvent.TrackMuted, refreshAudioState);
+      room.off(RoomEvent.TrackUnmuted, refreshAudioState);
     };
   }, [room, updateConnectionState]);
 
@@ -731,15 +742,11 @@ function ConferenceWorkspace({
             {title}
           </h1>
 
-          <p className="text-xs text-white/50" role="status" aria-live="polite">
-            {connectionState === "reconnecting"
-              ? "Connection interrupted · Reconnecting…"
-              : connectionState === "disconnected"
-                ? "Connection lost · Trying to reconnect…"
-                : connectionState !== "connected"
-                  ? "Connecting to the gathering…"
-                  : `${remoteParticipants.length + 1} participant${remoteParticipants.length === 0 ? "" : "s"} connected`}
-          </p>
+          {connectionState !== "connected" && (
+            <p className="text-xs text-white/50" role="status" aria-live="polite">
+              {connectionState === "reconnecting" ? "Connection interrupted · Reconnecting…" : connectionState === "disconnected" ? "Connection lost · Trying to reconnect…" : "Connecting to the gathering…"}
+            </p>
+          )}
         </div>
 
           {canManageDocuments && (
@@ -810,9 +817,14 @@ function ConferenceWorkspace({
                 return (
                   <div
                     key={`${participant.identity}-${trackRef.source}`}
-                    className="vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b]"
+                    className={trackRef.source === Track.Source.Camera && participant.isSpeaking && participant.isMicrophoneEnabled ? "vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 border-sky-400 shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.28)] transition-[border-color,box-shadow] duration-150" : "vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 border-transparent transition-[border-color,box-shadow] duration-150"}
                   >
                     <ParticipantTile trackRef={trackRef} />
+                    {trackRef.source === Track.Source.Camera && (
+                      <div className="absolute bottom-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/65 text-white shadow-lg" title={participant.isMicrophoneEnabled ? "Microphone enabled" : "Microphone disabled"} aria-label={participant.isMicrophoneEnabled ? "Microphone enabled" : "Microphone disabled"}>
+                        {participant.isMicrophoneEnabled ? <ControlIcon name="mic" /> : <ControlIcon name="mic" off />}
+                      </div>
+                    )}
                     {cameraOff && (
                       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#392f3b] p-2">
                         <ProfileAvatar
@@ -1013,7 +1025,7 @@ function ConferenceWorkspace({
             <div
               role="alert"
               aria-live="assertive"
-              className="absolute bottom-[76px] left-2 right-2 z-50 flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-950/95 px-3 py-3 text-xs leading-relaxed text-red-100 shadow-xl sm:left-4 sm:right-4"
+              className="absolute bottom-[76px] left-2 right-2 z-50 flex items-start gap-3 rounded-lg border border-white/10 bg-[#211d24]/95 px-3 py-3 text-xs leading-relaxed text-white/80 shadow-xl sm:left-4 sm:right-4"
             >
               <p className="min-w-0 flex-1">
                 {mediaError}
@@ -1027,7 +1039,7 @@ function ConferenceWorkspace({
                   )
                 }
                 aria-label="Dismiss error"
-                className="shrink-0 rounded px-1 text-base leading-none text-red-200 hover:bg-white/10"
+                className="shrink-0 rounded px-1 text-base leading-none text-white/45 hover:bg-white/10"
               >
                 ×
               </button>

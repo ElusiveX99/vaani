@@ -9,6 +9,7 @@ import SiteHeader from "@/components/site-header";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
 import CopyInviteLink from "./copy-invite-link";
 import InlineFeedback from "@/components/inline-feedback";
+import RecurrenceFields from "@/components/recurrence-fields";
 
 import {
   joinCommunitySession,
@@ -235,15 +236,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
             ← Back to Gatherings
           </Link>
 
-          {paramsData.error && errorMessages[paramsData.error] && (
-            <InlineFeedback tone="error" className="mt-5">{errorMessages[paramsData.error]}</InlineFeedback>
-          )}
-          {paramsData.success && successMessages[paramsData.success] && (
-            <InlineFeedback tone="success" className="mt-5">{successMessages[paramsData.success]}</InlineFeedback>
-          )}
-
           <section className="surface-card mt-6 p-6 sm:p-9">
-            {["invalid_edit","update_failed","invalid_options","invalid_recurrence","publish_failed","draft_delete_failed"].includes(paramsData.error || "") && errorMessages[paramsData.error || ""] && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="font-display text-3xl text-[var(--plum)] sm:text-4xl">Edit draft</h1>
               <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">Draft</span>
@@ -251,14 +244,15 @@ async function SessionContent({ params, searchParams }: PageProps) {
             <form action={updateSessionDetails} className="mt-8 grid gap-5 sm:grid-cols-2">
               <input type="hidden" name="session_id" value={session.id} />
               <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"} />
+              {paramsData.error && errorMessages[paramsData.error] && <InlineFeedback tone="error" className="sm:col-span-2">{errorMessages[paramsData.error]}</InlineFeedback>}
+              {paramsData.success && successMessages[paramsData.success] && <InlineFeedback tone="success" className="sm:col-span-2">{successMessages[paramsData.success]}</InlineFeedback>}
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-title">Gathering title</label><input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input" /></div>
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-description">Description</label><textarea id="draft-description" name="description" rows={3} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y" /></div>
               <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
               <div><label className="field-label mb-2" htmlFor="draft-duration">Expected duration</label><select id="draft-duration" name="duration_minutes" defaultValue={session.duration_minutes ?? ""} className="field-input"><option value="">Not specified</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></div>
               <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><select id="draft-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="link">Anyone with an invitation link</option></select></div>
               <div><label className="field-label mb-2" htmlFor="draft-limit">Participant limit</label><input id="draft-limit" name="participant_limit" type="number" min="2" max="500" placeholder="No limit" defaultValue={session.participant_limit ?? ""} className="field-input" /></div>
-              <div><label className="field-label mb-2" htmlFor="draft-repeat">Repeat</label><select id="draft-repeat" name="recurrence_rule" defaultValue={session.recurrence_rule || ""} className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div>
-              <div><label className="field-label mb-2" htmlFor="draft-repeat-until">Repeat until</label><input id="draft-repeat-until" name="recurrence_until_local" type="date" defaultValue={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
+              <RecurrenceFields initialRule={session.recurrence_rule || ""} initialUntil={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} />
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled} /> Use waiting room</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites} /> Allow participant invitations</label>
