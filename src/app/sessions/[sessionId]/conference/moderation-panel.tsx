@@ -6,6 +6,7 @@ import { Track } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
 import InlineFeedback from "@/components/inline-feedback";
+import InlineFeedback from "@/components/inline-feedback";
 import { getLiveKitUserId } from "@/lib/livekit/identity";
 
 type Props = {
@@ -40,14 +41,16 @@ export default function ModerationPanel({
     let active = true;
     const supabase = createClient();
 
+    let realtimeConnected=false;let refreshInFlight=false;
     const refreshRoles = async () => {
+      if(refreshInFlight)return;refreshInFlight=true;
       const { data, error } = await supabase
         .from("session_members")
         .select("user_id, role, can_control_reader")
         .eq("session_id", sessionId)
         .eq("status", "accepted");
 
-      if (!active || error) return;
+      if (!active || error) {refreshInFlight=false;return;}
 
       const rows = data ?? [];
       const ids = rows.map((member) => member.user_id);
@@ -76,7 +79,7 @@ export default function ModerationPanel({
       setMemberRoles(next);
       setReaderAccess(access);
       setMemberProfiles(profileMap);
-      setRolesLoaded(true);
+      setRolesLoaded(true);refreshInFlight=false;
     };
 
     void refreshRoles();
@@ -93,11 +96,8 @@ export default function ModerationPanel({
         },
         () => void refreshRoles()
       )
-      .subscribe((status) => {
-        if (status !== "SUBSCRIBED") console.warn("Participant-role realtime status:", status);
-      });
-
-    const fallback = window.setInterval(() => void refreshRoles(), 4000);
+      .subscribe(status=>{realtimeConnected=status==="SUBSCRIBED";if(realtimeConnected)void refreshRoles();});
+    const fallback=window.setInterval(()=>{if(!realtimeConnected&&document.visibilityState==="visible")void refreshRoles();},30000);
     return () => {
       active = false;
       window.clearInterval(fallback);
