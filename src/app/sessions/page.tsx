@@ -127,7 +127,7 @@ function SessionCard({
         </span>
 
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
-          {session.scheduled_start_at ? formatSchedule(session.scheduled_start_at) : null}
+          {session.scheduled_start_at ? formatSchedule(session.scheduled_start_at) : "Time not set"}
         </span>
 
         {membership && !session.is_draft && (
