@@ -21,6 +21,22 @@ async function getAuthenticatedClient() {
   };
 }
 
+
+function parseLocalDateTime(value: string, timeZone: string) {
+  if (/[zZ]$|[+-]\\d{2}:?\\d{2}$/.test(value)) return new Date(value);
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/.exec(value);
+  if (!match) return new Date(Number.NaN);
+  const target = Date.UTC(Number(match[1]), Number(match[2])-1, Number(match[3]), Number(match[4]), Number(match[5]));
+  let guess = target;
+  for (let i=0;i<3;i++) {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hourCycle:"h23" }).formatToParts(new Date(guess));
+    const values = Object.fromEntries(parts.map(part=>[part.type,part.value]));
+    const represented = Date.UTC(Number(values.year),Number(values.month)-1,Number(values.day),Number(values.hour),Number(values.minute));
+    guess += target-represented;
+  }
+  return new Date(guess);
+}
+
 function isValidSessionId(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value
@@ -70,7 +86,7 @@ export async function createSession(formData: FormData) {
   const instructions = String(formData.get("instructions") ?? "").trim();
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
   const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
-  const recurrenceUntil = recurrenceUntilValue ? new Date(recurrenceUntilValue) : null;
+  const recurrenceUntil = recurrenceUntilValue ? (recurrenceUntilValue.length === 10 ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : new Date(recurrenceUntilValue)) : null;
   const durationValue = String(formData.get("duration_minutes") ?? "");
   const participantLimitValue = String(formData.get("participant_limit") ?? "");
   const duration = durationValue ? Number(durationValue) : null;
@@ -346,7 +362,8 @@ export async function updateSessionDetails(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
-  const scheduled = new Date(scheduledValue);
+  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
+  const scheduled = parseLocalDateTime(scheduledValue, timeZone);
   const accessType = String(formData.get("access_type") ?? "");
   const durationValue = String(formData.get("duration_minutes") ?? "");
   const limitValue = String(formData.get("participant_limit") ?? "");
@@ -366,7 +383,7 @@ export async function updateSessionDetails(formData: FormData) {
     p_description: description || null,
     p_access_type: accessType,
     p_scheduled_start_at: scheduled.toISOString(),
-    p_time_zone: String(formData.get("time_zone") ?? "Asia/Kolkata"),
+    p_time_zone: timeZone,
     p_duration_minutes: duration,
     p_participant_limit: limit,
     p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
@@ -416,4 +433,14 @@ export async function revokeInviteLink(formData: FormData) {
   if (error) redirect(`/sessions/${sessionId}?error=revoke_invitation_failed`);
   revalidatePath(`/sessions/${sessionId}`);
   redirect(`/sessions/${sessionId}?success=invitation_revoked`);
+}
+
+export async function markSessionNotificationRead(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const notificationId = String(formData.get("notification_id") ?? "");
+  if (!isValidSessionId(notificationId)) redirect("/sessions?error=notification_failed");
+  const { error } = await supabase.rpc("mark_session_notification_read", { p_notification_id: notificationId });
+  if (error) redirect("/sessions?error=notification_failed");
+  revalidatePath("/sessions");
+  redirect("/sessions?success=notification_read");
 }

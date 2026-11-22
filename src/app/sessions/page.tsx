@@ -22,7 +22,7 @@ type Session = {
   title: string;
   description: string | null;
   access_type: "community" | "invitation_only" | "link";
-  status: "scheduled" | "live" | "ended";
+  status: "scheduled" | "live" | "ended" | "cancelled";
   scheduled_start_at: string | null;
   ended_at?: string | null;
   created_by: string;
@@ -41,6 +41,8 @@ const successMessages: Record<string, string> = {
   joined: "You have joined the session.",
   invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
+  join_request_sent: "Your request has been sent to the organizer.",
+  notification_read: "Notification marked as read.",
 };
 
 const errorMessages: Record<string, string> = {
@@ -53,6 +55,7 @@ const errorMessages: Record<string, string> = {
   join_failed: "You could not join this session.",
   invitation_failed: "Your invitation response could not be saved.",
   leave_failed: "You could not leave this session.",
+  notification_failed: "The notification could not be updated.",
 };
 
 function formatSchedule(value: string | null) {
@@ -111,7 +114,7 @@ function SessionCard({
               : "bg-[var(--surface-soft)] text-[var(--ink)]"
           }`}
         >
-          {session.is_draft ? "Draft" : session.status === "live" ? "Live now" : session.status === "ended" ? "Concluded" : "Scheduled"}
+          {session.is_draft ? "Draft" : session.status === "live" ? "Live now" : session.status === "ended" ? "Concluded" : session.status === "cancelled" ? "Cancelled" : "Scheduled"}
         </span>
       </div>
 
@@ -350,7 +353,7 @@ async function SessionsContent({
     supabase
       .from("sessions")
       .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
-      .eq("status", "ended")
+      .in("status", ["ended", "cancelled"])
       .eq("created_by", userId)
       .order("ended_at", { ascending: false })
       .limit(20),
@@ -358,7 +361,7 @@ async function SessionsContent({
       ? supabase
           .from("sessions")
           .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
-          .eq("status", "ended")
+          .in("status", ["ended", "cancelled"])
           .in("id", acceptedSessionIds)
           .order("ended_at", { ascending: false })
           .limit(20)
