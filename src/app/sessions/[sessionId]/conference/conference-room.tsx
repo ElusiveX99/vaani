@@ -742,11 +742,10 @@ function ConferenceWorkspace({
             {title}
           </h1>
 
-          {connectionState !== "connected" && (
-            <p className="text-xs text-white/50" role="status" aria-live="polite">
-              {connectionState === "reconnecting" ? "Connection interrupted · Reconnecting…" : connectionState === "disconnected" ? "Connection lost · Trying to reconnect…" : "Connecting to the gathering…"}
-            </p>
-          )}
+          <p className="text-xs text-white/50" role="status" aria-live="polite">
+            {remoteParticipants.length + 1} participant{remoteParticipants.length === 0 ? "" : "s"} connected
+            {connectionState !== "connected" && <span className="ml-2">{connectionState === "reconnecting" ? "· Reconnecting…" : connectionState === "disconnected" ? "· Connection lost" : "· Connecting…"}</span>}
+          </p>
         </div>
 
           {canManageDocuments && (
