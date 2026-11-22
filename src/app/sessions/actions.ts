@@ -77,7 +77,7 @@ async function updateSessionLifecycle(
 }
 
 export async function createSession(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
+  const { supabase, userId } = await getAuthenticatedClient();
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -124,6 +124,7 @@ export async function createSession(formData: FormData) {
     .from("sessions")
     .insert({
       title,
+      created_by: userId,
       description: description || null,
       access_type: accessType,
       is_draft: isDraft,
