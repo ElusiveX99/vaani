@@ -761,11 +761,11 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
             <div>
               <dt className="text-[var(--muted)]">
-                Session ID
+                Access
               </dt>
 
-              <dd className="mt-1 break-all font-mono text-xs text-[var(--ink)]">
-                {session.id}
+              <dd className="mt-1 text-[var(--ink)]">
+                {session.access_type === "community" ? "All Vaani members" : session.access_type === "link" ? "Invitation link" : "Invite-only"}
               </dd>
             </div>
 

@@ -57,7 +57,6 @@ const errorMessages: Record<string, string> = {
   invitation_failed: "Your invitation response could not be saved.",
   leave_failed: "You could not leave this session.",
   notification_failed: "The notification could not be updated.",
-  notification_failed: "The notification could not be updated.",
 };
 
 function formatSchedule(value: string | null) {

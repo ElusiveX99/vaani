@@ -50,6 +50,7 @@ async function HomeContent() {
   const { data: sessions } = await supabase
     .from("sessions")
     .select("id, title, status, scheduled_start_at, access_type")
+    .eq("is_draft", false)
     .in("status", ["scheduled", "live"])
     .order("created_at", { ascending: false })
     .limit(8);
