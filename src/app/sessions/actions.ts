@@ -68,6 +68,9 @@ export async function createSession(formData: FormData) {
   const scheduledStart = scheduledValue ? new Date(scheduledValue) : null;
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
   const instructions = String(formData.get("instructions") ?? "").trim();
+  const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
+  const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
+  const recurrenceUntil = recurrenceUntilValue ? new Date(recurrenceUntilValue) : null;
   const durationValue = String(formData.get("duration_minutes") ?? "");
   const participantLimitValue = String(formData.get("participant_limit") ?? "");
   const duration = durationValue ? Number(durationValue) : null;
@@ -84,6 +87,8 @@ export async function createSession(formData: FormData) {
   if (
     timeZone.length < 1 ||
     timeZone.length > 80 ||
+    (recurrenceRule !== null && !["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(recurrenceRule)) ||
+    (recurrenceRule !== null && (!recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || !scheduledStart || recurrenceUntil <= scheduledStart || recurrenceUntil.getTime() > scheduledStart.getTime() + 366 * 24 * 60 * 60 * 1000)) ||
     (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
     (participantLimit !== null && (!Number.isInteger(participantLimit) || participantLimit < 2 || participantLimit > 500))
   ) {
@@ -109,6 +114,8 @@ export async function createSession(formData: FormData) {
       participant_limit: participantLimit,
       waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
       allow_participant_invites: formData.get("allow_participant_invites") === "on",
+      recurrence_rule: recurrenceRule,
+      recurrence_until: recurrenceUntil?.toISOString() ?? null,
     })
     .select("id")
     .single();
@@ -349,6 +356,10 @@ export async function updateSessionDetails(formData: FormData) {
   if (!title || title.length > 120 || description.length > 2000 || !scheduledValue || Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()) redirect(`/sessions/${sessionId}?error=invalid_edit`);
   if (!["community","invitation_only","link"].includes(accessType)) redirect(`/sessions/${sessionId}?error=invalid_access`);
   if ((duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) || (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))) redirect(`/sessions/${sessionId}?error=invalid_options`);
+  const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
+  const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
+  const recurrenceUntil = recurrenceUntilValue ? new Date(recurrenceUntilValue) : null;
+  if (recurrenceRule !== null && (!["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(recurrenceRule) || !recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || recurrenceUntil <= scheduled || recurrenceUntil.getTime() > scheduled.getTime() + 366 * 24 * 60 * 60 * 1000)) redirect(`/sessions/${sessionId}?error=invalid_recurrence`);
   const { error } = await supabase.rpc("update_session_details", {
     p_session_id: sessionId,
     p_title: title,
@@ -361,12 +372,48 @@ export async function updateSessionDetails(formData: FormData) {
     p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
     p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
     p_instructions: String(formData.get("instructions") ?? "").trim() || null,
-    p_recurrence_rule: String(formData.get("recurrence_rule") ?? "") || null,
-    p_recurrence_until: String(formData.get("recurrence_until") ?? "") ? new Date(String(formData.get("recurrence_until"))).toISOString() : null,
+    p_recurrence_rule: recurrenceRule,
+    p_recurrence_until: recurrenceUntil?.toISOString() ?? null,
   });
   if (error) redirect(`/sessions/${sessionId}?error=update_failed`);
   revalidatePath("/sessions");
   revalidatePath("/home");
   revalidatePath(`/sessions/${sessionId}`);
   redirect(`/sessions/${sessionId}?success=session_updated`);
+}
+
+
+export async function approveJoinRequest(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const requestId = String(formData.get("request_id") ?? "");
+  if (!isValidSessionId(sessionId) || !isValidSessionId(requestId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("approve_session_join_request", { p_request_id: requestId });
+  if (error) redirect(`/sessions/${sessionId}?error=join_request_action_failed`);
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/sessions");
+  redirect(`/sessions/${sessionId}?success=join_request_approved`);
+}
+
+export async function rejectJoinRequest(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const requestId = String(formData.get("request_id") ?? "");
+  if (!isValidSessionId(sessionId) || !isValidSessionId(requestId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("reject_session_join_request", { p_request_id: requestId });
+  if (error) redirect(`/sessions/${sessionId}?error=join_request_action_failed`);
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/sessions");
+  redirect(`/sessions/${sessionId}?success=join_request_rejected`);
+}
+
+export async function revokeInviteLink(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const linkId = String(formData.get("link_id") ?? "");
+  if (!isValidSessionId(sessionId) || !isValidSessionId(linkId)) redirect("/sessions?error=invalid_session");
+  const { error } = await supabase.rpc("revoke_session_invite_link", { p_link_id: linkId });
+  if (error) redirect(`/sessions/${sessionId}?error=revoke_invitation_failed`);
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=invitation_revoked`);
 }

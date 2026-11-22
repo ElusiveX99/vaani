@@ -19,6 +19,9 @@ import {
   revokeMemberInvitation,
   publishSessionDraft,
   updateSessionDetails,
+  approveJoinRequest,
+  rejectJoinRequest,
+  revokeInviteLink,
 } from "../actions";
 
 type PageProps = {
@@ -78,6 +81,8 @@ const successMessages: Record<string, string> = {
   draft_saved: "Your draft has been saved.",
   published: "Your gathering has been published.",
   session_updated: "Gathering details updated.",
+  join_request_approved: "The join request was approved.",
+  join_request_rejected: "The join request was declined.",
 };
 
 const errorMessages: Record<string, string> = {
@@ -92,6 +97,8 @@ const errorMessages: Record<string, string> = {
   publish_failed: "The draft could not be published. Check that its start time is in the future.",
   invalid_edit: "Check the title, access, and future start time.",
   update_failed: "The gathering could not be updated.",
+  invalid_recurrence: "Choose a valid repeat pattern and end date within one year.",
+  join_request_action_failed: "The join request could not be updated.",
 };
 
 function formatDate(value: string | null) {
@@ -210,6 +217,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
   let members: Membership[] = [];
   let profiles: Profile[] = [];
+  let joinRequests: { id: string; user_id: string; created_at: string }[] = [];
 
   if (isAccepted || canManage) {
     const { data: memberData } = await supabase
@@ -218,21 +226,19 @@ async function SessionContent({ params, searchParams }: PageProps) {
       .eq("session_id", session.id)
       .in("status", ["accepted", "invited"])
       .order("created_at", { ascending: true });
-
     members = (memberData ?? []) as Membership[];
-
-    const memberIds = [
-      ...new Set(members.map((member) => member.user_id)),
-    ];
-
-    if (memberIds.length > 0) {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url, avatar_path")
-        .in("id", memberIds);
-
-      profiles = (profileData ?? []) as Profile[];
-    }
+  }
+  if (canManage && session.waiting_room_enabled) {
+    const { data: requests } = await supabase.from("session_join_requests")
+      .select("id, user_id, created_at").eq("session_id", session.id)
+      .eq("status", "pending").order("created_at", { ascending: true });
+    joinRequests = requests ?? [];
+  }
+  const memberIds = [...new Set([...members.map((member) => member.user_id), ...joinRequests.map((request) => request.user_id)])];
+  if (memberIds.length > 0) {
+    const { data: profileData } = await supabase.from("profiles")
+      .select("id, display_name, avatar_url, avatar_path").in("id", memberIds);
+    profiles = (profileData ?? []) as Profile[];
   }
 
   const profileMap = new Map(
@@ -284,9 +290,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-medium text-[var(--ink)]">
-              {session.access_type === "community"
-                ? "Community session"
-                : "Invitation only"}
+              {session.access_type === "community" ? "Community session" : session.access_type === "link" ? "Invitation link" : "Invitation only"}
             </span>
 
             <span
@@ -653,7 +657,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                         {link.expires_at ? ` · expires ${formatDate(link.expires_at)}` : " · no expiry"}
                       </p>
                     </div>
-                    <span className="text-xs text-[var(--muted)]">Active</span>
+                    <form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke link</button></form>
                   </div>
                 ))}
 
@@ -677,7 +681,48 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </section>
         )}
 
-        {(isAccepted || canManage) && (
+        {canManage && session.waiting_room_enabled && (
+          <section className="surface-card mt-7 p-6 sm:p-8">
+            <h2 className="text-xl font-semibold">Join requests</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Review members waiting for approval.</p>
+            {joinRequests.length === 0 ? <p className="mt-5 text-sm text-[var(--muted)]">No pending requests.</p> : (
+              <div className="mt-5 divide-y divide-[var(--line)]">
+                {joinRequests.map((request) => (
+                  <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                    <div><p className="font-medium">{profileMap.get(request.user_id)?.display_name ?? "Vaani member"}</p><p className="text-xs text-[var(--muted)]">Requested {formatDate(request.created_at)}</p></div>
+                    <div className="flex gap-2">
+                      <form action={approveJoinRequest}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={request.id}/><button className="button-primary !min-h-9 !px-3 !py-1.5 text-xs">Approve</button></form>
+                      <form action={rejectJoinRequest}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={request.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Decline</button></form>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+        {canManage && session.status === "scheduled" && !session.is_draft && (
+          <section className="surface-card mt-7 p-6 sm:p-8">
+            <h2 className="text-xl font-semibold">Edit gathering</h2>
+            <form action={updateSessionDetails} className="mt-5 grid gap-4 sm:grid-cols-2">
+              <input type="hidden" name="session_id" value={session.id}/>
+              <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"}/>
+              <div><label className="field-label mb-2" htmlFor="edit-title">Title</label><input id="edit-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="edit-start">Start date and time</label><input id="edit-start" name="scheduled_start_at" type="datetime-local" required defaultValue={session.scheduled_start_at ? new Date(new Date(session.scheduled_start_at).getTime()-new Date(session.scheduled_start_at).getTimezoneOffset()*60000).toISOString().slice(0,16) : ""} className="field-input"/></div>
+              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="edit-description">Description</label><textarea id="edit-description" name="description" rows={3} defaultValue={session.description || ""} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="edit-access">Access</label><select id="edit-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="invitation_only">Invite-only</option><option value="link">Anyone with an invitation link</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="edit-duration">Duration (minutes)</label><input id="edit-duration" name="duration_minutes" type="number" min="15" max="480" defaultValue={session.duration_minutes ?? ""} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="edit-limit">Participant limit</label><input id="edit-limit" name="participant_limit" type="number" min="2" max="500" defaultValue={session.participant_limit ?? ""} className="field-input"/></div>
+              <div><label className="field-label mb-2" htmlFor="edit-repeat">Repeat</label><select id="edit-repeat" name="recurrence_rule" defaultValue={session.recurrence_rule || ""} className="field-input"><option value="">Does not repeat</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="MONTHLY">Every month</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="edit-repeat-until">Repeat until</label><input id="edit-repeat-until" name="recurrence_until" type="date" defaultValue={session.recurrence_until ? session.recurrence_until.slice(0,10) : ""} className="field-input"/></div>
+              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="edit-instructions">Participant instructions</label><textarea id="edit-instructions" name="instructions" rows={2} defaultValue={session.instructions || ""} className="field-input"/></div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled}/> Use waiting room</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites}/> Allow participant invitations</label>
+              <input type="hidden" name="recurrence_until_local" value=""/>
+              <div className="sm:col-span-2"><button className="button-primary">Save changes</button></div>
+            </form>
+          </section>
+        )}
+\n        {(isAccepted || canManage) && (
           <SessionMembers
             sessionId={session.id}
             currentUserId={userId}

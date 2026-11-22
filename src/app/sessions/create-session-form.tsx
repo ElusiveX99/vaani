@@ -34,6 +34,9 @@ export default function CreateSessionForm({ action, error }: Props) {
     const form = event.currentTarget;
     const localDate = String(new FormData(form).get("scheduled_start_local") ?? "");
     const scheduledField = form.elements.namedItem("scheduled_start_at") as HTMLInputElement | null;
+    const recurrenceLocal = String(new FormData(form).get("recurrence_until_local") ?? "");
+    const recurrenceField = form.elements.namedItem("recurrence_until") as HTMLInputElement | null;
+    if (recurrenceField) recurrenceField.value = recurrenceLocal ? new Date(`${recurrenceLocal}T23:59:59`).toISOString() : "";
 
     if (scheduledField) {
       scheduledField.value = localDate ? new Date(localDate).toISOString() : "";
@@ -105,6 +108,7 @@ export default function CreateSessionForm({ action, error }: Props) {
           <select id="access_type" name="access_type" defaultValue="community" className="field-input">
             <option value="community">All Vaani members</option>
             <option value="invitation_only">Invite-only</option>
+            <option value="link">Anyone with an invitation link</option>
           </select>
         </div>
         <div>
@@ -121,6 +125,11 @@ export default function CreateSessionForm({ action, error }: Props) {
         </label>
       </section>
 
+      <section className="space-y-4 border-t border-[var(--line)] pt-7">
+        <div><h2 className="text-lg font-semibold text-[var(--ink)]">Repeat (optional)</h2><p className="mt-1 text-sm text-[var(--muted)]">Create weekly, every-two-weeks, or monthly occurrences. You can end the series within one year.</p></div>
+        <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="recurrence_rule" className="field-label mb-2">Repeat</label><select id="recurrence_rule" name="recurrence_rule" defaultValue="" className="field-input"><option value="">Does not repeat</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="MONTHLY">Every month</option></select></div><div><label htmlFor="recurrence_until_local" className="field-label mb-2">Repeat until</label><input id="recurrence_until_local" name="recurrence_until_local" type="date" className="field-input"/></div></div>
+        <input type="hidden" name="recurrence_until"/>
+      </section>
       <section className="space-y-3 border-t border-[var(--line)] pt-7">
         <div>
           <label htmlFor="instructions" className="field-label mb-2">Instructions for participants (optional)</label>

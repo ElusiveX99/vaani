@@ -21,7 +21,7 @@ type Session = {
   id: string;
   title: string;
   description: string | null;
-  access_type: "community" | "invitation_only";
+  access_type: "community" | "invitation_only" | "link";
   status: "scheduled" | "live" | "ended";
   scheduled_start_at: string | null;
   ended_at?: string | null;
@@ -117,9 +117,7 @@ function SessionCard({
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
-          {session.access_type === "community"
-            ? "Open to all members"
-            : "Invitation only"}
+          {session.access_type === "community" ? "Open to all members" : session.access_type === "link" ? "Invitation link" : "Invitation only"}
         </span>
 
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
