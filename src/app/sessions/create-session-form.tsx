@@ -59,15 +59,6 @@ export default function CreateSessionForm({ action, error }: Props) {
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     if (submitter?.name) values[submitter.name] = submitter.value;
     try { sessionStorage.setItem("vaani:create-gathering-form", JSON.stringify(values)); } catch { /* Storage may be unavailable. */ }
-    const localDate = String(new FormData(form).get("scheduled_start_local") ?? "");
-    const scheduledField = form.elements.namedItem("scheduled_start_at") as HTMLInputElement | null;
-    const recurrenceLocal = String(new FormData(form).get("recurrence_until_local") ?? "");
-    const recurrenceField = form.elements.namedItem("recurrence_until") as HTMLInputElement | null;
-    if (recurrenceField) recurrenceField.value = recurrenceLocal ? new Date(`${recurrenceLocal}T23:59:59`).toISOString() : "";
-
-    if (scheduledField) {
-      scheduledField.value = localDate ? new Date(localDate).toISOString() : "";
-    }
 
     submittedRef.current = true;
     setSubmitting(true);
@@ -103,7 +94,6 @@ export default function CreateSessionForm({ action, error }: Props) {
           <div>
             <label htmlFor="scheduled_start_local" className="field-label mb-2">Start date and time</label>
             <input id="scheduled_start_local" name="scheduled_start_local" type="datetime-local" className="field-input" />
-            <input type="hidden" name="scheduled_start_at" />
           </div>
           <div>
             <label htmlFor="duration_minutes" className="field-label mb-2">Expected duration</label>
@@ -150,7 +140,6 @@ export default function CreateSessionForm({ action, error }: Props) {
 
       <section className="space-y-4 border-t border-[var(--line)] pt-7">
         <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="recurrence_rule" className="field-label mb-2">Repeat</label><select id="recurrence_rule" name="recurrence_rule" defaultValue="" className="field-input"><option value="">Does not repeat</option><option value="DAILY">Every day</option><option value="WEEKLY">Every week</option><option value="BIWEEKLY">Every two weeks</option><option value="EVERY_3_WEEKS">Every three weeks</option><option value="EVERY_4_WEEKS">Every four weeks</option><option value="MONTHLY">Every month</option></select></div><div><label htmlFor="recurrence_until_local" className="field-label mb-2">Repeat until</label><input id="recurrence_until_local" name="recurrence_until_local" type="date" className="field-input"/></div></div>
-        <input type="hidden" name="recurrence_until"/>
       </section>
       <section className="space-y-3 border-t border-[var(--line)] pt-7">
         <div>

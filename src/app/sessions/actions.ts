@@ -16,17 +16,25 @@ async function getAuthenticatedClient() {
 
 
 function parseLocalDateTime(value: string, timeZone: string) {
-  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) return new Date(value);
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-  if (!match) return new Date(Number.NaN);
-  const target = Date.UTC(Number(match[1]), Number(match[2])-1, Number(match[3]), Number(match[4]), Number(match[5]));
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return new Date(Number.NaN);
+  const [datePart, timePart] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const target = Date.UTC(year, month - 1, day, hour, minute);
+  const requested = [year, month, day, hour, minute];
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  });
   let guess = target;
-  for (let i=0;i<3;i++) {
-    const parts = new Intl.DateTimeFormat("en-US", { timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hourCycle:"h23" }).formatToParts(new Date(guess));
-    const values = Object.fromEntries(parts.map(part=>[part.type,part.value]));
-    const represented = Date.UTC(Number(values.year),Number(values.month)-1,Number(values.day),Number(values.hour),Number(values.minute));
-    guess += target-represented;
+  for (let i = 0; i < 4; i++) {
+    const parts = Object.fromEntries(formatter.formatToParts(new Date(guess)).map(part => [part.type, part.value]));
+    const represented = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
+    guess += target - represented;
   }
+  const finalParts = Object.fromEntries(formatter.formatToParts(new Date(guess)).map(part => [part.type, part.value]));
+  const actual = [Number(finalParts.year), Number(finalParts.month), Number(finalParts.day), Number(finalParts.hour), Number(finalParts.minute)];
+  if (actual.some((part, index) => part !== requested[index])) return new Date(Number.NaN);
   return new Date(guess);
 }
 
@@ -77,14 +85,14 @@ export async function createSession(formData: FormData) {
   const accessType = String(formData.get("access_type") ?? "");
   const intent = String(formData.get("intent") ?? "publish");
   const isDraft = intent === "draft";
-  const scheduledValue = String(formData.get("scheduled_start_at") ?? "");
-  const scheduledStart = scheduledValue ? new Date(scheduledValue) : null;
+  const scheduledValue = String(formData.get("scheduled_start_local") ?? "");
+  const scheduledStart = scheduledValue ? parseLocalDateTime(scheduledValue, timeZone) : null;
   const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
   if (!isValidTimeZone(timeZone)) redirect("/sessions/new?error=invalid_options");
   const instructions = String(formData.get("instructions") ?? "").trim();
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
-  const recurrenceUntilValue = String(formData.get("recurrence_until") ?? "");
-  const recurrenceUntil = recurrenceUntilValue ? (recurrenceUntilValue.length === 10 ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : new Date(recurrenceUntilValue)) : null;
+  const recurrenceUntilValue = String(formData.get("recurrence_until_local") ?? "");
+  const recurrenceUntil = recurrenceUntilValue ? parseLocalDateTime(`${recurrenceUntilValue}T23:59`, timeZone) : null;
   const durationValue = String(formData.get("duration_minutes") ?? "");
   const participantLimitValue = String(formData.get("participant_limit") ?? "");
   const duration = durationValue ? Number(durationValue) : null;
@@ -102,14 +110,14 @@ export async function createSession(formData: FormData) {
     timeZone.length < 1 ||
     timeZone.length > 80 ||
     (recurrenceRule !== null && !["DAILY", "WEEKLY", "BIWEEKLY", "EVERY_3_WEEKS", "EVERY_4_WEEKS", "MONTHLY"].includes(recurrenceRule)) ||
-    (recurrenceRule !== null && (!recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || !scheduledStart || recurrenceUntil <= scheduledStart || recurrenceUntil.getTime() > scheduledStart.getTime() + 366 * 24 * 60 * 60 * 1000)) ||
+    (recurrenceRule !== null && (!recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || !scheduledStart || Number.isNaN(scheduledStart.getTime()) || recurrenceUntil <= scheduledStart || recurrenceUntil.getTime() > scheduledStart.getTime() + 366 * 24 * 60 * 60 * 1000)) ||\n    (recurrenceRule === null && recurrenceUntilValue !== "") ||
     (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
     (participantLimit !== null && (!Number.isInteger(participantLimit) || participantLimit < 2 || participantLimit > 500))
   ) {
     redirect("/sessions/new?error=invalid_options");
   }
 
-  if (scheduledValue && (!scheduledStart || Number.isNaN(scheduledStart.getTime()) || scheduledStart.getTime() <= Date.now())) {
+  if (scheduledValue && (!scheduledStart || Number.isNaN(scheduledStart.getTime()) || (!isDraft && scheduledStart.getTime() <= Date.now()))) {
     redirect("/sessions/new?error=invalid_schedule");
   }
   if (!isDraft && recurrenceRule && !scheduledStart) {
