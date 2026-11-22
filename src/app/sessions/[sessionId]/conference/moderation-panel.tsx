@@ -164,6 +164,10 @@ export default function ModerationPanel({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Role update failed.");
+      setMemberRoles((previous) => ({
+        ...previous,
+        [targetUserId]: makeAdmin ? "admin" : "participant",
+      }));
       setMessage(makeAdmin ? "Session admin assigned." : "Session admin removed.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Role update failed.");
@@ -279,7 +283,7 @@ export default function ModerationPanel({
                         <ProfileAvatar name={participantName} avatarUrl={participant.attributes?.avatar_url || null} size="md" />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-white">{participantName}</p>
-                          <p className="mt-1 text-xs capitalize text-white/45">{(participant.attributes?.role || "participant").replaceAll("_", " ")}</p>
+                          <p className="mt-1 text-xs capitalize text-white/45">{targetRole.replaceAll("_", " ")}</p>
                         </div>
                       </div>
 

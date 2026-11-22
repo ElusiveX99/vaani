@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 
 const display = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -79,7 +80,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SessionRealtimeRefresh />
+        {children}
+      </body>
     </html>
   );
 }

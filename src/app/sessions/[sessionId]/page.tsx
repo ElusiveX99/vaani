@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import SessionMembers from "./session-members";
+import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import SiteHeader from "@/components/site-header";
 
 import {
@@ -217,6 +218,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
+      <SessionRealtimeRefresh sessionId={session.id} />
       <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-8 sm:py-10">
 
