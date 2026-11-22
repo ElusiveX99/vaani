@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ProfileAvatar from "./profile-avatar";
 import { BrandMark } from "./brand-lockup";
@@ -11,58 +12,81 @@ type Props = {
 };
 
 const links = [
-  { href: "/home", label: "Home" },
-  { href: "/sessions", label: "Gatherings" },
+  { href: "/home", label: "Home", symbol: "⌂" },
+  { href: "/sessions", label: "Gatherings", symbol: "◷" },
 ];
 
-export default function SiteHeader({ name, avatarUrl }: Props) {
+function isActive(pathname: string, href: string) {
+  return href === "/home"
+    ? pathname === "/home"
+    : pathname === href || pathname.startsWith(href + "/");
+}
+
+export default function SiteHeader({ name, email, avatarUrl }: Props) {
   const pathname = usePathname();
 
   return (
-    <header className="site-header sticky top-0 z-40">
-      <nav className="site-nav" aria-label="Main navigation">
-        <div className="shrink-0">
-          <BrandMark />
-        </div>
-
-        <div className="hidden items-center gap-1 md:flex">
+    <>
+      <aside className="site-sidebar" aria-label="Main navigation">
+        <div className="site-sidebar-brand"><BrandMark /></div>
+        <p className="site-sidebar-label">YOUR VAANI</p>
+        <nav className="site-sidebar-links">
           {links.map((link) => {
-            const active = pathname === link.href ||
-              (link.href !== "/home" && pathname.startsWith(link.href));
+            const active = isActive(pathname, link.href);
             return (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 aria-current={active ? "page" : undefined}
-                className={`nav-link ${active ? "nav-link-active" : ""}`}
+                className={`site-sidebar-link ${active ? "site-sidebar-link-active" : ""}`}
+                title={link.label}
               >
-                {link.label}
-              </a>
+                <span className="site-nav-symbol" aria-hidden="true">{link.symbol}</span>
+                <span className="site-sidebar-link-label">{link.label}</span>
+              </Link>
             );
           })}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <a
-            href="/account"
-            aria-label="Manage account"
-            title="Manage account"
-            className="button-secondary !flex !h-9 !w-9 !min-h-9 !shrink-0 !gap-0 !p-0 sm:!h-10 sm:!w-auto sm:!min-h-10 sm:!gap-2 sm:!px-4 sm:!py-2"
-          >
+        </nav>
+        <div className="site-sidebar-account">
+          <Link href="/account" className="site-account-link" aria-label="Manage account">
             <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
-            <span className="hidden sm:inline">Manage account</span>
-          </a>
-          <details className="mobile-nav shrink-0 md:hidden">
-            <summary aria-label="Open navigation" aria-haspopup="true"><span aria-hidden="true" className="text-lg">☰</span></summary>
-            <div className="mobile-nav-panel" aria-label="Mobile navigation">
-              {links.map((link) => {
-                const active = pathname === link.href || (link.href !== "/home" && pathname.startsWith(link.href));
-                return <a key={link.href} href={link.href} aria-current={active ? "page" : undefined}>{link.label}</a>;
-              })}
-            </div>
-          </details>
+            <span className="site-account-copy">
+              <strong>{name}</strong>
+              <small>{email}</small>
+            </span>
+          </Link>
         </div>
+      </aside>
+
+      <header className="site-header site-mobile-header">
+        <nav className="site-nav" aria-label="Main navigation">
+          <BrandMark />
+          <Link href="/account" aria-label="Manage account" className="site-mobile-account">
+            <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
+          </Link>
+        </nav>
+      </header>
+
+      <nav className="site-bottom-nav" aria-label="Main navigation">
+        {links.map((link) => {
+          const active = isActive(pathname, link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={active ? "page" : undefined}
+              className={`site-bottom-link ${active ? "site-bottom-link-active" : ""}`}
+            >
+              <span className="site-nav-symbol" aria-hidden="true">{link.symbol}</span>
+              <span>{link.label}</span>
+            </Link>
+          );
+        })}
+        <Link href="/account" className={`site-bottom-link ${pathname.startsWith("/account") ? "site-bottom-link-active" : ""}`}>
+          <span className="site-nav-symbol" aria-hidden="true">○</span>
+          <span>Profile</span>
+        </Link>
       </nav>
-    </header>
+    </>
   );
 }
