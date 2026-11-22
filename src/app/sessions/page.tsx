@@ -302,7 +302,7 @@ async function SessionsContent({
 
     return (
       session.access_type === "community" &&
-      membership?.status !== "accepted" &&
+      membership?.status !== "accepted"
     );
   });
 
