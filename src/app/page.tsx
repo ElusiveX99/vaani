@@ -4,7 +4,7 @@ import { BrandMark } from "@/components/brand-lockup";
 const practices = [
   {
     title: "Vaani Gaayan",
-    detail: "Sing the padas of Shri Hit Chaurasi Ji together.",
+    detail: "Sing the padas of Shri Hit Chaturasi Ji together.",
   },
   {
     title: "Vaani Paath",
