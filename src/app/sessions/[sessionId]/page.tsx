@@ -20,7 +20,6 @@ import {
   createInviteLink,
   publishSessionDraft,
   updateSessionDetails,
-  updatePublishedSessionDetails,
   approveJoinRequest,
   rejectJoinRequest,
   revokeInviteLink,
@@ -87,7 +86,6 @@ const successMessages: Record<string, string> = {
   draft_saved: "Your draft has been saved.",
   published: "Your gathering has been published.",
   session_updated: "Gathering details updated.",
-  published_edit_saved: "Gathering details updated.",
   join_request_sent: "Your request has been sent to the organizer.",
   join_request_cancelled: "Your join request has been cancelled.",
   join_request_approved: "The join request was approved.",
@@ -108,8 +106,6 @@ const errorMessages: Record<string, string> = {
   invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
   publish_failed: "The draft could not be published. Check that its start time is in the future.",
   invalid_edit: "Check the title, access, and future start time.",
-  published_edit_invalid: "Check the title, description, date, time, and duration.",
-  published_edit_failed: "The gathering details could not be updated.",
   update_failed: "The gathering could not be updated.",
   invalid_options: "Check the time zone, duration, and participant limit.",
   invalid_recurrence: "Choose a valid repeat pattern and end date within one year.",
@@ -343,13 +339,11 @@ async function SessionContent({ params, searchParams }: PageProps) {
     ])
   );
 
-  const canCreateOwnLinks = isAccepted && session.allow_participant_invites;
-  const { data: inviteLinks } = (canManage || canCreateOwnLinks) ? await supabase
+  const { data: inviteLinks } = canManage ? await supabase
     .from("session_invite_links")
-    .select("id, short_code, created_by, label, max_uses, use_count, expires_at, revoked_at, created_at")
+    .select("id, label, max_uses, use_count, expires_at, revoked_at, created_at")
     .eq("session_id", session.id)
     .order("created_at", { ascending: false }) : { data: [] };
-  const visibleInviteLinks = (inviteLinks ?? []).filter((link: any) => canManage || link.created_by === userId);
 
 
   const acceptedCount = members.filter(
@@ -685,25 +679,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
         </section>
 
 
-
-        {isOrganizer && session.status === "scheduled" && !session.is_draft && (
-          <section className="surface-card mt-7 p-6 sm:p-8">
-            <h2 className="text-xl font-semibold">Edit gathering details</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">You can update the details participants rely on before the gathering begins. Access and participation rules stay fixed after publishing.</p>
-            {["published_edit_invalid","published_edit_failed"].includes(paramsData.error || "") && <InlineFeedback tone="error" className="mt-4">{errorMessages[paramsData.error || ""]}</InlineFeedback>}
-            <form action={updatePublishedSessionDetails} className="mt-5 grid gap-4 sm:grid-cols-2">
-              <input type="hidden" name="session_id" value={session.id}/>
-              <input type="hidden" name="time_zone" value={session.time_zone || "Asia/Kolkata"}/>
-              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="published-title">Gathering title</label><input id="published-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input"/></div>
-              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="published-description">Description</label><textarea id="published-description" name="description" rows={3} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y"/></div>
-              <div><label className="field-label mb-2" htmlFor="published-start">Start date and time</label><input id="published-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input"/></div>
-              <div><label className="field-label mb-2" htmlFor="published-duration">Expected duration</label><select id="published-duration" name="duration_minutes" defaultValue={session.duration_minutes ?? ""} className="field-input"><option value="">Not specified</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></div>
-              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="published-instructions">Instructions for participants</label><textarea id="published-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y"/></div>
-              <div className="sm:col-span-2 flex justify-end border-t border-[var(--line)] pt-4"><button className="button-primary">Save changes</button></div>
-            </form>
-          </section>
-        )}
-
         {canManage && !session.is_draft && session.status !== "ended" && session.status !== "cancelled" && (
           <section className="surface-card mt-7 p-6 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -730,16 +705,14 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 </div>
               </div>
             )}
-            {visibleInviteLinks.filter((link: any) => !link.revoked_at).length > 0 && (
+            {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).length > 0 && (
               <div className="mt-5 space-y-3">
-                {visibleInviteLinks.filter((link: any) => !link.revoked_at).map((link: any) => {
-                  const savedUrl = `https://vaaniju.vercel.app/sessions/join/${link.short_code}`;
-                  return <div key={link.id} className="rounded-xl border border-[var(--line)] p-4 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-medium">Your saved invitation link</p><p className="mt-1 text-xs text-[var(--muted)]">{link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}{link.expires_at ? ` · expires ${formatDate(link.expires_at, session.time_zone)}` : " · no expiry"}</p></div><CopyInviteLink value={savedUrl}/></div>
-                    <p className="mt-3 break-all text-xs text-[var(--muted)]">{savedUrl}</p>
-                    <form action={revokeInviteLink} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke link</button></form>
-                  </div>;
-                })}
+                {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).map((link: any) => (
+                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] p-4 text-sm">
+                    <div><p className="font-medium">{link.label || "Invitation link"}</p><p className="mt-1 text-xs text-[var(--muted)]">{link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}{link.expires_at ? ` · expires ${formatDate(link.expires_at, session.time_zone)}` : " · no expiry"}</p></div>
+                    <form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke</button></form>
+                  </div>
+                ))}
               </div>
             )}
           </section>
@@ -775,7 +748,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </div>
               <button className="button-primary">Create invitation link</button>
             </form>
-            {visibleInviteLinks.filter((link: any) => !link.revoked_at && link.created_by === userId).map((link: any) => { const savedUrl = `https://vaaniju.vercel.app/sessions/join/${link.short_code}`; return <div key={link.id} className="mt-4 flex flex-col gap-2 sm:flex-row"><input readOnly value={savedUrl} className="field-input min-w-0 flex-1 text-sm" aria-label="Saved invitation link"/><CopyInviteLink value={savedUrl}/><form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary">Revoke</button></form></div>; })}
+            {paramsData.invite && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" aria-label="Invitation link"/><CopyInviteLink value={paramsData.invite}/></div>}
           </section>
         )}
 

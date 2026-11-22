@@ -322,9 +322,6 @@ function ConferenceWorkspace({
         RoomEvent.ParticipantConnected,
         RoomEvent.ParticipantDisconnected,
         RoomEvent.ConnectionStateChanged,
-        RoomEvent.ActiveSpeakersChanged,
-        RoomEvent.TrackMuted,
-        RoomEvent.TrackUnmuted,
       ],
     });
 
@@ -813,16 +810,9 @@ function ConferenceWorkspace({
                 return (
                   <div
                     key={`${participant.identity}-${trackRef.source}`}
-                    className={`vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 transition-[border-color,box-shadow] duration-150 ${participant.isSpeaking && participant.isMicrophoneEnabled ? "border-sky-400 shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.28)]" : "border-transparent"}`}
+                    className="vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b]"
                   >
                     <ParticipantTile trackRef={trackRef} />
-                    <div className="absolute bottom-2 right-2 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/65 text-white shadow-lg" title={participant.isMicrophoneEnabled ? "Microphone enabled" : "Microphone disabled"} aria-label={participant.isMicrophoneEnabled ? "Microphone enabled" : "Microphone disabled"}>
-                      {participant.isMicrophoneEnabled ? (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4 text-rose-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8M4 4l16 16"/></svg>
-                      )}
-                    </div>
                     {cameraOff && (
                       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#392f3b] p-2">
                         <ProfileAvatar

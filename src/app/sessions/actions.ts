@@ -266,7 +266,7 @@ export async function createInviteLink(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
   }
 
-  const token = (BigInt("0x" + randomBytes(8).toString("hex")) % (36n ** 10n)).toString(36).padStart(10, "0");
+  const token = (BigInt("0x" + randomBytes(8).toString("hex")) % (BigInt(36) ** BigInt(10))).toString(36).padStart(10, "0");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = expiryHoursValue
     ? new Date(Date.now() + expiryHoursValue * 60 * 60 * 1000).toISOString()
