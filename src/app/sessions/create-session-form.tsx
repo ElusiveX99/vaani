@@ -17,13 +17,32 @@ const errors: Record<string, string> = {
 
 export default function CreateSessionForm({ action, error }: Props) {
   const submittedRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [timeZone, setTimeZone] = useState("Asia/Kolkata");
 
   useEffect(() => {
     const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (browserTimeZone) setTimeZone(browserTimeZone);
-  }, []);
+    const form = formRef.current;
+    if (!form) return;
+    const key = "vaani:create-gathering-form";
+    if (error) {
+      try {
+        const saved = sessionStorage.getItem(key);
+        if (saved) {
+          const values = JSON.parse(saved) as Record<string, string>;
+          for (const [name, value] of Object.entries(values)) {
+            const field = form.elements.namedItem(name);
+            if (field instanceof HTMLInputElement && field.type === "checkbox") field.checked = value === "true";
+            else if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) field.value = value;
+          }
+        }
+      } catch { /* Keep the form usable if browser storage is unavailable. */ }
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  }, [error]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (submittedRef.current) {
@@ -32,6 +51,14 @@ export default function CreateSessionForm({ action, error }: Props) {
     }
 
     const form = event.currentTarget;
+    const values: Record<string, string> = {};
+    for (const element of Array.from(form.elements)) {
+      if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) || !element.name) continue;
+      values[element.name] = element instanceof HTMLInputElement && element.type === "checkbox" ? String(element.checked) : element.value;
+    }
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (submitter?.name) values[submitter.name] = submitter.value;
+    try { sessionStorage.setItem("vaani:create-gathering-form", JSON.stringify(values)); } catch { /* Storage may be unavailable. */ }
     const localDate = String(new FormData(form).get("scheduled_start_local") ?? "");
     const scheduledField = form.elements.namedItem("scheduled_start_at") as HTMLInputElement | null;
     const recurrenceLocal = String(new FormData(form).get("recurrence_until_local") ?? "");
@@ -47,7 +74,7 @@ export default function CreateSessionForm({ action, error }: Props) {
   }
 
   return (
-    <form action={action} onSubmit={handleSubmit} className="space-y-8">
+    <form ref={formRef} action={action} onSubmit={handleSubmit} className="space-y-8">
       {error && errors[error] && (
         <p role="alert" className="rounded-xl border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
           {errors[error]}
@@ -76,8 +103,9 @@ export default function CreateSessionForm({ action, error }: Props) {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="scheduled_start_local" className="field-label mb-2">Start date and time</label>
+            <label htmlFor="scheduled_start_local" className="field-label mb-2">Start date and time (optional)</label>
             <input id="scheduled_start_local" name="scheduled_start_local" type="datetime-local" className="field-input" />
+            <p className="mt-2 text-xs text-[var(--muted)]">Leave this blank if the gathering has not been scheduled yet. You can set a time later.</p>
             <input type="hidden" name="scheduled_start_at" />
           </div>
           <div>

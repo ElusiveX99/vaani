@@ -9,16 +9,9 @@ import { createClient } from "@/lib/supabase/server";
 async function getAuthenticatedClient() {
   const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || typeof data?.claims?.sub !== "string") {
-    redirect("/login");
-  }
-
-  return {
-    supabase,
-    userId: data.claims.sub,
-  };
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user?.id) redirect("/login");
+  return { supabase, userId: data.user.id };
 }
 
 
@@ -116,8 +109,11 @@ export async function createSession(formData: FormData) {
     redirect("/sessions/new?error=invalid_options");
   }
 
-  if (!isDraft && (!scheduledStart || Number.isNaN(scheduledStart.getTime()) || scheduledStart.getTime() <= Date.now())) {
+  if (scheduledValue && (!scheduledStart || Number.isNaN(scheduledStart.getTime()) || scheduledStart.getTime() <= Date.now())) {
     redirect("/sessions/new?error=invalid_schedule");
+  }
+  if (!isDraft && recurrenceRule && !scheduledStart) {
+    redirect("/sessions/new?error=invalid_recurrence");
   }
 
   const { data: session, error } = await supabase
@@ -143,6 +139,7 @@ export async function createSession(formData: FormData) {
     .single();
 
   if (error || !session) {
+    console.error("Gathering creation failed:", error?.code, error?.message, error?.details, error?.hint);
     redirect("/sessions/new?error=create_failed");
   }
 
