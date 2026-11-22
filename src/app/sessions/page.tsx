@@ -294,7 +294,11 @@ async function SessionsContent({
   const displayName = profile?.display_name || authUser.user?.user_metadata?.full_name || authUser.user?.user_metadata?.name || email.split("@")[0] || "Sakhi";
   const avatarUrl = profile?.avatar_url || (profile?.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) || authUser.user?.user_metadata?.avatar_url || authUser.user?.user_metadata?.picture || null;
 
-  const { data: notifications } = await supabase.from("session_notifications")\n    .select("id, session_id, type, title, body, read_at, created_at")\n    .eq("user_id", userId).order("created_at", { ascending: false }).limit(8);\n\n  const { data: sessions, error: sessionsError } = await supabase
+  const { data: notifications } = await supabase.from("session_notifications")
+    .select("id, session_id, type, title, body, read_at, created_at")
+    .eq("user_id", userId).order("created_at", { ascending: false }).limit(8);
+
+  const { data: sessions, error: sessionsError } = await supabase
     .from("sessions")
     .select(
       "id, title, description, access_type, status, scheduled_start_at, created_by, is_draft"
@@ -431,7 +435,8 @@ async function SessionsContent({
             </div>
           </section>
         )}
-\n        <div className="grid grid-cols-3 gap-3">
+
+        <div className="grid grid-cols-3 gap-3">
           <div className="surface-card p-4">
             <p className="text-2xl font-semibold tabular-nums">
               {liveCount}
