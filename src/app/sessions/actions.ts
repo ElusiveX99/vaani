@@ -85,9 +85,9 @@ export async function createSession(formData: FormData) {
   const accessType = String(formData.get("access_type") ?? "");
   const intent = String(formData.get("intent") ?? "publish");
   const isDraft = intent === "draft";
+  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
   const scheduledValue = String(formData.get("scheduled_start_local") ?? "");
   const scheduledStart = scheduledValue ? parseLocalDateTime(scheduledValue, timeZone) : null;
-  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
   if (!isValidTimeZone(timeZone)) redirect("/sessions/new?error=invalid_options");
   const instructions = String(formData.get("instructions") ?? "").trim();
   const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
@@ -110,7 +110,8 @@ export async function createSession(formData: FormData) {
     timeZone.length < 1 ||
     timeZone.length > 80 ||
     (recurrenceRule !== null && !["DAILY", "WEEKLY", "BIWEEKLY", "EVERY_3_WEEKS", "EVERY_4_WEEKS", "MONTHLY"].includes(recurrenceRule)) ||
-    (recurrenceRule !== null && (!recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || !scheduledStart || Number.isNaN(scheduledStart.getTime()) || recurrenceUntil <= scheduledStart || recurrenceUntil.getTime() > scheduledStart.getTime() + 366 * 24 * 60 * 60 * 1000)) ||\n    (recurrenceRule === null && recurrenceUntilValue !== "") ||
+    (recurrenceRule !== null && (!recurrenceUntil || Number.isNaN(recurrenceUntil.getTime()) || !scheduledStart || Number.isNaN(scheduledStart.getTime()) || recurrenceUntil <= scheduledStart || recurrenceUntil.getTime() > scheduledStart.getTime() + 366 * 24 * 60 * 60 * 1000)) ||
+    (recurrenceRule === null && recurrenceUntilValue !== "") ||
     (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
     (participantLimit !== null && (!Number.isInteger(participantLimit) || participantLimit < 2 || participantLimit > 500))
   ) {
