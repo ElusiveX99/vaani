@@ -266,27 +266,27 @@ export async function createInviteLink(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
   }
 
-  const token = randomBytes(16).toString("base64url");
+  const token = (BigInt("0x" + randomBytes(8).toString("hex")) % (36n ** 10n)).toString(36).padStart(10, "0");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = expiryHoursValue
     ? new Date(Date.now() + expiryHoursValue * 60 * 60 * 1000).toISOString()
     : null;
 
-  const { error } = await supabase.rpc("create_session_invite_link", {
+  const { data: savedCode, error } = await supabase.rpc("create_session_invite_link", {
     p_session_id: sessionId,
+    p_short_code: token,
     p_token_hash: tokenHash,
-    p_label: null,
     p_expires_at: expiresAt,
     p_max_uses: maxUsesValue,
   });
 
-  if (error) {
-    console.error("Invitation link creation failed:", error.code, error.message, error.details);
+  if (error || typeof savedCode !== "string") {
+    console.error("Invitation link creation failed:", error?.code, error?.message, error?.details);
     redirect(`/sessions/${sessionId}?error=invite_link_failed`);
   }
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app";
-  const inviteUrl = `${origin}/sessions/join/${token}`;
+  const inviteUrl = `${origin}/sessions/join/${savedCode}`;
   redirect(`/sessions/${sessionId}?invite=${encodeURIComponent(inviteUrl)}`);
 }
 
@@ -294,7 +294,7 @@ export async function redeemInviteLink(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const token = String(formData.get("token") ?? "").trim();
 
-  if (!token) redirect("/sessions?error=invalid_invite_link");
+  if (!/^[a-z0-9]{10}$/.test(token)) redirect("/sessions?error=invalid_invite_link");
 
   const { data: sessionId, error } = await supabase.rpc("redeem_session_invite_link", {
     p_token: token,
@@ -309,6 +309,35 @@ export async function redeemInviteLink(formData: FormData) {
   redirect(`/sessions/${sessionId}?success=joined_by_invite`);
 }
 
+
+
+export async function updatePublishedSessionDetails(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const instructions = String(formData.get("instructions") ?? "").trim();
+  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
+  const scheduledValue = String(formData.get("scheduled_start_local") ?? "");
+  const durationValue = String(formData.get("duration_minutes") ?? "");
+  const duration = durationValue ? Number(durationValue) : null;
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  if (!isValidTimeZone(timeZone) || !title || title.length > 120 || description.length > 2000 || instructions.length > 2000) redirect(`/sessions/${sessionId}?error=published_edit_invalid`);
+  const scheduled = scheduledValue ? parseLocalDateTime(scheduledValue, timeZone) : null;
+  if (scheduledValue && (!scheduled || Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now())) redirect(`/sessions/${sessionId}?error=published_edit_invalid`);
+  if (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) redirect(`/sessions/${sessionId}?error=published_edit_invalid`);
+  const { error } = await supabase.rpc("update_published_session_details", {
+    p_session_id: sessionId, p_title: title, p_description: description || null,
+    p_scheduled_start_at: scheduled?.toISOString() ?? null, p_time_zone: timeZone,
+    p_duration_minutes: duration, p_instructions: instructions || null,
+  });
+  if (error) {
+    console.error("Published gathering update failed:", error.code, error.message);
+    redirect(`/sessions/${sessionId}?error=published_edit_failed`);
+  }
+  revalidatePath("/sessions"); revalidatePath("/home"); revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=published_edit_saved`);
+}
 
 export async function publishSessionDraft(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
