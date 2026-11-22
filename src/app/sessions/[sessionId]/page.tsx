@@ -8,6 +8,7 @@ import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import SiteHeader from "@/components/site-header";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
 import CopyInviteLink from "./copy-invite-link";
+import InlineFeedback from "@/components/inline-feedback";
 
 import {
   joinCommunitySession,
@@ -235,14 +236,10 @@ async function SessionContent({ params, searchParams }: PageProps) {
           </Link>
 
           {paramsData.error && errorMessages[paramsData.error] && (
-            <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
-              {errorMessages[paramsData.error]}
-            </div>
+            <InlineFeedback tone="error" className="mt-5">{errorMessages[paramsData.error]}</InlineFeedback>
           )}
           {paramsData.success && successMessages[paramsData.success] && (
-            <div role="status" className="mt-6 rounded-lg border border-[#d4e1d1] bg-[#edf3eb] p-4 text-sm text-[var(--forest)]">
-              {successMessages[paramsData.success]}
-            </div>
+            <InlineFeedback tone="success" className="mt-5">{successMessages[paramsData.success]}</InlineFeedback>
           )}
 
           <section className="surface-card mt-6 p-6 sm:p-9">

@@ -323,3 +323,51 @@ button[data-submitting="true"]::after {
 @media (prefers-reduced-motion: reduce) {
   button[data-submitting="true"]::after { animation-duration: 2.8s; }
 }
+
+
+/* Sitewide contextual feedback. Alerts stay in their component flow; no toast layer. */
+:where([role="alert"],[data-feedback="error"]):not(button) {
+  border: 1px solid #e8c6c4 !important;
+  border-radius: 12px !important;
+  background: #fbefed !important;
+  color: #873f46 !important;
+  animation: vaani-feedback-enter .2s ease-out both, vaani-feedback-shake .32s ease-out .04s both;
+}
+:where([role="status"],[data-feedback="success"]) {
+  border: 1px solid #d2dfd0 !important;
+  border-radius: 12px !important;
+  background: #eff4ed !important;
+  color: #45624a !important;
+}
+[data-feedback="info"] {
+  border: 1px solid #ded7e4 !important;
+  border-radius: 12px !important;
+  background: #f3eff5 !important;
+  color: #59445f !important;
+}
+.conference-shell :where([role="alert"],[data-feedback="error"]):not(button) {
+  border-color: rgba(248,150,150,.2) !important;
+  background: rgba(111,35,43,.32) !important;
+  color: #ffd6d6 !important;
+}
+.conference-shell :where([role="status"],[data-feedback="success"]) {
+  border-color: rgba(151,205,159,.2) !important;
+  background: rgba(43,91,57,.28) !important;
+  color: #d8f1dc !important;
+}
+.conference-shell [data-feedback="info"] {
+  border-color: rgba(210,195,224,.18) !important;
+  background: rgba(255,255,255,.055) !important;
+  color: rgba(255,255,255,.82) !important;
+}
+@keyframes vaani-feedback-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vaani-feedback-shake {
+  0%,100% { translate: 0 0; }
+  20% { translate: -3px 0; }
+  40% { translate: 3px 0; }
+  60% { translate: -2px 0; }
+  80% { translate: 2px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where([role="alert"],[role="status"],[data-feedback]) { animation: none !important; }
+}

@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
+import InlineFeedback from "@/components/inline-feedback";
 import Link from "next/link";
 
 import {
@@ -405,15 +406,11 @@ async function SessionsContent({
         </header>
 
         {params.success && successMessages[params.success] && (
-          <div className="mt-7 rounded-lg border border-[#d4e1d1] bg-[#edf3eb] p-4 text-sm text-[var(--forest)]">
-            {successMessages[params.success]}
-          </div>
+          <InlineFeedback tone="success" className="mt-5 max-w-3xl">{successMessages[params.success]}</InlineFeedback>
         )}
 
         {params.error && errorMessages[params.error] && (
-          <div className="mt-7 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
-            {errorMessages[params.error]}
-          </div>
+          <InlineFeedback tone="error" className="mt-5 max-w-3xl">{errorMessages[params.error]}</InlineFeedback>
         )}
 
 
@@ -460,9 +457,7 @@ async function SessionsContent({
         </div>
 
         {sessionsError || membershipError || historyError || draftsError ? (
-          <p className="mt-8 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">
-            We could not load your sessions. Please refresh the page.
-          </p>
+          <InlineFeedback tone="error" className="mt-8">We could not load your sessions. Please refresh the page.</InlineFeedback>
         ) : (
           <>
             {((drafts ?? []) as Session[]).length > 0 && (
