@@ -14,6 +14,9 @@ import {
   startSession,
   endSession,
   cancelSession,
+  createInviteLink,
+  inviteMemberByEmail,
+  revokeMemberInvitation,
 } from "../actions";
 
 type PageProps = {
@@ -56,12 +59,21 @@ const successMessages: Record<string, string> = {
   joined: "You have joined the session.",
   invitation_updated: "Your invitation response has been saved.",
   left: "You have left the session.",
+  invite_link_created: "Invitation link created. Copy it below.",
+  member_invited: "The Vaani member has been invited.",
+  invitation_revoked: "The invitation has been revoked.",
+  joined_by_invite: "You have joined the gathering.",
 };
 
 const errorMessages: Record<string, string> = {
   start_failed: "The session could not be started.",
   end_failed: "The session could not be ended.",
   cancel_failed: "The session could not be cancelled.",
+  invalid_invitee: "Enter a valid member email address.",
+  invite_member_failed: "That member could not be invited.",
+  invalid_invite_link: "The invitation link could not be created.",
+  invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
+  revoke_invitation_failed: "The invitation could not be revoked.",
 };
 
 function formatDate(value: string | null) {
@@ -211,6 +223,18 @@ async function SessionContent({ params, searchParams }: PageProps) {
       { display_name: profile.display_name, avatar_url: profile.avatar_url || (profile.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) },
     ])
   );
+
+  const { data: inviteLinks } = canManage ? await supabase
+    .from("session_invite_links")
+    .select("id, label, max_uses, use_count, expires_at, revoked_at, created_at")
+    .eq("session_id", session.id)
+    .order("created_at", { ascending: false }) : { data: [] };
+
+  const { data: invitations } = canManage ? await supabase
+    .from("session_invitations")
+    .select("id, user_id, email, status, created_at, responded_at")
+    .eq("session_id", session.id)
+    .order("created_at", { ascending: false }) : { data: [] };
 
   const acceptedCount = members.filter(
     (member) => member.status === "accepted"
@@ -521,6 +545,94 @@ async function SessionContent({ params, searchParams }: PageProps) {
               )}
           </div>
         </section>
+
+        {canManage && session.status !== "ended" && session.status !== "cancelled" && (
+          <section className="surface-card mt-7 p-6 sm:p-8">
+            <div>
+              <h2 className="text-xl font-semibold">Invite Sakhis</h2>
+              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                Invite a Vaani member directly or create a secure link. The link does not expose the internal session ID.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="rounded-xl border border-[var(--line)] p-5">
+                <h3 className="font-semibold">Invite by email</h3>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  The email must belong to an existing Vaani account.
+                </p>
+                <form action={inviteMemberByEmail} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <input type="hidden" name="session_id" value={session.id} />
+                  <input name="email" type="email" required placeholder="member@example.com" className="field-input min-w-0 flex-1" />
+                  <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Invite</button>
+                </form>
+              </div>
+
+              <div className="rounded-xl border border-[var(--line)] p-5">
+                <h3 className="font-semibold">Create invitation link</h3>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Anyone with the link can use it while it is valid. They still need a Vaani account.
+                </p>
+                <form action={createInviteLink} className="mt-4 space-y-3">
+                  <input type="hidden" name="session_id" value={session.id} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <select name="expiry_hours" defaultValue="168" className="field-input">
+                      <option value="24">Expires in 24 hours</option>
+                      <option value="72">Expires in 3 days</option>
+                      <option value="168">Expires in 7 days</option>
+                      <option value="720">Expires in 30 days</option>
+                      <option value="0">No expiry</option>
+                    </select>
+                    <input name="max_uses" type="number" min="1" max="500" placeholder="Uses: unlimited" className="field-input" />
+                  </div>
+                  <input name="label" maxLength={80} placeholder="Optional label, e.g. Sakhi Sang" className="field-input" />
+                  <button className="button-primary !min-h-10 !px-4 !py-2 text-sm">Create link</button>
+                </form>
+              </div>
+            </div>
+
+            {paramsData.success === "invite_link_created" && paramsData.invite && (
+              <div className="mt-5 rounded-xl border border-[#d4e1d1] bg-[#edf3eb] p-5">
+                <p className="text-sm font-medium text-[var(--forest)]">Invitation link</p>
+                <input readOnly value={paramsData.invite} className="field-input mt-3 text-xs" onFocus={(event) => event.currentTarget.select()} />
+                <p className="mt-2 text-xs text-[var(--muted)]">Copy this link and share it with the intended participants.</p>
+              </div>
+            )}
+
+            {((inviteLinks ?? []).length > 0 || (invitations ?? []).length > 0) && (
+              <div className="mt-6 space-y-5">
+                {(inviteLinks ?? []).filter((link: any) => !link.revoked_at).map((link: any) => (
+                  <div key={link.id} className="flex flex-col gap-2 rounded-xl border border-[var(--line)] p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium">{link.label || "Invitation link"}</p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">
+                        {link.max_uses ? `${link.use_count} of ${link.max_uses} uses` : `${link.use_count} uses · no limit`}
+                        {link.expires_at ? ` · expires ${formatDate(link.expires_at)}` : " · no expiry"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-[var(--muted)]">Active</span>
+                  </div>
+                ))}
+
+                {(invitations ?? []).map((invitation: any) => (
+                  <div key={invitation.id} className="flex flex-col gap-3 rounded-xl border border-[var(--line)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{invitation.email}</p>
+                      <p className="mt-1 text-xs capitalize text-[var(--muted)]">{invitation.status}</p>
+                    </div>
+                    {invitation.status === "pending" && invitation.user_id && (
+                      <form action={revokeMemberInvitation}>
+                        <input type="hidden" name="session_id" value={session.id} />
+                        <input type="hidden" name="user_id" value={invitation.user_id} />
+                        <button className="button-secondary !min-h-9 !px-3 !py-1.5 text-xs">Revoke</button>
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {(isAccepted || canManage) && (
           <SessionMembers

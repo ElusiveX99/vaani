@@ -1,5 +1,7 @@
 "use server";
 
+import { createHash, randomBytes } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -225,4 +227,103 @@ export async function cancelSession(formData: FormData) {
     "session_cancelled",
     "cancel_failed"
   );
+}
+
+
+export async function createInviteLink(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const label = String(formData.get("label") ?? "").trim();
+  const expiryHoursValue = Number(formData.get("expiry_hours") ?? 0);
+  const maxUsesValue = Number(formData.get("max_uses") ?? 0);
+
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  if (label.length > 80 || ![0, 24, 72, 168, 720].includes(expiryHoursValue)) {
+    redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
+  }
+
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = expiryHoursValue
+    ? new Date(Date.now() + expiryHoursValue * 60 * 60 * 1000).toISOString()
+    : null;
+  const maxUses = maxUsesValue > 0 ? maxUsesValue : null;
+
+  const { error } = await supabase.rpc("create_session_invite_link", {
+    p_session_id: sessionId,
+    p_token_hash: tokenHash,
+    p_label: label || null,
+    p_expires_at: expiresAt,
+    p_max_uses: maxUses,
+  });
+
+  if (error) {
+    redirect(`/sessions/${sessionId}?error=invite_link_failed`);
+  }
+
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app";
+  const inviteUrl = `${origin}/sessions/join/${token}`;
+  redirect(`/sessions/${sessionId}?success=invite_link_created&invite=${encodeURIComponent(inviteUrl)}`);
+}
+
+export async function inviteMemberByEmail(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
+  if (!email || email.length > 320) redirect(`/sessions/${sessionId}?error=invalid_invitee`);
+
+  const { error } = await supabase.rpc("invite_user_to_session", {
+    p_session_id: sessionId,
+    p_email: email,
+  });
+
+  if (error) {
+    redirect(`/sessions/${sessionId}?error=invite_member_failed`);
+  }
+
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/sessions");
+  redirect(`/sessions/${sessionId}?success=member_invited`);
+}
+
+export async function revokeMemberInvitation(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const sessionId = String(formData.get("session_id") ?? "");
+  const userId = String(formData.get("user_id") ?? "");
+
+  if (!isValidSessionId(sessionId) || !isValidSessionId(userId)) {
+    redirect("/sessions?error=invalid_session");
+  }
+
+  const { error } = await supabase.rpc("revoke_session_invitation", {
+    p_session_id: sessionId,
+    p_user_id: userId,
+  });
+
+  if (error) redirect(`/sessions/${sessionId}?error=revoke_invitation_failed`);
+
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/sessions");
+  redirect(`/sessions/${sessionId}?success=invitation_revoked`);
+}
+
+export async function redeemInviteLink(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const token = String(formData.get("token") ?? "").trim();
+
+  if (!token) redirect("/sessions?error=invalid_invite_link");
+
+  const { data: sessionId, error } = await supabase.rpc("redeem_session_invite_link", {
+    p_token: token,
+  });
+
+  if (error || typeof sessionId !== "string") {
+    redirect("/sessions?error=invite_link_failed");
+  }
+
+  revalidatePath("/sessions");
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=joined_by_invite`);
 }
