@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { readJsonBody } from "@/lib/security/request";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -13,9 +14,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ se
   const { sessionId } = await context.params;
   if (!isUuid(sessionId)) return NextResponse.json({ error: "Invalid session ID." }, { status: 400 });
 
-  let body: { action?: unknown };
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
+  const parsed = await readJsonBody<{ action?: unknown }>(request, 1024);
+  if (!parsed.ok) return NextResponse.json({ error: "Invalid request body." }, { status: parsed.status });
+  const body = parsed.data;
   if (body.action !== "claim" && body.action !== "release") {
     return NextResponse.json({ error: "Invalid control action." }, { status: 400 });
   }

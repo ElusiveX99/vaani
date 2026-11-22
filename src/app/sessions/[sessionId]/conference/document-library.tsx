@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import InlineFeedback from "@/components/inline-feedback";
+import InlineFeedback from "@/components/inline-feedback";
 
 type DocumentItem = {
   id: string;
@@ -24,8 +26,10 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const loadingRef=useRef(false);
 
   const load = useCallback(async () => {
+    if(loadingRef.current)return;loadingRef.current=true;
     try {
       const response = await fetch(`/api/sessions/${sessionId}/documents`, {
         cache: "no-store",
@@ -39,7 +43,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load documents.");
     } finally {
-      setLoading(false);
+      loadingRef.current=false;setLoading(false);
     }
   }, [sessionId]);
 
@@ -53,9 +57,8 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       if (active) void load();
     };
 
-    const fallbackRefresh = window.setInterval(() => {
-      if (active && document.visibilityState === "visible") void load();
-    }, 5000);
+    let realtimeConnected=false;
+    const fallbackRefresh=window.setInterval(()=>{if(active&&!realtimeConnected&&document.visibilityState==="visible")void load();},30000);
 
     const channel = supabase
       .channel(`session-document-library-${sessionId}`)
@@ -71,7 +74,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
         table: "session_reader_state",
         filter: `session_id=eq.${sessionId}`,
       }, refresh)
-      .subscribe();
+      .subscribe(status=>{realtimeConnected=status==="SUBSCRIBED";if(realtimeConnected)void load();});
 
     return () => {
       active = false;
@@ -191,8 +194,8 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
           })
         )}
 
-        {error && <p role="alert" className="rounded-md bg-red-950/50 px-3 py-2 text-[11px] text-red-100">{error}</p>}
-        {notice && <p role="status" className="rounded-md bg-white/[0.06] px-3 py-2 text-[11px] text-white/75">{notice}</p>}
+        {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
+        {notice && <InlineFeedback tone="success">{notice}</InlineFeedback>}
       </div>
     </details>
   );

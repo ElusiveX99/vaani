@@ -86,54 +86,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: session } = await supabase
-      .from("sessions")
-      .select("id, status")
-      .eq("id", sessionId)
-      .maybeSingle();
+    const [{ data: session }, { data: actor }, { data: target }] = await Promise.all([
+      supabase.from("sessions").select("id, status").eq("id", sessionId).maybeSingle(),
+      supabase.from("session_members").select("role, status").eq("session_id", sessionId).eq("user_id", userId).maybeSingle(),
+      supabase.from("session_members").select("role, status").eq("session_id", sessionId).eq("user_id", targetUserId).maybeSingle(),
+    ]);
 
     if (!session || session.status !== "live") {
-      return NextResponse.json(
-        { error: "Live session not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Live session not found" }, { status: 404 });
     }
-
-    const { data: actor } = await supabase
-      .from("session_members")
-      .select("role, status")
-      .eq("session_id", sessionId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (
-      !actor ||
-      actor.status !== "accepted" ||
-      !["organizer", "in_charge", "admin"].includes(actor.role)
-    ) {
-      return NextResponse.json(
-        { error: "Session management permission required" },
-        { status: 403 }
-      );
+    if (!actor || actor.status !== "accepted" || !["organizer", "in_charge", "admin"].includes(actor.role)) {
+      return NextResponse.json({ error: "Session management permission required" }, { status: 403 });
     }
-
-    const { data: target } = await supabase
-      .from("session_members")
-      .select("role, status")
-      .eq("session_id", sessionId)
-      .eq("user_id", targetUserId)
-      .maybeSingle();
-
-    if (
-      !target ||
-      target.status !== "accepted" ||
-      target.role === "organizer" ||
-      (actor.role !== "organizer" && target.role !== "participant")
-    ) {
-      return NextResponse.json(
-        { error: "Participant cannot be moderated" },
-        { status: 403 }
-      );
+    if (!target || target.status !== "accepted" || target.role === "organizer" || (actor.role !== "organizer" && target.role !== "participant")) {
+      return NextResponse.json({ error: "Participant cannot be moderated" }, { status: 403 });
     }
 
     const apiKey = process.env.LIVEKIT_API_KEY;

@@ -423,6 +423,7 @@ function ConferenceWorkspace({
 
     void refreshRole();
 
+    let realtimeConnected = false;
     const channel = supabase
       .channel(`session-member-role-${sessionId}-${localUserId}`)
       .on(
@@ -441,10 +442,13 @@ function ConferenceWorkspace({
         }
       )
       .subscribe((status) => {
-        if (status !== "SUBSCRIBED") console.warn("Membership realtime status:", status);
+        realtimeConnected = status === "SUBSCRIBED";
+        if (realtimeConnected) void refreshRole();
       });
 
-    const fallback = window.setInterval(() => void refreshRole(), 4000);
+    const fallback = window.setInterval(() => {
+      if (!realtimeConnected && document.visibilityState === "visible") void refreshRole();
+    }, 30000);
 
     return () => {
       active = false;
@@ -816,7 +820,7 @@ function ConferenceWorkspace({
                 return (
                   <div
                     key={`${participant.identity}-${trackRef.source}`}
-                    className={trackRef.source === Track.Source.Camera && participant.isSpeaking && participant.isMicrophoneEnabled ? "vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 border-sky-400 shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.28)] transition-[border-color,box-shadow] duration-150" : "vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 border-transparent transition-[border-color,box-shadow] duration-150"}
+                    className={trackRef.source === Track.Source.Camera && participant.isSpeaking ? "vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 border-sky-400 shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_18px_rgba(56,189,248,0.28)] transition-[border-color,box-shadow] duration-150" : "vaani-participant-tile relative min-w-0 overflow-hidden rounded-xl bg-[#392f3b] border-2 border-transparent transition-[border-color,box-shadow] duration-150"}
                   >
                     <ParticipantTile trackRef={trackRef} />
                     {trackRef.source === Track.Source.Camera && (

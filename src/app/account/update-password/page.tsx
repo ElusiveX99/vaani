@@ -1,5 +1,7 @@
 "use client";
 
+import InlineFeedback from "@/components/inline-feedback";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -116,15 +118,11 @@ export default function UpdatePasswordPage() {
           </div>
 
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </p>
+            <InlineFeedback tone="error">{error}</InlineFeedback>
           )}
 
           {message && (
-            <p role="status" className="rounded-lg bg-[#edf3eb] p-3 text-sm text-[var(--forest)]">
-              {message}
-            </p>
+            <InlineFeedback tone="success">{message}</InlineFeedback>
           )}
 
           {message && (
