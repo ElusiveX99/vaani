@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Vaani",
     short_name: "Vaani",
-    description: "Gather for Chaturasi Ji gaayan, pada gaayan, and shared Vaani reading.",
+    description: "A quiet space for Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
     start_url: "/home",
     scope: "/",
     display: "standalone",

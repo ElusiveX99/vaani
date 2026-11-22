@@ -144,7 +144,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
           <div className="absolute -right-16 top-32 h-56 w-56 rounded-full border border-white/10" />
           <Link href="/" className="brand-lockup relative !text-white"><span className="brand-word !text-white">Vaani</span></Link>
           <div className="relative">
-            <p className="eyebrow !text-[#d9b88b]">Radha Vallabh Sampradaya</p>
+            <p className="eyebrow !text-[#d9b88b]">Shree Harivansh</p>
             <h1 className="font-display mt-6 text-6xl leading-[1.03]">Vaani</h1>
             <p className="mt-6 max-w-sm text-sm leading-7 text-white/70">For Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and shared Vaani reading.</p>
           </div>

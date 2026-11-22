@@ -116,7 +116,7 @@ function SessionCard({
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
           {session.access_type === "community"
-            ? "Community"
+            ? "Open to all members"
             : "Invitation only"}
         </span>
 
@@ -455,7 +455,7 @@ async function SessionsContent({
               description="Open sessions available to members."
               sessions={discoverSessions}
               membershipMap={membershipMap}
-              emptyMessage="There are no other community sessions available right now."
+              emptyMessage="There are no other open gatherings available right now."
             />
           </>
         )}

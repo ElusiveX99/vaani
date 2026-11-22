@@ -119,11 +119,11 @@ async function HomeContent() {
         <section className="mt-10 grid gap-3 sm:grid-cols-2">
           <Link href="/sessions#discover-sessions" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
             <h2 className="font-display text-2xl text-[var(--plum)]">Find a gathering</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">See gatherings open to members.</p>
+            <p className="mt-2 text-sm text-[var(--muted)]">See gatherings open to all Vaani members.</p>
           </Link>
           <Link href="/sessions?create=1#create-session" className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 transition hover:border-[var(--rose)]">
             <h2 className="font-display text-2xl text-[var(--plum)]">Create a gathering</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Arrange a gathering and invite members.</p>
+            <p className="mt-2 text-sm text-[var(--muted)]">Arrange a gathering and invite Sakhis.</p>
           </Link>
         </section>
       </div>

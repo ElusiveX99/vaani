@@ -29,29 +29,29 @@ export const metadata: Metadata = {
     template: "%s | Vaani",
   },
   description:
-    "Vaani is a place for Sakhis of the Radha Vallabh Sampradaya to gather for Chaturasi Ji gaayan, pada gaayan, and shared Vaani reading.",
+    "A quiet space for Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
   applicationName: "Vaani",
   keywords: [
     "Vaani",
     "Sakhis",
     "Chaturasi Ji gaayan",
     "Pada gaayan",
-    "devotional reading",
-    "community gatherings",
+    "Shree Harivansh",
+    "Vaani paath",
   ],
   openGraph: {
     type: "website",
     siteName: "Vaani",
     title: "Vaani",
     description:
-      "Gather for Chaturasi Ji gaayan, pada gaayan, and shared Vaani reading.",
+      "A quiet space for Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
     url: "https://vaaniju.vercel.app",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vaani — A home for devotion and togetherness",
+    title: "Vaani — A place for Sakhis to gather",
     description:
-      "For Sakhis of the Radha Vallabh Sampradaya.",
+      "For Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
   },
   icons: {
     icon: [
