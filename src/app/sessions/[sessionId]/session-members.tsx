@@ -32,7 +32,7 @@ export default function SessionMembers({
         .from("session_members")
         .select("user_id, role, status")
         .eq("session_id", sessionId)
-        .in("status", ["accepted", "invited"])
+        .eq("status", "accepted")
         .order("created_at", { ascending: true });
 
       if (!active || error) return;
@@ -80,7 +80,7 @@ export default function SessionMembers({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Session members</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Member roles and invitation status update live.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Member roles update live.</p>
         </div>
         <span className="text-sm text-[var(--muted)]">{acceptedCount} accepted</span>
       </div>
@@ -100,8 +100,8 @@ export default function SessionMembers({
                   <p className="mt-1 text-xs capitalize text-[var(--muted)]">{member.role.replaceAll("_", " ")}</p>
                 </div>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${member.status === "accepted" ? "bg-[#edf3eb] text-[var(--forest)]" : "bg-amber-50 text-amber-800"}`}>
-                {member.status === "accepted" ? "Accepted" : "Invited"}
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${"bg-[var(--surface-soft)] text-[var(--ink)]"}`}>
+                {"Accepted"}
               </span>
             </div>
           ))}
