@@ -1,2 +1,2 @@
 import type {MetadataRoute} from "next";
-export default function robots():MetadataRoute.Robots{return {rules:[{userAgent:"*",allow:"/",disallow:["/home","/sessions","/account","/api","/auth"]}],sitemap:"https://vaaniju.vercel.app/sitemap.xml",host:"https://vaaniju.vercel.app"};}
+export default function robots():MetadataRoute.Robots{return {rules:[{userAgent:"*",allow:["/","/sessions/join/"],disallow:["/home","/sessions/","/account","/api","/auth"]}],sitemap:"https://vaaniju.vercel.app/sitemap.xml",host:"https://vaaniju.vercel.app"};}

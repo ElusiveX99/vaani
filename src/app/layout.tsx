@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Vaani — Sakhi Sang for Gaayan & Paath",
     description:
-      "For Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
+      "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
   },
   icons: {
     icon: [
