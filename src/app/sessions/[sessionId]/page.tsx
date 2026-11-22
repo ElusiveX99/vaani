@@ -21,7 +21,8 @@ import {
   updateSessionDetails,
   approveJoinRequest,
   rejectJoinRequest,
-  revokeInviteLink,\n  cancelJoinRequest,
+  revokeInviteLink,
+  cancelJoinRequest,
 } from "../actions";
 
 type PageProps = {
@@ -81,7 +82,8 @@ const successMessages: Record<string, string> = {
   draft_saved: "Your draft has been saved.",
   published: "Your gathering has been published.",
   session_updated: "Gathering details updated.",
-  join_request_sent: "Your request has been sent to the organizer.",\n  join_request_cancelled: "Your join request has been cancelled.",
+  join_request_sent: "Your request has been sent to the organizer.",
+  join_request_cancelled: "Your join request has been cancelled.",
   join_request_approved: "The join request was approved.",
   join_request_rejected: "The join request was declined.",
 };
@@ -509,7 +511,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <form action={cancelJoinRequest} className="mt-3"><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="request_id" value={ownJoinRequest.id}/><button className="text-sm font-semibold text-amber-900 underline">Cancel request</button></form>
               </div>
             )}
-\n            {/* Leave */}
+
+            {/* Leave */}
 
             {isAccepted &&
               !isOrganizer &&
