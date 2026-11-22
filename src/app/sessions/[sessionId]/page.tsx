@@ -716,7 +716,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-[#fbefed] p-4 text-sm text-red-800">{errorMessages[paramsData.error || ""]}</div>
             )}
 
-            <div className="mt-6 grid gap-6 ${session.access_type === "link" ? "lg:grid-cols-2" : ""}">
+            <div className={`mt-6 grid gap-6 ${session.access_type === "link" ? "lg:grid-cols-2" : ""}`}>
               <div className="rounded-xl border border-[var(--line)] p-5">
                 <h3 className="font-semibold">Invite a member</h3>
                 <form action={inviteSessionMember} className="mt-4 flex flex-col gap-3">
