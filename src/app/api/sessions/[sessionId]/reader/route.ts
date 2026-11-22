@@ -183,6 +183,7 @@ export async function GET(
   const canReclaimControl = membership.role === "organizer";
 
   const canControl =
+    canRequestControl &&
     readerState?.controller_user_id === userId &&
     typeof readerState.controller_expires_at === "string" &&
     new Date(readerState.controller_expires_at).getTime() > Date.now();

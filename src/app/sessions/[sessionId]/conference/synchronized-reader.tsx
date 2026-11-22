@@ -993,6 +993,15 @@ const SynchronizedReader = memo(
                 : "The reader will appear here when a document is selected for the gathering."}
             </p>
           </div>
+          {readerData.canRequestControl && (
+            <button
+              type="button"
+              onClick={() => void claimReaderControl()}
+              className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/80 transition hover:bg-white/15"
+            >
+              {readerData.canReclaimControl ? "Take reader control" : "Request reader control"}
+            </button>
+          )}
         </section>
       );
     }

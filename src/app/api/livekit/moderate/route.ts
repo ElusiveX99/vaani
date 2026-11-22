@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { RoomServiceClient } from "livekit-server-sdk";
 import { createClient } from "@/lib/supabase/server";
 import { readJsonBody } from "@/lib/security/request";
+import { getLiveKitUserId } from "@/lib/livekit/identity";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     const participants = await roomService.listParticipants(roomName);
     const targetConnections = participants.filter((participant) =>
-      participant.attributes?.user_id === targetUserId
+      getLiveKitUserId(participant) === targetUserId
     );
 
     if (action === "remove") {

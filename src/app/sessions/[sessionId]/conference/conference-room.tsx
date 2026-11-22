@@ -32,12 +32,11 @@ import PersistentChat from "./persistent-chat";
 import SynchronizedReader from "./synchronized-reader";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
+import { getLiveKitUserId } from "@/lib/livekit/identity";
 
 type Props = {
   sessionId: string;
   title: string;
-  canManageDocuments: boolean;
-  canControlReader: boolean;
 };
 
 type Credentials = {
@@ -306,7 +305,8 @@ function MediaButton({
 function ConferenceWorkspace({
   sessionId,
   title,
-}: Pick<Props, "sessionId" | "title">) {
+  onMembershipRevoked,
+}: Pick<Props, "sessionId" | "title"> & { onMembershipRevoked: () => void }) {
   const room = useRoomContext();
 
   const {
@@ -358,8 +358,8 @@ function ConferenceWorkspace({
   const mediaActionLock =
     useRef(false);
 
-  const localRole = localParticipant.attributes?.role ?? "participant";
-  const [membershipRole, setMembershipRole] = useState(localRole);
+  const localUserId = getLiveKitUserId(localParticipant);
+  const [membershipRole, setMembershipRole] = useState("participant");
   const [membershipCanControlReader, setMembershipCanControlReader] = useState(false);
   const [connectionState, setConnectionState] = useState(room.state);
 
@@ -375,8 +375,7 @@ function ConferenceWorkspace({
   }, [room, updateConnectionState]);
 
   useEffect(() => {
-    const identity = localParticipant.attributes?.user_id ?? localParticipant.identity;
-    if (!identity) return;
+    if (!localUserId) return;
 
     let active = true;
     const supabase = createClient();
@@ -385,18 +384,29 @@ function ConferenceWorkspace({
         .from("session_members")
         .select("role, status, can_control_reader")
         .eq("session_id", sessionId)
-        .eq("user_id", identity)
+        .eq("user_id", localUserId)
         .maybeSingle();
 
-      if (!active || error) return;
+      if (!active) return;
+      if (error) {
+        console.error("Conference permission refresh failed:", error);
+        setMembershipRole("participant");
+        setMembershipCanControlReader(false);
+        return;
+      }
       const accepted = data?.status === "accepted";
-      setMembershipRole(accepted ? data.role : "participant");
+      if (!accepted) {
+        setMembershipRole("participant");
+        setMembershipCanControlReader(false);
+        room.disconnect();
+        onMembershipRevoked();
+        return;
+      }
+      setMembershipRole(data.role);
       setMembershipCanControlReader(
-        accepted && (
-          data.role === "organizer" ||
-          data.role === "in_charge" ||
-          (data.role === "admin" && data.can_control_reader === true)
-        )
+        data.role === "organizer" ||
+        data.role === "in_charge" ||
+        (data.role === "admin" && data.can_control_reader === true)
       );
     };
 
@@ -419,13 +429,18 @@ function ConferenceWorkspace({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") console.warn("Membership realtime status:", status);
+      });
+
+    const fallback = window.setInterval(() => void refreshRole(), 4000);
 
     return () => {
       active = false;
+      window.clearInterval(fallback);
       void supabase.removeChannel(channel);
     };
-  }, [sessionId, localParticipant.identity]);
+  }, [sessionId, localUserId, room, onMembershipRevoked]);
 
   const isOrganizer = membershipRole === "organizer";
   const canManageParticipants =
@@ -1025,8 +1040,6 @@ function ConferenceWorkspace({
 export default function ConferenceRoom({
   sessionId,
   title,
-  canManageDocuments,
-  canControlReader,
 }: Props) {
   const [
     credentials,
@@ -1040,6 +1053,8 @@ export default function ConferenceRoom({
 
   const [removed, setRemoved] =
     useState(false);
+
+  const handleMembershipRevoked = useCallback(() => setRemoved(true), []);
 
   useEffect(() => {
     if (!removed) {
@@ -1261,12 +1276,9 @@ export default function ConferenceRoom({
         }}
       >
         <ConferenceWorkspace
-          sessionId={
-            sessionId
-          }
-          title={
-            title
-          }
+          sessionId={sessionId}
+          title={title}
+          onMembershipRevoked={handleMembershipRevoked}
         />
 
         <RoomAudioRenderer />

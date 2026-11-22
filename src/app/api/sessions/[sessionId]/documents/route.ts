@@ -130,24 +130,19 @@ export async function PATCH(
     return json({ error: "You do not have permission to control the shared reader." }, 403);
   }
 
-  const { data: lease, error: leaseError } = await auth.supabase
-    .from("session_reader_state")
-    .select("controller_user_id, controller_expires_at, controller_epoch")
-    .eq("session_id", sessionId)
-    .maybeSingle();
-
-  if (leaseError) {
-    console.error("Reader lease lookup failed before document selection:", leaseError);
-    return json({ error: "Unable to verify reader control." }, 500);
+  // Claim the lease atomically before selecting. The database RPC lets
+  // organizers reclaim control even when an assigned admin holds the lease.
+  const { data: claimData, error: claimError } = await auth.supabase.rpc(
+    "claim_session_reader_control",
+    { p_session_id: sessionId }
+  );
+  if (claimError) {
+    console.error("Reader claim before document selection failed:", claimError);
+    return json({ error: claimError.message || "Unable to claim reader control." }, claimError.code === "42501" ? 403 : 400);
   }
-
-  if (
-    !lease ||
-    lease.controller_user_id !== auth.userId ||
-    !lease.controller_expires_at ||
-    new Date(lease.controller_expires_at).getTime() <= Date.now()
-  ) {
-    return json({ error: "Claim reader control before selecting a document." }, 409);
+  const lease = Array.isArray(claimData) ? claimData[0] : claimData;
+  if (!lease?.granted || lease.active_controller_id !== auth.userId || typeof lease.epoch !== "number") {
+    return json({ error: "Another assigned member is guiding the reading. The organizer can take control at any time." }, 409);
   }
 
   const { data: updatedState, error: updateError } = await auth.supabase
@@ -161,7 +156,7 @@ export async function PATCH(
     })
     .eq("session_id", sessionId)
     .eq("controller_user_id", auth.userId)
-    .eq("controller_epoch", lease.controller_epoch)
+    .eq("controller_epoch", lease.epoch)
     .gt("controller_expires_at", new Date().toISOString())
     .select("session_id")
     .maybeSingle();

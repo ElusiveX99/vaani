@@ -168,7 +168,6 @@ export async function POST(request: NextRequest) {
       name: displayName,
       attributes: {
         user_id: userId,
-        role: membership.role,
         ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
       },
       ttl: "2h",

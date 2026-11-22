@@ -5,6 +5,7 @@ import { useParticipants } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
+import { getLiveKitUserId } from "@/lib/livekit/identity";
 
 type Props = {
   sessionId: string;
@@ -25,6 +26,7 @@ export default function ModerationPanel({
   const [message, setMessage] = useState("");
   const [memberRoles, setMemberRoles] = useState<Record<string, string>>({});
   const [readerAccess, setReaderAccess] = useState<Record<string, boolean>>({});
+  const [rolesLoaded, setRolesLoaded] = useState(false);
 
   const isOrganizer = localRole === "organizer";
   const canManageParticipants =
@@ -53,6 +55,7 @@ export default function ModerationPanel({
       }
       setMemberRoles(next);
       setReaderAccess(access);
+      setRolesLoaded(true);
     };
 
     void refreshRoles();
@@ -69,10 +72,14 @@ export default function ModerationPanel({
         },
         () => void refreshRoles()
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") console.warn("Participant-role realtime status:", status);
+      });
 
+    const fallback = window.setInterval(() => void refreshRoles(), 4000);
     return () => {
       active = false;
+      window.clearInterval(fallback);
       void supabase.removeChannel(channel);
     };
   }, [open, sessionId]);
@@ -93,11 +100,11 @@ export default function ModerationPanel({
     };
   }, [open, onClose]);
 
-  const remoteParticipants = participants.filter(
-    (participant) =>
-      !participant.isLocal &&
-      participant.attributes?.role !== "organizer"
-  );
+  const remoteParticipants = participants.filter((participant) => {
+    if (participant.isLocal) return false;
+    const userId = getLiveKitUserId(participant);
+    return Boolean(userId) && memberRoles[userId!] !== "organizer";
+  });
 
   if (!open || !canManageParticipants) return null;
 
@@ -168,6 +175,7 @@ export default function ModerationPanel({
         ...previous,
         [targetUserId]: makeAdmin ? "admin" : "participant",
       }));
+      setReaderAccess((previous) => ({ ...previous, [targetUserId]: false }));
       setMessage(makeAdmin ? "Session admin assigned." : "Session admin removed.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Role update failed.");
@@ -259,11 +267,9 @@ export default function ModerationPanel({
                   );
 
                 const trackSid = microphone?.trackSid;
-                const targetUserId = participant.attributes?.user_id ?? participant.identity;
-                const targetRole =
-                  memberRoles[targetUserId] ??
-                  participant.attributes?.role ??
-                  "participant";
+                const targetUserId = getLiveKitUserId(participant);
+                if (!targetUserId) return null;
+                const targetRole = memberRoles[targetUserId] ?? "participant";
                 const canModerateTarget =
                   isOrganizer || targetRole === "participant";
                 const canChangeAdminRole =
@@ -295,7 +301,7 @@ export default function ModerationPanel({
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={!trackSid || busy !== "" || !canModerateTarget}
+                        disabled={!rolesLoaded || !trackSid || busy !== "" || !canModerateTarget}
                         onClick={() =>
                           moderate(
                             targetUserId,
@@ -313,7 +319,7 @@ export default function ModerationPanel({
 
                       <button
                         type="button"
-                        disabled={busy !== "" || !canModerateTarget}
+                        disabled={!rolesLoaded || busy !== "" || !canModerateTarget}
                         onClick={() =>
                           moderate(targetUserId, participant.identity, "remove")
                         }
@@ -327,7 +333,7 @@ export default function ModerationPanel({
                       {canChangeAdminRole && (
                         <button
                           type="button"
-                          disabled={busy !== ""}
+                          disabled={!rolesLoaded || busy !== ""}
                           onClick={() =>
                             setAdmin(
                               targetUserId,
