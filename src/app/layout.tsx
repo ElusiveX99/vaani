@@ -57,6 +57,7 @@ export const metadata: Metadata = {
     title: "Vaani — Sakhi Sang for Gaayan & Paath",
     description:
       "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
+    images: ["/opengraph-image"],
   },
   icons: {
     icon: [
