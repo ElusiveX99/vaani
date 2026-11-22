@@ -256,37 +256,39 @@ export async function cancelSession(formData: FormData) {
 export async function createInviteLink(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const sessionId = String(formData.get("session_id") ?? "");
-  const label = String(formData.get("label") ?? "").trim();
   const expiryHoursValue = Number(formData.get("expiry_hours") ?? 0);
-  const maxUsesValue = Number(formData.get("max_uses") ?? 0);
+  const maxUsesRaw = String(formData.get("max_uses") ?? "").trim();
+  const maxUsesValue = maxUsesRaw ? Number(maxUsesRaw) : null;
 
   if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  if (label.length > 80 || ![0, 24, 72, 168, 720].includes(expiryHoursValue)) {
+  if (![0, 24, 72, 168, 720].includes(expiryHoursValue) ||
+      (maxUsesValue !== null && (!Number.isInteger(maxUsesValue) || maxUsesValue < 1 || maxUsesValue > 500))) {
     redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
   }
 
-  const token = randomBytes(32).toString("base64url");
+  // 128 bits of cryptographic entropy; the raw token is never stored in the database.
+  const token = randomBytes(16).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = expiryHoursValue
     ? new Date(Date.now() + expiryHoursValue * 60 * 60 * 1000).toISOString()
     : null;
-  const maxUses = maxUsesValue > 0 ? maxUsesValue : null;
 
   const { error } = await supabase.rpc("create_session_invite_link", {
     p_session_id: sessionId,
     p_token_hash: tokenHash,
-    p_label: label || null,
+    p_label: null,
     p_expires_at: expiresAt,
-    p_max_uses: maxUses,
+    p_max_uses: maxUsesValue,
   });
 
   if (error) {
+    console.error("Invitation link creation failed:", error.code, error.message, error.details);
     redirect(`/sessions/${sessionId}?error=invite_link_failed`);
   }
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app";
   const inviteUrl = `${origin}/sessions/join/${token}`;
-  redirect(`/sessions/${sessionId}?success=invite_link_created&invite=${encodeURIComponent(inviteUrl)}`);
+  redirect(`/sessions/${sessionId}?invite=${encodeURIComponent(inviteUrl)}`);
 }
 
 export async function redeemInviteLink(formData: FormData) {
