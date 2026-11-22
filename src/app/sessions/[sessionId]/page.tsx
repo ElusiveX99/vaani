@@ -24,6 +24,7 @@ type PageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
+    invite?: string;
   }>;
 };
 
