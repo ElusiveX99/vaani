@@ -1,18 +1,14 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-lockup";
 
-const gatherings = [
+const practices = [
   {
-    title: "Chaturasi Ji gaayan",
-    detail: "Gather for Chaturasi Ji gaayan, and let the padas be heard together.",
+    title: "Vaani Gaayan",
+    detail: "Sing the padas of Shri Hit Chaurasi Ji together.",
   },
   {
-    title: "Pada gaayan",
-    detail: "Sing together and keep the words close in shared remembrance.",
-  },
-  {
-    title: "Vaani reading",
-    detail: "Read from the Vaani together, with time to follow each page.",
+    title: "Vaani Paath",
+    detail: "Read from the Vaani together, following each page at an unhurried pace.",
   },
 ];
 
@@ -32,18 +28,18 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="page-shell grid min-h-[500px] items-center gap-10 py-16 sm:py-20 lg:min-h-[590px] lg:grid-cols-[1.1fr_.9fr] lg:py-24">
           <div className="max-w-2xl">
-            <p className="eyebrow">Radha Vallabh Sampradaya</p>
+            <p className="eyebrow">Shree Harivansh</p>
             <h1 className="font-display mt-6 max-w-xl text-5xl leading-[1.04] text-[var(--plum)] sm:text-6xl lg:text-7xl">
-              Chaturasi Ji gaayan.
+              श्री हित Chaurasi Ji Gaayan
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-[var(--muted)] sm:text-lg sm:leading-8">
-              A place for Sakhis to gather for shared singing, pada gaayan, and Vaani reading.
+              A quiet space for Sakhis to gather for Chaurasi Ji gaayan and Vaani paath.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link href="/signup" className="button-primary">Join Vaani</Link>
-              <a href="#gatherings" className="text-sm font-semibold text-[var(--plum)] underline decoration-[var(--gold)] underline-offset-4">
-                Explore gatherings
-              </a>
+              <Link href="/sessions" className="text-sm font-semibold text-[var(--plum)] underline decoration-[var(--gold)] underline-offset-4">
+                View Sessions
+              </Link>
             </div>
           </div>
 
@@ -62,14 +58,14 @@ export default function LandingPage() {
       <section id="gatherings" className="scroll-mt-20 border-y border-[var(--line)] bg-[var(--surface)] py-14 sm:py-20">
         <div className="page-shell">
           <div className="max-w-xl">
-            <p className="eyebrow">A shared space</p>
-            <h2 className="font-display mt-3 text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h2>
+            <p className="eyebrow">Sakhi Sang</p>
+            <h2 className="font-display mt-3 text-4xl text-[var(--plum)] sm:text-5xl">Together in Vaani</h2>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-              Come together in a shared space for gaayan and reading.
+              Come together quietly for pada gaayan and reading.
             </p>
           </div>
-          <div className="mt-9 grid gap-3 md:grid-cols-3">
-            {gatherings.map((item) => (
+          <div className="mt-9 grid gap-3 md:grid-cols-2">
+            {practices.map((item) => (
               <article key={item.title} className="rounded-2xl border border-[var(--line)] bg-[var(--background)] p-6 sm:p-7">
                 <h3 className="font-display text-2xl text-[var(--plum)]">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
@@ -81,7 +77,7 @@ export default function LandingPage() {
 
       <footer className="page-shell flex flex-col gap-2 py-7 sm:flex-row sm:items-center sm:justify-between">
         <BrandMark />
-        <p className="text-xs text-[var(--muted)]">Radha Vallabh Sampradaya</p>
+        <p className="text-xs text-[var(--muted)]">Jai Jai Shree Hita Harivansh</p>
       </footer>
     </main>
   );
