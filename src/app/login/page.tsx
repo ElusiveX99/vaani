@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function getNextPath() { const value = new URLSearchParams(window.location.search).get("next"); return value && value.startsWith("/") && !value.startsWith("//") ? value : "/home"; }
+
 export default function LoginPage({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
   const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
   const router = useRouter();
@@ -32,7 +34,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
       if (!active) return;
 
       if (data.session) {
-        router.replace("/home");
+        router.replace(getNextPath());
         return;
       }
 
@@ -80,7 +82,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(getNextPath())}`,
           },
         });
 
@@ -121,7 +123,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(getNextPath())}`,
         },
       });
 

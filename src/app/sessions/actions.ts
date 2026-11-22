@@ -264,7 +264,7 @@ export async function createInviteLink(formData: FormData) {
 }
 
 export async function redeemInviteLink(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
+  const { supabase, userId } = await getAuthenticatedClient();
   const token = String(formData.get("token") ?? "").trim();
 
   if (!/^[a-z0-9]{10}$/.test(token)) redirect("/sessions?error=invalid_invite_link");
@@ -273,13 +273,14 @@ export async function redeemInviteLink(formData: FormData) {
     p_token: token,
   });
 
-  if (error || typeof sessionId !== "string") {
-    redirect("/sessions?error=invite_link_failed");
-  }
+  if (error || typeof sessionId !== "string") redirect(`/sessions/join/${token}?error=redeem_failed`);
 
-  revalidatePath("/sessions");
-  revalidatePath(`/sessions/${sessionId}`);
-  redirect(`/sessions/${sessionId}?success=joined_by_invite`);
+  const [{data:membership},{data:pendingRequest}]=await Promise.all([
+    supabase.from("session_members").select("status").eq("session_id",sessionId).eq("user_id",userId).maybeSingle(),
+    supabase.from("session_join_requests").select("id").eq("session_id",sessionId).eq("user_id",userId).eq("status","pending").maybeSingle(),
+  ]);
+  revalidatePath("/sessions"); revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=${membership?.status==="accepted"?"joined_by_invite":pendingRequest?"join_request_sent":"joined_by_invite"}`);
 }
 
 

@@ -1,0 +1,5 @@
+import {ImageResponse} from "next/og";
+export const alt="Vaani — Sakhi Sang for Gaayan and Paath";
+export const size={width:1200,height:630};
+export const contentType="image/png";
+export default function Image(){return new ImageResponse(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",justifyContent:"center",padding:"84px",background:"#f8f5f0",color:"#593b53",fontFamily:"serif"}}><div style={{fontSize:24,letterSpacing:8,color:"#a98a5b"}}>SHREE HARIVANSH</div><div style={{marginTop:32,fontSize:104,fontWeight:500,lineHeight:1}}>Vaani</div><div style={{marginTop:24,width:110,height:3,background:"#a98a5b"}}/><div style={{marginTop:26,fontSize:38,color:"#493b45"}}>Sakhi Sang for Gaayan &amp; Paath</div><div style={{position:"absolute",right:95,bottom:72,fontSize:24,color:"#8c7a82"}}>जय जय श्री हित हरिवंश</div><div style={{position:"absolute",right:90,top:70,width:250,height:250,border:"1px solid #d9c9bd",borderRadius:"50%"}}/><div style={{position:"absolute",right:125,top:105,width:180,height:180,border:"1px solid #d9c9bd",borderRadius:"50%"}}/></div>,size);}

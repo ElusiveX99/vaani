@@ -27,14 +27,16 @@ const mono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://vaaniju.vercel.app"),
   title: {
-    default: "Vaani",
+    default: "Vaani — Sakhi Sang for Gaayan & Paath",
     template: "%s | Vaani",
   },
   description:
-    "A quiet space for Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
+    "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
   applicationName: "Vaani",
   keywords: [
     "Vaani",
+    "Sakhi Sang",
+    "Shree Hit Chaturasi Ji",
     "Sakhis",
     "Chaturasi Ji gaayan",
     "Pada gaayan",
@@ -44,14 +46,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Vaani",
-    title: "Vaani",
+    title: "Vaani — Sakhi Sang for Gaayan & Paath",
     description:
-      "A quiet space for Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
+      "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
     url: "https://vaaniju.vercel.app",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Vaani — Sakhi Sang for Gaayan and Paath" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vaani — A place for Sakhis to gather",
+    title: "Vaani — Sakhi Sang for Gaayan & Paath",
     description:
       "For Sakhis to gather for Chaturasi Ji gaayan, pada gaayan, and Vaani paath.",
   },

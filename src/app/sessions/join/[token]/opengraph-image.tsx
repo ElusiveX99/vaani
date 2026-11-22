@@ -1,0 +1,6 @@
+import {ImageResponse} from "next/og";
+import {createClient} from "@/lib/supabase/server";
+export const alt="A Vaani gathering invitation";
+export const size={width:1200,height:630};
+export const contentType="image/png";
+export default async function Image({params}:{params:Promise<{token:string}>}){const {token}=await params;let title="A gathering on Vaani";if(/^[a-z0-9]{10}$/.test(token)){const supabase=await createClient();const {data}=await supabase.rpc("preview_session_invite_link",{p_code:token});if(data&&typeof data.title==="string")title=data.title;}return new ImageResponse(<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",justifyContent:"center",padding:"78px",background:"#f8f5f0",color:"#593b53",fontFamily:"serif"}}><div style={{fontSize:22,letterSpacing:7,color:"#a98a5b"}}>YOU ARE INVITED</div><div style={{marginTop:34,fontSize:82,lineHeight:1.05,fontWeight:500,maxWidth:1000}}>{title.length>58?title.slice(0,55)+"…":title}</div><div style={{marginTop:30,width:100,height:3,background:"#a98a5b"}}/><div style={{marginTop:25,fontSize:34,color:"#493b45"}}>Join this gathering on Vaani</div><div style={{position:"absolute",right:80,bottom:60,fontSize:23,color:"#8c7a82"}}>जय जय श्री हित हरिवंश</div></div>,size);}
