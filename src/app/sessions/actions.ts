@@ -343,7 +343,70 @@ export async function publishSessionDraft(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const sessionId = String(formData.get("session_id") ?? "");
   if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  const { error } = await supabase.rpc("publish_session_draft", { p_session_id: sessionId });
+
+  // Publish from the values currently in the draft form. Publishing must never
+  // silently use an older value stored in the database.
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const scheduledValue = String(formData.get("scheduled_start_local") ?? "");
+  const timeZone = String(formData.get("time_zone") ?? "Asia/Kolkata");
+  const scheduled = scheduledValue ? parseLocalDateTime(scheduledValue, timeZone) : null;
+  const durationValue = String(formData.get("duration_minutes") ?? "");
+  const limitValue = String(formData.get("participant_limit") ?? "");
+  const duration = durationValue ? Number(durationValue) : null;
+  const limit = limitValue ? Number(limitValue) : null;
+  const accessType = String(formData.get("access_type") ?? "");
+  const recurrenceRule = String(formData.get("recurrence_rule") ?? "") || null;
+  const recurrenceUntilValue = String(formData.get("recurrence_until_local") ?? "");
+  const recurrenceUntil = recurrenceUntilValue ? parseLocalDateTime(recurrenceUntilValue + "T23:59", timeZone) : null;
+  const instructions = String(formData.get("instructions") ?? "").trim();
+
+  if (
+    !isValidTimeZone(timeZone) ||
+    !title ||
+    title.length > 120 ||
+    description.length > 2000 ||
+    instructions.length > 2000 ||
+    !["community", "link"].includes(accessType)
+  ) redirect("/sessions/" + sessionId + "?error=invalid_edit");
+
+  if (!scheduled || Number.isNaN(scheduled.getTime()) || scheduled.getTime() <= Date.now()) {
+    redirect("/sessions/" + sessionId + "?error=invalid_edit");
+  }
+
+  if (
+    (duration !== null && (!Number.isInteger(duration) || duration < 15 || duration > 480)) ||
+    (limit !== null && (!Number.isInteger(limit) || limit < 2 || limit > 500))
+  ) redirect("/sessions/" + sessionId + "?error=invalid_options");
+
+  if (
+    recurrenceRule !== null &&
+    (!["DAILY", "WEEKLY", "BIWEEKLY", "EVERY_3_WEEKS", "EVERY_4_WEEKS", "MONTHLY"].includes(recurrenceRule) ||
+      !recurrenceUntil ||
+      Number.isNaN(recurrenceUntil.getTime()) ||
+      recurrenceUntil <= scheduled ||
+      recurrenceUntil.getTime() > scheduled.getTime() + 366 * 24 * 60 * 60 * 1000)
+  ) redirect("/sessions/" + sessionId + "?error=invalid_recurrence");
+
+  if (recurrenceRule === null && recurrenceUntilValue) {
+    redirect("/sessions/" + sessionId + "?error=invalid_options");
+  }
+
+  const { error } = await supabase.rpc("publish_session_draft_with_details", {
+    p_session_id: sessionId,
+    p_title: title,
+    p_description: description || null,
+    p_access_type: accessType,
+    p_scheduled_start_at: scheduled.toISOString(),
+    p_time_zone: timeZone,
+    p_duration_minutes: duration,
+    p_participant_limit: limit,
+    p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
+    p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
+    p_instructions: instructions || null,
+    p_recurrence_rule: recurrenceRule,
+    p_recurrence_until: recurrenceUntil?.toISOString() ?? null,
+  });
   if (error) redirect(`/sessions/${sessionId}?error=publish_failed`);
   revalidatePath("/sessions");
   revalidatePath("/home");
