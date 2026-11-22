@@ -10,6 +10,7 @@ import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import {
   joinCommunitySession,
   leaveSession,
+  startSession,
   markSessionNotificationRead,
 } from "./actions";
 
@@ -87,6 +88,7 @@ function SessionCard({
 
   const canJoin =
     session.status !== "ended" &&
+    session.status !== "cancelled" &&
     session.access_type === "community" &&
     (!membership ||
       membership.status === "removed");
@@ -140,6 +142,15 @@ function SessionCard({
 	>
 	  View details
 	</a>
+        {isOrganizer && session.status === "scheduled" && !session.is_draft && (
+          <form action={startSession}>
+            <input type="hidden" name="session_id" value={session.id} />
+            <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">Start conference</button>
+          </form>
+        )}
+        {isAccepted && session.status === "live" && (
+          <Link href={`/sessions/${session.id}/conference`} className="button-primary !min-h-10 !px-4 !py-2 text-xs">Join conference</Link>
+        )}
         {isOrganizer && !session.is_draft && (
           <span className="text-sm font-medium text-[var(--forest)]">
             You organize this session.

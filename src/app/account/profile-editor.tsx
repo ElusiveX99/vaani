@@ -73,6 +73,22 @@ export default function ProfileEditor({
   }
 
 
+  async function syncProfileMetadata(
+    supabase: ReturnType<typeof createClient>,
+    values: { display_name: string; avatar_url: string | null }
+  ) {
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        display_name: values.display_name,
+        full_name: values.display_name,
+        name: values.display_name,
+        avatar_url: values.avatar_url,
+        picture: values.avatar_url,
+      },
+    });
+    if (error) console.warn("Vaani profile metadata sync failed:", error);
+  }
+
   function notifyProfileUpdated() {
     window.dispatchEvent(new CustomEvent("vaani:profile-updated"));
   }
@@ -95,6 +111,7 @@ export default function ProfileEditor({
         avatar_url: avatarUrl,
         avatar_path: avatarPath,
       });
+      await syncProfileMetadata(supabase, { display_name: cleanName, avatar_url: avatarUrl });
       setName(cleanName);
       setMessage("Your profile has been saved.");
       notifyProfileUpdated();
@@ -144,6 +161,7 @@ export default function ProfileEditor({
         avatar_url: nextUrl,
         avatar_path: path,
       });
+      await syncProfileMetadata(supabase, { display_name: cleanName, avatar_url: nextUrl });
 
       setAvatarUrl(nextUrl);
       setAvatarPath(path);
@@ -182,11 +200,14 @@ export default function ProfileEditor({
     setMessage("");
     try {
       const supabase = await getVerifiedClient();
+      const cleanName = name.trim() || "Sakhi";
       await writeProfile(supabase, {
-        display_name: name.trim() || "Vaani member",
+        display_name: cleanName,
         avatar_url: null,
         avatar_path: null,
       });
+      await syncProfileMetadata(supabase, { display_name: cleanName, avatar_url: null });
+      setName(cleanName);
       setAvatarUrl(null);
       setAvatarPath(null);
 

@@ -42,11 +42,9 @@ export default function SessionMembers({
       let profilesById = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
       if (ids.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url, avatar_path")
-          .in("id", ids);
+        const { data: profiles, error: profileError } = await supabase.rpc("get_session_member_profiles", { p_session_id: sessionId });
         if (!active) return;
+        if (profileError) console.error("Session member profile lookup failed:", profileError);
         profilesById = new Map((profiles ?? []).map((profile) => [profile.id, { display_name: profile.display_name, avatar_url: profile.avatar_url || (profile.avatar_path ? (profile.avatar_path.startsWith("http") ? profile.avatar_path : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl) : null) }]));
       }
 

@@ -415,7 +415,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                     type="submit"
                     className="rounded-lg bg-[var(--plum)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--plum-deep)]"
                   >
-                    Start session
+                    Start conference
                   </button>
                 </form>
 

@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     if (profileError) console.error("LiveKit profile lookup failed:", profileError);
     const metadata = authUserData.user?.user_metadata ?? {};
     const displayName =
-      String(profile?.display_name ?? metadata.full_name ?? metadata.name ?? "")
+      String(profile?.display_name || metadata.display_name || metadata.full_name || metadata.name || "")
         .trim()
         .slice(0, 80) || "Vaani member";
     const avatarUrl =

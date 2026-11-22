@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
+import { startSession } from "@/app/sessions/actions";
 
 function HomeLoading() {
   return (
@@ -56,12 +57,13 @@ async function HomeContent() {
       .order("created_at", { ascending: false })
       .limit(8),
     supabase.from("session_members")
-      .select("session_id")
+      .select("session_id, role")
       .eq("user_id", userId)
       .eq("status", "accepted"),
   ]);
 
   const joined = new Set((memberships ?? []).map((item) => item.session_id));
+  const organized = new Set((memberships ?? []).filter((item) => item.role === "organizer").map((item) => item.session_id));
   const relevantSessions = (sessions ?? [])
     .filter((item) => item.access_type === "community" || joined.has(item.id))
     .slice(0, 3);
@@ -88,27 +90,29 @@ async function HomeContent() {
           {relevantSessions.length > 0 ? (
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {relevantSessions.map((session) => (
-                <Link
-                  key={session.id}
-                  href={session.status === "live" && joined.has(session.id)
-                    ? `/sessions/${session.id}/conference`
-                    : `/sessions/${session.id}`}
-                  className="surface-card group p-5 transition hover:border-[var(--rose)]"
-                >
-                  <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                    {session.status === "live" && <span className="h-2 w-2 rounded-full bg-[#6d916f]" />}
-                    {session.status === "live" ? "Live now" : "Upcoming"}
-                  </div>
-                  <h3 className="mt-4 font-display text-2xl text-[var(--plum)]">{session.title}</h3>
-                  <p className="mt-2 text-xs text-[var(--muted)]">
-                    {session.scheduled_start_at
-                      ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(session.scheduled_start_at))
-                      : "Time not set"}
-                  </p>
+                <article key={session.id} className="surface-card group p-5 transition hover:border-[var(--rose)]">
+                  <Link href={`/sessions/${session.id}`} className="block">
+                    <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                      {session.status === "live" && <span className="h-2 w-2 rounded-full bg-[#6d916f]" />}
+                      {session.status === "live" ? "Live now" : "Upcoming"}
+                    </div>
+                    <h3 className="mt-4 font-display text-2xl text-[var(--plum)]">{session.title}</h3>
+                    <p className="mt-2 text-xs text-[var(--muted)]">
+                      {session.scheduled_start_at
+                        ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(session.scheduled_start_at))
+                        : "Time not set"}
+                    </p>
+                  </Link>
                   {session.status === "live" && joined.has(session.id) && (
-                    <p className="mt-4 text-xs font-semibold text-[var(--plum)]">Join gathering →</p>
+                    <Link href={`/sessions/${session.id}/conference`} className="button-primary mt-4 inline-flex !min-h-9 !px-4 !py-1.5 text-xs">Join conference</Link>
                   )}
-                </Link>
+                  {session.status === "scheduled" && organized.has(session.id) && (
+                    <form action={startSession} className="mt-4">
+                      <input type="hidden" name="session_id" value={session.id} />
+                      <button className="button-primary !min-h-9 !px-4 !py-1.5 text-xs">Start conference</button>
+                    </form>
+                  )}
+                </article>         </Link>
               ))}
             </div>
           ) : (

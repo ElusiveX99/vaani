@@ -498,6 +498,33 @@ function ConferenceWorkspace({
     }
   );
 
+  const participantUserKey = [...new Set([localParticipant, ...remoteParticipants]
+    .map((participant) => getLiveKitUserId(participant))
+    .filter((id): id is string => Boolean(id)))].sort().join("|");
+  const [participantProfiles, setParticipantProfiles] = useState<Record<string, { displayName: string; avatarUrl: string | null }>>({});
+  useEffect(() => {
+    let active = true;
+    const ids = participantUserKey ? participantUserKey.split("|") : [];
+    if (ids.length === 0) { setParticipantProfiles({}); return; }
+    const supabase = createClient();
+    void supabase.rpc("get_session_member_profiles", { p_session_id: sessionId }).then(({ data, error }) => {
+      if (!active) return;
+      if (error) { console.error("Conference participant profiles could not be loaded:", error); return; }
+      const next: Record<string, { displayName: string; avatarUrl: string | null }> = {};
+      for (const profile of data ?? []) {
+        const avatarUrl = profile.avatar_url || (profile.avatar_path
+          ? profile.avatar_path.startsWith("http")
+            ? profile.avatar_path
+            : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl
+          : null);
+        if (profile.display_name?.trim()) next[profile.id] = { displayName: profile.display_name.trim(), avatarUrl };
+      }
+      setParticipantProfiles(next);
+    });
+    return () => { active = false; };
+  }, [sessionId, participantUserKey]);
+
+
   useEffect(() => {
     let unlocked = false;
     let pending = false;
@@ -815,7 +842,10 @@ function ConferenceWorkspace({
                   (!trackRef.publication ||
                     trackRef.publication.isMuted ||
                     !trackRef.publication.track);
-                const participantName = participant.name || "Sakhi";
+                const participantUserId = getLiveKitUserId(participant);
+                const profile = participantUserId ? participantProfiles[participantUserId] : undefined;
+                const participantName = profile?.displayName || participant.name || "Sakhi";
+                const participantAvatar = profile?.avatarUrl || participant.attributes?.avatar_url || null;
 
                 return (
                   <div
@@ -832,7 +862,7 @@ function ConferenceWorkspace({
                       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#392f3b] p-2">
                         <ProfileAvatar
                           name={participantName}
-                          avatarUrl={participant.attributes?.avatar_url || null}
+                          avatarUrl={participantAvatar}
                           size="xl"
                         />
                         <span className="max-w-[90%] truncate text-xs font-medium text-white/85 sm:text-sm">

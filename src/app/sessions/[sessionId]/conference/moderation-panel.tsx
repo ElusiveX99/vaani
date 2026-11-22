@@ -54,7 +54,7 @@ export default function ModerationPanel({
       const rows = data ?? [];
       const ids = rows.map((member) => member.user_id);
       const { data: profiles, error: profileError } = ids.length
-        ? await supabase.from("profiles").select("id, display_name, avatar_url, avatar_path").in("id", ids)
+        ? await supabase.rpc("get_session_member_profiles", { p_session_id: sessionId })
         : { data: [], error: null };
       if (!active) return;
       if (profileError) console.warn("Participant profile lookup failed:", profileError);
