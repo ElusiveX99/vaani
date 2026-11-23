@@ -28,7 +28,7 @@ function Wordmark() {
 
 function ReaderPreview() {
   return (
-    <div className={styles.preview} aria-label="Illustrative view of a Vaani gathering">
+    <div className={styles.preview} role="img" aria-label="Illustrative view of a Vaani gathering">
       <div className={styles.previewTopbar}>
         <div className={styles.previewBrand}>
           <span className={styles.previewBrandDot} />
@@ -263,8 +263,8 @@ export default function LandingPage() {
 
       <section className={styles.capabilities}>
         <div className={styles.capabilitiesHeading}>
-          <p className={styles.kicker}>THOUGHT THROUGH, FROM START TO FINISH</p>
-          <h2>Everything a gathering<br /><em>needs around it.</em></h2>
+          <p className={styles.kicker}>THE DETAILS AROUND A GATHERING</p>
+          <h2>The details,<br /><em>held together.</em></h2>
         </div>
         <div className={styles.capabilityGrid}>
           {capabilities.map((item) => (
