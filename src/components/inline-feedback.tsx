@@ -29,26 +29,38 @@ export default function InlineFeedback({ tone, children }: Props) {
     getServerToastViewport
   );
   const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!message) return;
 
     const showTimer = window.setTimeout(() => setVisibleKey(key), 0);
     const hideTimer = window.setTimeout(
-      () => setVisibleKey((current) => (current === key ? null : current)),
+      () => {
+        hideTimerRef.current = null;
+        setVisibleKey((current) => (current === key ? null : current));
+      },
       tone === "error" ? 5600 : 4200
     );
+    hideTimerRef.current = hideTimer;
 
     return () => {
       window.clearTimeout(showTimer);
       window.clearTimeout(hideTimer);
+      if (hideTimerRef.current === hideTimer) hideTimerRef.current = null;
     };
   }, [key, message, tone]);
 
   const visible = Boolean(message) && visibleKey === key;
   if (!visible || !viewport) return null;
 
-  const dismiss = () => setVisibleKey(null);
+  const dismiss = () => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setVisibleKey(null);
+  };
 
   return createPortal(
     <div
