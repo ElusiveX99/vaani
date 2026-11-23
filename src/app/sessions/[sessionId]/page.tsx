@@ -465,7 +465,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
                   <button
                     type="submit"
-                    className="button-danger"
+                    className="rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
                   >
                     Cancel session
                   </button>
