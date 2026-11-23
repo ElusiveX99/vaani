@@ -457,23 +457,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </>
             )}
 
-            {isOrganizer && session.status === "live" && (
-              <form action={endSession}>
-                <input
-                  type="hidden"
-                  name="session_id"
-                  value={session.id}
-                />
-
-                <button
-                  type="submit"
-                  className="rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-600"
-                >
-                  End session
-                </button>
-              </form>
-            )}
-
             {isOrganizer && session.status === "cancelled" && session.scheduled_start_at && new Date(session.scheduled_start_at).getTime() > Date.now() && (
               <form action={resumeSession}>
                 <input type="hidden" name="session_id" value={session.id}/>
@@ -539,6 +522,24 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
             </div>
           </section>
+
+          {isOrganizer && session.status === "live" && (
+            <section className="surface-card mt-7 border border-red-200 bg-red-50/60 p-5 sm:p-6">
+              <h2 className="text-sm font-semibold text-red-900">End this conference</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-red-800">
+                This ends the live conference for everyone. Keep this action separate from entering the conference.
+              </p>
+              <form action={endSession} className="mt-4">
+                <input type="hidden" name="session_id" value={session.id} />
+                <ConfirmSubmitButton
+                  message="End this live conference for everyone? Participants will no longer be able to continue in this conference. This action cannot be undone."
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-800"
+                >
+                  End conference…
+                </ConfirmSubmitButton>
+              </form>
+            </section>
+          )}
 
           {session.status === "ended" && (
             <section className="surface-card mt-7 border border-[var(--line)] p-6">
