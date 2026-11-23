@@ -17,10 +17,12 @@ export default function SessionMembers({
   sessionId,
   currentUserId,
   initialMembers,
+  showAll = false,
 }: {
   sessionId: string;
   currentUserId: string;
   initialMembers: Member[];
+  showAll?: boolean;
 }) {
   const [members, setMembers] = useState(initialMembers);
 
@@ -85,17 +87,19 @@ export default function SessionMembers({
     };
   }, [sessionId]);
 
-  const acceptedCount = members.filter((member) => member.status === "accepted").length;
+  const acceptedMembers = members.filter((member) => member.status === "accepted");
+  const acceptedCount = acceptedMembers.length;
+  const visibleMembers = showAll ? acceptedMembers : acceptedMembers.slice(0, 10);
 
   return (
     <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
-      <DisclosureSection title="Session members" summary={`${acceptedCount} accepted · Member roles update live`} contentClassName="mt-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold text-[var(--ink)]">{showAll ? "All session members" : "Session members"}</h2><p className="mt-1 text-xs text-[var(--muted)]">{acceptedCount} joined {showAll ? "members" : "members"}</p></div>{!showAll && acceptedCount > 10 && <a href={`/sessions/${sessionId}/members`} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">Show more</a>}</div>
 
       {members.length === 0 ? (
         <p className="mt-6 text-sm text-[var(--muted)]">No member information is currently available.</p>
       ) : (
         <div className="mt-5 divide-y divide-stone-100">
-          {members.map((member) => (
+          {visibleMembers.map((member) => (
             <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 <ProfileAvatar name={member.display_name} avatarUrl={member.avatar_url} size="md" />
@@ -113,7 +117,7 @@ export default function SessionMembers({
           ))}
         </div>
       )}
-      </DisclosureSection>
+      {showAll && <a href={`/sessions/${sessionId}`} className="mt-4 inline-flex text-sm font-semibold text-[var(--plum)] hover:underline">Back to gathering</a>}
     </section>
   );
 }
