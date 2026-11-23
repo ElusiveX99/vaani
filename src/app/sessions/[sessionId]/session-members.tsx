@@ -42,13 +42,13 @@ export default function SessionMembers({
       let profilesById = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
       if (ids.length > 0) {
-        const { data: profiles, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url, avatar_path")
-          .in("id", ids);
+        const { data: profiles, error: profileError } = await supabase.rpc(
+          "get_session_member_profiles",
+          { p_session_id: sessionId }
+        );
         if (!active) return;
         if (profileError) {
-          console.error("Session member profile lookup failed:", profileError);
+          console.error("Session member profile RPC failed:", profileError);
           return;
         }
         profilesById = new Map((profiles ?? []).map((profile) => [profile.id, {

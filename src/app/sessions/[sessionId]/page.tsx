@@ -294,9 +294,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
   let members: Membership[] = [];
   let profiles: Profile[] = [];
   let joinRequests: { id: string; user_id: string; created_at: string }[] = [];
-  let memberLookupFailed = false;
   let joinRequestLookupFailed = false;
-  let profileLookupFailed = false;
 
   if (isAccepted || canManage) {
     const { data: memberData, error: memberError } = await supabase
@@ -306,7 +304,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
       .eq("status", "accepted")
       .order("created_at", { ascending: true });
     if (memberError) {
-      memberLookupFailed = true;
       console.error("Gathering member lookup failed:", memberError);
     } else {
       members = (memberData ?? []) as Membership[];
@@ -325,11 +322,12 @@ async function SessionContent({ params, searchParams }: PageProps) {
   }
   const memberIds = [...new Set([...members.map((member) => member.user_id), ...joinRequests.map((request) => request.user_id)])];
   if (memberIds.length > 0) {
-    const { data: profileData, error: profileError } = await supabase.from("profiles")
-      .select("id, display_name, avatar_url, avatar_path").in("id", memberIds);
+    const { data: profileData, error: profileError } = await supabase.rpc(
+      "get_session_member_profiles",
+      { p_session_id: session.id }
+    );
     if (profileError) {
-      profileLookupFailed = true;
-      console.error("Gathering profile lookup failed:", profileError);
+      console.error("Gathering member profile RPC failed:", profileError);
     } else {
       profiles = (profileData ?? []) as Profile[];
     }
@@ -615,11 +613,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
             )}
           </section>
         )}
-        {(memberLookupFailed || profileLookupFailed) && (isAccepted || canManage) && (
-          <p role="alert" className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Some gathering member details could not be loaded. Please refresh the page.
-          </p>
-        )}
         {joinRequestLookupFailed && canManage && (
           <p role="alert" className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Join requests could not be loaded. Please refresh the page.
@@ -664,7 +657,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <dd className="mt-1 text-[var(--ink)]">
                 {session.created_by === userId
                   ? "You"
-                  : "Session organizer"}
+                  : profileMap.get(session.created_by)?.display_name || "Vaani member"}
               </dd>
             </div>
 
