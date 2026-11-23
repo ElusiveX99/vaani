@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import InlineFeedback from "@/components/inline-feedback";
 import RecurrenceFields from "@/components/recurrence-fields";
+import CustomSelect from "@/components/custom-select";
+import DateTimePicker from "@/components/date-time-picker";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -95,20 +97,11 @@ export default function CreateSessionForm({ action, error }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="scheduled_start_local" className="field-label mb-2">Start date and time</label>
-            <input id="scheduled_start_local" name="scheduled_start_local" type="datetime-local" className="field-input" />
+            <DateTimePicker id="scheduled_start_local" name="scheduled_start_local" className="field-input" />
           </div>
           <div>
             <label htmlFor="duration_minutes" className="field-label mb-2">Expected duration</label>
-            <select id="duration_minutes" name="duration_minutes" defaultValue="" className="field-input">
-              <option value="">Not specified</option>
-              <option value="30">30 minutes</option>
-              <option value="45">45 minutes</option>
-              <option value="60">1 hour</option>
-              <option value="90">1 hour 30 minutes</option>
-              <option value="120">2 hours</option>
-              <option value="180">3 hours</option>
-              <option value="240">4 hours</option>
-            </select>
+            <CustomSelect id="duration_minutes" name="duration_minutes" defaultValue="" options={[{value:"",label:"Not specified"},{value:"30",label:"30 minutes"},{value:"45",label:"45 minutes"},{value:"60",label:"1 hour"},{value:"90",label:"1 hour 30 minutes"},{value:"120",label:"2 hours"},{value:"180",label:"3 hours"},{value:"240",label:"4 hours"}]} />
           </div>
         </div>
         <input type="hidden" name="time_zone" value={timeZone} />
@@ -120,10 +113,7 @@ export default function CreateSessionForm({ action, error }: Props) {
         </div>
         <div>
           <label htmlFor="access_type" className="field-label mb-2">Who can join?</label>
-          <select id="access_type" name="access_type" defaultValue="community" className="field-input">
-            <option value="community">All Vaani members</option>
-            <option value="link">Anyone with an invitation link</option>
-          </select>
+          <CustomSelect id="access_type" name="access_type" defaultValue="community" options={[{value:"community",label:"All Vaani members"},{value:"link",label:"Anyone with an invitation link"}]} />
         </div>
         <div>
           <label htmlFor="participant_limit" className="field-label mb-2">Participant limit</label>

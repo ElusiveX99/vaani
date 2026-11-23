@@ -4,6 +4,7 @@ import { Cormorant_Garamond, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import FormPendingFeedback from "@/components/form-pending-feedback";
 import ToastViewport from "@/components/toast-viewport";
+import InteractionProvider from "@/components/interaction-provider";
 
 const display = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -87,9 +88,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        <InteractionProvider>
         <Suspense fallback={null}><FormPendingFeedback /></Suspense>
         <ToastViewport />
         {children}
+        </InteractionProvider>
       </body>
     </html>
   );

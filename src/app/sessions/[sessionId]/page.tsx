@@ -7,6 +7,8 @@ import SessionMembers from "./session-members";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 import SiteHeader from "@/components/site-header";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
+import CustomSelect from "@/components/custom-select";
+import DateTimePicker from "@/components/date-time-picker";
 import CopyInviteLink from "./copy-invite-link";
 import InlineFeedback from "@/components/inline-feedback";
 import RecurrenceFields from "@/components/recurrence-fields";
@@ -241,9 +243,9 @@ async function SessionContent({ params, searchParams }: PageProps) {
               {paramsData.success && successMessages[paramsData.success] && <InlineFeedback tone="success" className="sm:col-span-2">{successMessages[paramsData.success]}</InlineFeedback>}
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-title">Gathering title</label><input id="draft-title" name="title" required maxLength={120} defaultValue={session.title} className="field-input" /></div>
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-description">Description</label><textarea id="draft-description" name="description" rows={3} maxLength={2000} defaultValue={session.description || ""} className="field-input resize-y" /></div>
-              <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><input id="draft-start" name="scheduled_start_local" type="datetime-local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
-              <div><label className="field-label mb-2" htmlFor="draft-duration">Expected duration</label><select id="draft-duration" name="duration_minutes" defaultValue={session.duration_minutes ?? ""} className="field-input"><option value="">Not specified</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></div>
-              <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><select id="draft-access" name="access_type" defaultValue={session.access_type} className="field-input"><option value="community">All Vaani members</option><option value="link">Anyone with an invitation link</option></select></div>
+              <div><label className="field-label mb-2" htmlFor="draft-start">Start date and time</label><DateTimePicker id="draft-start" name="scheduled_start_local" defaultValue={dateTimeInputValue(session.scheduled_start_at, session.time_zone || "Asia/Kolkata")} className="field-input" /></div>
+              <div><label className="field-label mb-2" htmlFor="draft-duration">Expected duration</label><CustomSelect id="draft-duration" name="duration_minutes" defaultValue={String(session.duration_minutes ?? "")} options={[{value:"",label:"Not specified"},{value:"30",label:"30 minutes"},{value:"45",label:"45 minutes"},{value:"60",label:"1 hour"},{value:"90",label:"1 hour 30 minutes"},{value:"120",label:"2 hours"},{value:"180",label:"3 hours"},{value:"240",label:"4 hours"}]} /></div>
+              <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><CustomSelect id="draft-access" name="access_type" defaultValue={session.access_type} options={[{value:"community",label:"All Vaani members"},{value:"link",label:"Anyone with an invitation link"}]} /></div>
               <div><label className="field-label mb-2" htmlFor="draft-limit">Participant limit</label><input id="draft-limit" name="participant_limit" type="number" min="2" max="500" placeholder="No limit" defaultValue={session.participant_limit ?? ""} className="field-input" /></div>
               <RecurrenceFields initialRule={session.recurrence_rule || ""} initialUntil={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} />
               <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></div>
@@ -587,7 +589,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <input type="hidden" name="session_id" value={session.id}/><h3 className="text-sm font-semibold">Get an invitation link</h3>
               <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Choose the expiry and use limit. If you already have an active link, Vaani will show it again.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="field-label">Link expiry<select name="expiry_hours" defaultValue="168" className="field-input mt-2"><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option><option value="720">30 days</option><option value="0">No expiry</option></select></label>
+                <label className="field-label">Link expiry<CustomSelect id="expiry_hours" name="expiry_hours" defaultValue="168" className="field-input mt-2" options={[{value:"24",label:"24 hours"},{value:"72",label:"3 days"},{value:"168",label:"7 days"},{value:"720",label:"30 days"},{value:"0",label:"No expiry"}]} /></label>
                 <label className="field-label">Maximum uses<input name="max_uses" type="number" min="1" max="500" placeholder="Unlimited" className="field-input mt-2"/></label>
               </div><button className="button-primary mt-4">Get invitation link</button>
             </form>            ):<p className="mt-5 text-sm text-[var(--muted)]">This gathering is no longer accepting new invitations. Existing links are shown below for reference and cleanup.</p>}

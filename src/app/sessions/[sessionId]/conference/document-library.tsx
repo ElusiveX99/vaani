@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import InlineFeedback from "@/components/inline-feedback";
+import { useVaaniDialog } from "@/components/interaction-provider";
 
 type DocumentItem = {
   id: string;
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export default function DocumentLibrary({ sessionId, canControlReader }: Props) {
+  const { confirm } = useVaaniDialog();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +111,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   }
 
   async function deleteDocument(document: DocumentItem) {
-    if (!window.confirm(`Delete "${document.title}" from this session?`)) return;
+    if (!(await confirm({ title: "Delete this PDF?", message: `“${document.title}” will be removed from this session. This cannot be undone.`, danger: true, confirmLabel: "Delete PDF" }))) return;
     setBusyId(document.id);
     setError("");
     setNotice("");

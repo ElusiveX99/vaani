@@ -338,3 +338,60 @@ button[data-submitting="true"]::after {
 @media (max-width: 1023px) { .vaani-toast-viewport { left: 50%; right: auto; bottom: max(1rem,env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(30rem,calc(100vw - 2rem)); } }
 @media (max-width: 640px) { .vaani-toast-viewport { width: calc(100vw - 1.5rem); bottom: max(.8rem,env(safe-area-inset-bottom)); max-height: 30vh; } .vaani-toast { padding: .8rem .9rem; border-radius: 14px; } }
 @media (prefers-reduced-motion: reduce) { .vaani-toast { animation-duration: .01ms; } }
+
+/* Theme-adaptive interaction primitives. Components consume semantic tokens only. */
+:root {
+  --dialog-backdrop: rgba(30, 24, 31, .48);
+  --dialog-radius: 22px;
+  --dialog-shadow: 0 24px 80px rgba(28, 20, 29, .22);
+  --control-radius: 12px;
+  --control-hover: var(--surface-soft);
+  --calendar-selected: var(--plum);
+  --calendar-selected-ink: #fffaf7;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #19171c; --surface: #242128; --surface-soft: #302b34;
+  --ink: #f4eef3; --muted: #b7abb6; --plum: #c29bb8; --plum-deep: #e0c4d7;
+  --rose: #c18e9c; --rose-soft: #3b3039; --gold: #c3a879; --gold-ink: #d2b98e;
+  --forest: #91ad96; --line: #413a44; --focus-ring: #d1a9c3;
+  --success: #91ad96; --danger: #e18a91; --shadow-soft: 0 16px 48px rgba(0,0,0,.24);
+  --dialog-backdrop: rgba(0,0,0,.68); --calendar-selected: #a8799a; --calendar-selected-ink: #fff;
+}
+.vaani-dialog-backdrop { position:fixed; inset:0; z-index:3000; display:grid; place-items:center; padding:1rem; background:var(--dialog-backdrop); backdrop-filter:blur(7px); animation:vaani-overlay-in .16s ease both; }
+.vaani-dialog-panel { width:min(100%, 27rem); border:1px solid var(--line); border-radius:var(--dialog-radius); background:var(--surface); color:var(--ink); padding:1.5rem; box-shadow:var(--dialog-shadow); animation:vaani-dialog-in .2s cubic-bezier(.2,.8,.2,1) both; }
+.vaani-dialog-mark { display:grid; width:2.5rem; height:2.5rem; place-items:center; border-radius:50%; background:var(--rose-soft); color:var(--plum); font-weight:800; }
+.vaani-dialog-mark[data-danger="true"] { background:color-mix(in srgb,var(--danger) 13%,var(--surface)); color:var(--danger); }
+.vaani-dialog-title { margin:1rem 0 0; font-size:1.12rem; font-weight:750; letter-spacing:-.02em; }
+.vaani-dialog-message { margin:.55rem 0 0; color:var(--muted); font-size:.9rem; line-height:1.65; white-space:pre-line; }
+.vaani-dialog-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.65rem; margin-top:1.5rem; }
+.button-danger { display:inline-flex; min-height:42px; align-items:center; justify-content:center; border-radius:999px; padding:.65rem 1.15rem; background:var(--danger); color:white; font-size:.86rem; font-weight:750; cursor:pointer; }
+.button-danger:hover { filter:brightness(.92); }
+.vaani-select,.vaani-date-field { position:relative; min-width:0; }
+.vaani-select-trigger,.vaani-date-trigger { display:flex; width:100%; align-items:center; justify-content:space-between; gap:.75rem; text-align:left; cursor:pointer; }
+.vaani-select-placeholder { color:var(--muted); }
+.vaani-select-chevron { color:var(--muted); font-size:1.1rem; }
+.vaani-select-menu { position:absolute; z-index:100; top:calc(100% + .4rem); left:0; right:0; max-height:17rem; overflow:auto; padding:.35rem; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow-soft); }
+.vaani-select-option { display:flex; width:100%; min-height:42px; align-items:center; justify-content:space-between; gap:.5rem; border:0; border-radius:9px; padding:.6rem .7rem; background:transparent; color:var(--ink); text-align:left; font-size:.86rem; cursor:pointer; }
+.vaani-select-option:hover,.vaani-select-option[aria-selected="true"] { background:var(--control-hover); color:var(--plum); }
+.vaani-select-option:disabled { opacity:.45; cursor:not-allowed; }
+.vaani-calendar { position:absolute; z-index:120; top:calc(100% + .45rem); left:0; width:min(21rem,calc(100vw - 3rem)); padding:1rem; border:1px solid var(--line); border-radius:18px; background:var(--surface); color:var(--ink); box-shadow:var(--dialog-shadow); }
+.vaani-calendar-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:.9rem; }
+.vaani-calendar-head strong { font-size:.92rem; }
+.vaani-calendar-head button { width:2.2rem; height:2.2rem; border:0; border-radius:50%; background:var(--surface-soft); color:var(--ink); font-size:1.3rem; cursor:pointer; }
+.vaani-calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:.2rem; text-align:center; }
+.vaani-calendar-weekday { padding:.4rem 0; color:var(--muted); font-size:.68rem; font-weight:700; }
+.vaani-calendar-day { aspect-ratio:1; border:0; border-radius:50%; background:transparent; color:var(--ink); font-size:.8rem; cursor:pointer; }
+.vaani-calendar-day:hover:not(:disabled) { background:var(--control-hover); }
+.vaani-calendar-day[data-selected="true"] { background:var(--calendar-selected); color:var(--calendar-selected-ink); font-weight:800; }
+.vaani-calendar-day:disabled { opacity:.25; cursor:not-allowed; }
+.vaani-calendar-time { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; padding-top:.8rem; border-top:1px solid var(--line); color:var(--muted); font-size:.82rem; }
+.vaani-calendar-time-value { border:1px solid var(--line); border-radius:9px; padding:.45rem .7rem; background:var(--surface); color:var(--ink); font-weight:700; }
+.vaani-time-options { display:flex; justify-content:flex-end; gap:.6rem; margin-top:.6rem; }
+.vaani-time-options label { display:grid; gap:.2rem; color:var(--muted); font-size:.7rem; }
+.vaani-time-options select { border:1px solid var(--line); border-radius:8px; padding:.4rem; background:var(--surface); color:var(--ink); }
+.vaani-calendar-actions { display:flex; justify-content:flex-end; gap:.55rem; margin-top:1rem; }
+@keyframes vaani-overlay-in { from {opacity:0} to {opacity:1} }
+@keyframes vaani-dialog-in { from {opacity:0;transform:translateY(8px) scale(.985)} to {opacity:1;transform:translateY(0) scale(1)} }
+@media(prefers-reduced-motion:reduce) { .vaani-dialog-backdrop,.vaani-dialog-panel { animation:none; } }
+@media(max-width:480px) { .vaani-dialog-panel { padding:1.25rem; border-radius:18px; } .vaani-calendar { position:fixed; top:auto; bottom:max(.75rem,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:min(22rem,calc(100vw - 1.5rem)); } }
