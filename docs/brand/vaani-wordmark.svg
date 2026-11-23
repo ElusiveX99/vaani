@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" role="img" aria-labelledby="title desc">
+<title id="title">Vaani — primary wordmark</title>
+<desc id="desc">Custom-drawn Vaani lettering in deep teal with a restrained terracotta signature terminal.</desc>
+<g fill="none" stroke="#173F4A" stroke-linecap="round" stroke-linejoin="round">
+<!-- V: broad entry, tapered-feeling curved descent and lifted exit -->
+<path d="M54 76 C83 76 100 98 117 139 L163 244 C168 255 174 255 180 242 L249 83" stroke-width="25"/>
+<!-- first a: single-storey bowl with a distinctive open shoulder -->
+<path d="M282 173 C282 122 316 92 360 92 C406 92 434 125 431 171 C428 216 398 243 359 243 C319 243 287 216 284 178 C281 143 305 116 340 111 C377 106 405 129 410 159" stroke-width="20"/>
+<path d="M432 106 C430 151 429 200 432 241" stroke-width="20"/>
+<!-- second a: same family, optically opened counter and calmer shoulder -->
+<path d="M476 173 C476 122 510 92 554 92 C600 92 628 125 625 171 C622 216 592 243 553 243 C513 243 481 216 478 178 C475 143 499 116 534 111 C571 106 599 129 604 159" stroke-width="20"/>
+<path d="M626 106 C624 151 623 200 626 241" stroke-width="20"/>
+<!-- n: rising shoulder, then a clean descending stem -->
+<path d="M674 241 C674 195 674 150 675 107 C675 99 680 95 687 95 C694 95 699 100 699 108 L699 131 C714 106 738 94 766 94 C806 94 829 121 829 164 L829 241" stroke-width="20"/>
+<!-- i: quiet upright and a round, deliberately restrained dot -->
+<path d="M878 111 L878 241" stroke-width="20"/>
+</g>
+<circle cx="878" cy="58" r="11" fill="#B64E36"/>
+<path d="M54 76 C83 76 100 98 117 139" fill="none" stroke="#B64E36" stroke-width="25" stroke-linecap="round"/>
+</svg>
