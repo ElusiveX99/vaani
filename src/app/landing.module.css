@@ -96,7 +96,7 @@
   padding: clamp(5.5rem, 10vw, 9rem) 0 0;
 }
 
-.heroInner, .heroFooter, .gatheringSection, .readerInner, .toolsSection, .footerInner {
+.heroInner, .gatheringSection, .readerInner, .toolsSection, .footerInner {
   width: min(100% - 3rem, 1320px);
   margin-inline: auto;
 }
