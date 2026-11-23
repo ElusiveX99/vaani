@@ -7,7 +7,7 @@
   --plum: #523b50;
   --plum-dark: #382b39;
   --rose: #a77f83;
-  --gold: #9a7954;
+  --gold: #80613f;
   --line: rgba(67, 49, 63, .16);
   background: var(--paper);
   color: var(--ink);
@@ -133,7 +133,7 @@
 .primaryButton:hover { transform: translateY(-1px); background: var(--plum-dark); }
 .secondaryButton, .closingSignIn { color: var(--plum); font-size: 12px; font-weight: 600; }
 .secondaryButton:hover, .closingSignIn:hover { text-decoration: underline; text-underline-offset: 4px; }
-.heroFootnote { margin: 53px 0 0; color: #938982; font-size: 9px; font-weight: 650; letter-spacing: .19em; }
+.heroFootnote { margin: 53px 0 0; color: #716762; font-size: 9px; font-weight: 650; letter-spacing: .19em; }
 .heroFootnote span { margin: 0 8px; color: var(--rose); }
 .heroVisual { min-width: 0; }
 .preview {
@@ -188,7 +188,7 @@
 .readerStatus { justify-content: flex-start; gap: 7px; margin-top: 12px; color: #716a66; font-size: 9px; }
 .gatheringPanel { min-width: 0; padding: 15px 12px; background: #403943; }
 .gatheringPanelHead { color: #d8d0cb; }
-.moreDots { color: #c8b7a9; font-size: 13px; letter-spacing: 2px; }
+.moreDots { width: 18px; height: 6px; color: #c8b7a9; }
 .participantTiles { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-top: 18px; }
 .participantTile { min-height: 63px; display: grid; place-items: center; background: #5a505a; }
 .participantTile:first-child { grid-column: span 2; min-height: 82px; background: #63545e; }
@@ -196,7 +196,7 @@
 .participantTile > span:last-child { display: none; }
 .gatheringDivider { height: 1px; margin: 17px 0 11px; background: rgba(255,255,255,.12); }
 .gatheringTool { justify-content: flex-start; gap: 9px; padding: 8px 0; color: #d8d0cb; font-size: 9px; }
-.toolGlyph { width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.2); color: #c5a98e; font-size: 10px; }
+.toolGlyphSvg { width: 18px; height: 18px; flex: none; color: #c5a98e; }
 .previewCaption { margin: 13px 1px 0; color: #bcb0ac; font-size: 9px; letter-spacing: .03em; }
 .heroBottom {
   width: min(100% - 64px, 1360px);
@@ -307,7 +307,7 @@
 .footerInner > div { display: flex; justify-content: flex-end; gap: 22px; }
 .footerInner > div a { color: var(--muted); font-size: 11px; font-weight: 550; }
 .footerInner > div a:hover { color: var(--plum); }
-.copyright { color: #9b918c; font-size: 10px; white-space: nowrap; }
+.copyright { color: #716762; font-size: 10px; white-space: nowrap; }
 @media (max-width: 1050px) {
   .heroInner { grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 38px; }
   .preview { padding: 13px; }
@@ -387,7 +387,7 @@
   .participantTile { min-height: 52px; }
   .participantTile:first-child { min-height: 65px; }
   .gatheringTool { gap: 5px; font-size: 7px; }
-  .toolGlyph { width: 15px; height: 15px; font-size: 8px; }
+  .toolGlyphSvg { width: 15px; height: 15px; }
   .previewCaption { font-size: 8px; }
   .intro { padding: 67px 22px; }
   .intro h2, .sectionHeader h2, .readerCopy h2, .workflowHeading h2, .capabilitiesHeading h2 { font-size: clamp(40px, 10.8vw, 54px); }
@@ -434,7 +434,7 @@
   .previewBody { grid-template-columns: minmax(0,1.3fr) minmax(95px,.7fr); }
   .gatheringPanel { padding: 8px 6px; }
   .gatheringTool { font-size: 6px; }
-  .toolGlyph { width: 13px; height: 13px; }
+  .toolGlyphSvg { width: 13px; height: 13px; }
   .footerInner { width: calc(100% - 26px); }
 }
 @media (prefers-reduced-motion: reduce) {
