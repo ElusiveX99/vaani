@@ -93,8 +93,7 @@ begin
   select count(*) into v_count
   from public.session_members
   where session_id = v_session.id
-    and status = 'accepted'
-    and role = 'participant';
+    and status = 'accepted';
 
   if v_session.participant_limit is not null and v_count >= v_session.participant_limit then
     raise exception 'This gathering is full.';
