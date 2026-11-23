@@ -26,7 +26,6 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
     let active = true;
 
     const client = createClient();
-    setSupabase(client);
 
     async function initializeAuth() {
       const { data, error } = await client.auth.getSession();
@@ -51,6 +50,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
         }
       }
 
+      setSupabase(client);
       setAuthReady(true);
     }
 

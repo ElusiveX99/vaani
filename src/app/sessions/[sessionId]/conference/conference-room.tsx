@@ -505,7 +505,7 @@ function ConferenceWorkspace({
   useEffect(() => {
     let active = true;
     const ids = participantUserKey ? participantUserKey.split("|") : [];
-    if (ids.length === 0) { setParticipantProfiles({}); return; }
+    if (ids.length === 0) return;
     const supabase = createClient();
     void supabase.from("profiles")
       .select("id, display_name, avatar_url, avatar_path")

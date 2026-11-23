@@ -1,27 +1,67 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 type Props = { tone: "error" | "success" | "info"; children: ReactNode; className?: string };
-const active = new Set<string>();
+
+function getToastViewport() {
+  return document.getElementById("vaani-toast-viewport");
+}
+
+function subscribeToToastViewport(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
+
+function getServerToastViewport() {
+  return null;
+}
 
 export default function InlineFeedback({ tone, children }: Props) {
   const message = typeof children === "string" ? children : "";
   const key = tone + ":" + message;
-  const [visible, setVisible] = useState(false);
-  const [viewport, setViewport] = useState<HTMLElement | null>(null);
+  const [visibleKey, setVisibleKey] = useState<string | null>(null);
+  const viewport = useSyncExternalStore(
+    subscribeToToastViewport,
+    getToastViewport,
+    getServerToastViewport
+  );
   const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null);
-  const offset = useRef(0);
-  useEffect(() => { setViewport(document.getElementById("vaani-toast-viewport")); }, []);
+  const hideTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!message || active.has(key)) return;
-    active.add(key); setVisible(true);
-    const timer = window.setTimeout(() => { active.delete(key); setVisible(false); }, tone === "error" ? 5600 : 4200);
-    return () => { window.clearTimeout(timer); active.delete(key); };
+    if (!message) return;
+
+    const showTimer = window.setTimeout(() => setVisibleKey(key), 0);
+    const hideTimer = window.setTimeout(
+      () => {
+        hideTimerRef.current = null;
+        setVisibleKey((current) => (current === key ? null : current));
+      },
+      tone === "error" ? 5600 : 4200
+    );
+    hideTimerRef.current = hideTimer;
+
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+      if (hideTimerRef.current === hideTimer) hideTimerRef.current = null;
+    };
   }, [key, message, tone]);
+
+  const visible = Boolean(message) && visibleKey === key;
   if (!visible || !viewport) return null;
-  const dismiss = () => { active.delete(key); setVisible(false); };
+
+  const dismiss = () => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setVisibleKey(null);
+  };
+
   return createPortal(
     <div
       role={tone === "error" ? "alert" : "status"}
@@ -29,11 +69,13 @@ export default function InlineFeedback({ tone, children }: Props) {
       aria-atomic="true"
       data-toast={tone}
       className="vaani-toast"
-      style={{ transform: `translate3d(${offset.current}px,0,0)` }}
       onPointerDown={(event) => {
         if (event.pointerType === "mouse" && event.button !== 0) return;
-        pointerStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
-        offset.current = 0;
+        pointerStart.current = {
+          id: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+        };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
       onPointerMove={(event) => {
@@ -42,7 +84,6 @@ export default function InlineFeedback({ tone, children }: Props) {
         const dx = event.clientX - start.x;
         const dy = event.clientY - start.y;
         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
-          offset.current = dx;
           event.currentTarget.style.transform = `translate3d(${dx}px,0,0)`;
         }
       }}
@@ -52,14 +93,28 @@ export default function InlineFeedback({ tone, children }: Props) {
         const dx = event.clientX - start.x;
         const dy = event.clientY - start.y;
         pointerStart.current = null;
-        if (Math.abs(dx) > 72 && Math.abs(dx) > Math.abs(dy) * 1.25) dismiss();
-        else { offset.current = 0; event.currentTarget.style.transform = ""; }
+        if (Math.abs(dx) > 72 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+          dismiss();
+        } else {
+          event.currentTarget.style.transform = "";
+        }
       }}
-      onPointerCancel={() => { pointerStart.current = null; offset.current = 0; }}
+      onPointerCancel={(event) => {
+        pointerStart.current = null;
+        event.currentTarget.style.transform = "";
+      }}
     >
       <span className="vaani-toast-dot" aria-hidden="true" />
       <p className="min-w-0 flex-1">{message}</p>
-      <button type="button" onClick={dismiss} className="vaani-toast-close" aria-label="Dismiss notification">×</button>
-    </div>, viewport
+      <button
+        type="button"
+        onClick={dismiss}
+        className="vaani-toast-close"
+        aria-label="Dismiss notification"
+      >
+        ×
+      </button>
+    </div>,
+    viewport
   );
 }

@@ -13,6 +13,7 @@ import CopyInviteLink from "./copy-invite-link";
 import InlineFeedback from "@/components/inline-feedback";
 import RecurrenceFields from "@/components/recurrence-fields";
 import DisclosureSection from "@/components/disclosure-section";
+import { siteUrl } from "@/lib/site-url";
 
 import {
   joinCommunitySession,
@@ -353,7 +354,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
         .order("created_at", { ascending: false })
     : { data: [], error: null };
   const inviteLinks = inviteLinksResult.data ?? [];
-  const inviteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app";
+  const inviteOrigin = siteUrl;
   if (inviteLinksResult.error) {
     console.error("Invitation link lookup failed:", inviteLinksResult.error);
   }
@@ -470,7 +471,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </>
             )}
 
-            {isOrganizer && session.status === "cancelled" && session.scheduled_start_at && new Date(session.scheduled_start_at).getTime() > Date.now() && (
+            {isOrganizer && session.status === "cancelled" && isFutureScheduledTime(session.scheduled_start_at) && (
               <form action={resumeSession}>
                 <input type="hidden" name="session_id" value={session.id}/>
                 <button className="button-primary">Resume gathering</button>
@@ -740,6 +741,10 @@ async function SessionContent({ params, searchParams }: PageProps) {
       </div>
     </main>
   );
+}
+
+function isFutureScheduledTime(value: string | null | undefined) {
+  return Boolean(value && new Date(value).getTime() > Date.now());
 }
 
 export default function SessionPage(props: PageProps) {

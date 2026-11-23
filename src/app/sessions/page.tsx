@@ -360,7 +360,7 @@ async function SessionsContent({
       <div className="page-shell py-8 sm:py-10">
         <header className="mb-8 flex flex-col gap-5 pt-2 sm:flex-row sm:items-end sm:justify-between">
           <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
-          <a href="/sessions/new" className="button-primary w-fit">Create a Gathering</a>
+          <Link href="/sessions/new" className="button-primary w-fit">Create a Gathering</Link>
         </header>
 
         {params.success && successMessages[params.success] && (

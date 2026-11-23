@@ -4,7 +4,7 @@ Vaani is a gathering space for Sakhis to come together for Shree Hit Chaturasi J
 
 It brings the practical parts of a gathering into one place: arranging a time, sharing an invitation, meeting together, and following the Vaani as it is read.
 
-**Live site:** https://vaaniju.vercel.app
+**Live site:** https://vju.vercel.app
 
 ## What you can do
 
@@ -92,7 +92,7 @@ The production site is hosted on Vercel from the `main` branch.
 
 Set the environment variables above in Vercel. Add the production authentication callback to the Supabase Auth redirect allow list:
 
-`https://vaaniju.vercel.app/auth/callback`
+`https://vju.vercel.app/auth/callback`
 
 For local email sign-in, also allow:
 

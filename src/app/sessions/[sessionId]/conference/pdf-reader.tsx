@@ -184,7 +184,7 @@ export default function PdfReader({
   const metricFrameRef = useRef<number | null>(null);
   const metricsRef = useRef<Array<Metric | null>>([]);
   const positionRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
-  const lastSentRef = useRef<Position>(positionRef.current);
+  const lastSentRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
   const lastWidthRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -335,65 +335,97 @@ export default function PdfReader({
   useEffect(() => {
     let cancelled = false;
     let task: ReturnType<typeof pdfjs.getDocument> | null = null;
-    setPhase("loading");
-    setError("");
-    setProgress(0);
-    setPageErrors({});
-    setPdf(null);
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    if (frameRef.current !== null) {
-      window.cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-    if (metricFrameRef.current !== null) {
-      window.cancelAnimationFrame(metricFrameRef.current);
-      metricFrameRef.current = null;
-    }
-    setPageCount(0);
-    setVisiblePage(Math.max(1, currentPage));
-    lastSentRef.current = { page: Math.max(1, currentPage), offset: clampOffset(currentOffset) };
-    setVisibleRange({ first: 0, last: 3 });
-    setMetrics([]);
-    metricsRef.current = [];
-    lastAppliedRef.current = "";
-    lastWidthRef.current = 0;
-    positionRef.current = { page: Math.max(1, currentPage), offset: clampOffset(currentOffset) };
 
-    try {
-      task = pdfjs.getDocument({
-        url: documentUrl,
-        rangeChunkSize: 65536,
-        disableRange: false,
-        disableStream: false,
-        disableAutoFetch: false,
-      });
-      task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
-        if (!cancelled && total > 0) setProgress(Math.min(100, Math.round(loaded / total * 100)));
+    const initializeDocument = () => {
+      if (cancelled) return;
+
+      setPhase("loading");
+      setError("");
+      setProgress(0);
+      setPageErrors({});
+      setPdf(null);
+
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      if (metricFrameRef.current !== null) {
+        window.cancelAnimationFrame(metricFrameRef.current);
+        metricFrameRef.current = null;
+      }
+
+      setPageCount(0);
+      setVisiblePage(Math.max(1, currentPage));
+      lastSentRef.current = {
+        page: Math.max(1, currentPage),
+        offset: clampOffset(currentOffset),
       };
-      task.promise.then(loadedPdf => {
+      setVisibleRange({ first: 0, last: 3 });
+      setMetrics([]);
+      metricsRef.current = [];
+      lastAppliedRef.current = "";
+      lastWidthRef.current = 0;
+      positionRef.current = {
+        page: Math.max(1, currentPage),
+        offset: clampOffset(currentOffset),
+      };
+
+      try {
+        task = pdfjs.getDocument({
+          url: documentUrl,
+          rangeChunkSize: 65536,
+          disableRange: false,
+          disableStream: false,
+          disableAutoFetch: false,
+        });
+        task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+          if (!cancelled && total > 0) {
+            setProgress(Math.min(100, Math.round((loaded / total) * 100)));
+          }
+        };
+        task.promise
+          .then((loadedPdf) => {
+            if (cancelled) return;
+            setPdf(loadedPdf);
+            setPageCount(loadedPdf.numPages);
+            setMetrics(Array.from({ length: loadedPdf.numPages }, () => null));
+            metricsRef.current = Array.from(
+              { length: loadedPdf.numPages },
+              () => null
+            );
+            setPhase("rendering");
+            setProgress(100);
+          })
+          .catch((loadError) => {
+            if (cancelled) return;
+            console.error("Vaani PDF document load failed:", loadError);
+            setPhase("error");
+            setError(
+              loadError instanceof Error
+                ? loadError.message
+                : "The PDF could not be opened."
+            );
+          });
+      } catch (loadError) {
         if (cancelled) return;
-        setPdf(loadedPdf);
-        setPageCount(loadedPdf.numPages);
-        setMetrics(Array.from({ length: loadedPdf.numPages }, () => null));
-        metricsRef.current = Array.from({ length: loadedPdf.numPages }, () => null);
-        setPhase("rendering");
-        setProgress(100);
-      }).catch(loadError => {
-        if (cancelled) return;
-        console.error("Vaani PDF document load failed:", loadError);
         setPhase("error");
-        setError(loadError instanceof Error ? loadError.message : "The PDF could not be opened.");
-      });
-    } catch (loadError) {
-      setPhase("error");
-      setError(loadError instanceof Error ? loadError.message : "The PDF could not be opened.");
-    }
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "The PDF could not be opened."
+        );
+      }
+    };
+
+    const initializeTimer = window.setTimeout(initializeDocument, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(initializeTimer);
       if (task) void task.destroy();
     };
   }, [documentUrl, retryToken]);

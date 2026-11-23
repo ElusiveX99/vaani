@@ -24,11 +24,9 @@ export default function CreateSessionForm({ action, error }: Props) {
   const submittedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [timeZone, setTimeZone] = useState("Asia/Kolkata");
 
   useEffect(() => {
     const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (browserTimeZone) setTimeZone(browserTimeZone);
     const form = formRef.current;
     if (!form) return;
     const key = "vaani:create-gathering-form";
@@ -46,6 +44,10 @@ export default function CreateSessionForm({ action, error }: Props) {
       } catch { /* Keep the form usable if browser storage is unavailable. */ }
     } else {
       sessionStorage.removeItem(key);
+    }
+    const timeZoneField = form.elements.namedItem("time_zone");
+    if (browserTimeZone && timeZoneField instanceof HTMLInputElement) {
+      timeZoneField.value = browserTimeZone;
     }
   }, [error]);
 
@@ -105,7 +107,7 @@ export default function CreateSessionForm({ action, error }: Props) {
             <CustomSelect id="duration_minutes" name="duration_minutes" defaultValue="" options={[{value:"",label:"Not specified"},{value:"30",label:"30 minutes"},{value:"45",label:"45 minutes"},{value:"60",label:"1 hour"},{value:"90",label:"1 hour 30 minutes"},{value:"120",label:"2 hours"},{value:"180",label:"3 hours"},{value:"240",label:"4 hours"}]} />
           </div>
         </div>
-        <input type="hidden" name="time_zone" value={timeZone} />
+        <input type="hidden" name="time_zone" defaultValue="Asia/Kolkata" />
       </section>
 
       <DisclosureSection
