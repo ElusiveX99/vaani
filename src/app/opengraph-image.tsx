@@ -4,7 +4,7 @@ export const alt = "Vaani — a shared space for Gaayan and Paath";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const mark = "M48 46 C78 73 93 166 124 203 C132 213 142 213 150 202 C183 158 199 73 232 37 C242 26 253 33 246 46 C218 99 203 174 164 225 C149 245 126 246 109 228 C72 188 63 91 38 61 C30 51 38 39 48 46 Z";
+const mark = "M57 76 C79 48 118 35 154 41 C191 47 211 72 210 101 C209 130 185 151 157 170 C131 188 111 205 117 220";
 
 function VaaniEmblem() {
   return (

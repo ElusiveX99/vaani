@@ -20,71 +20,16 @@ function HeroArtwork() {
   return (
     <div className="landing-artwork" aria-hidden="true">
       <svg className="landing-artwork__svg" viewBox="0 0 620 560" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="folio-paper" x1="310" y1="30" x2="310" y2="530" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#FFFCF7" />
-            <stop offset="1" stopColor="#EDE4DC" />
-          </linearGradient>
-          <linearGradient id="voice-line" x1="105" y1="210" x2="512" y2="305" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#A77D82" />
-            <stop offset=".52" stopColor="#593B53" />
-            <stop offset="1" stopColor="#A98A5B" />
-          </linearGradient>
-        </defs>
-        <rect x="28" y="22" width="564" height="516" rx="7" fill="#EDE5DE" stroke="#D3C3B9" />
-        <rect x="43" y="37" width="534" height="486" rx="3" stroke="#C8B5AA" strokeOpacity=".7" />
-        <path d="M82 82H538" stroke="#CDBBB0" strokeOpacity=".75" />
-        <path d="M82 478H538" stroke="#CDBBB0" strokeOpacity=".75" />
-        <circle cx="82" cy="82" r="3" fill="#A98A5B" />
-        <circle cx="538" cy="82" r="3" fill="#A98A5B" />
-        <circle cx="82" cy="478" r="3" fill="#A98A5B" />
-        <circle cx="538" cy="478" r="3" fill="#A98A5B" />
-
-        <g stroke="#BDA9A0" strokeWidth="1.2" strokeLinecap="round" opacity=".65">
-          <path d="M110 126H230" />
-          <path d="M110 139H190" />
-          <path d="M390 126H510" />
-          <path d="M430 139H510" />
-        </g>
-
-        <path
-          d="M104 245C145 245 151 180 190 180C229 180 230 309 270 309C310 309 310 214 350 214C390 214 391 278 430 278C469 278 477 245 516 245"
-          stroke="url(#voice-line)"
-          strokeWidth="3.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M104 264C145 264 151 218 190 218C229 218 230 289 270 289C310 289 310 239 350 239C390 239 391 260 430 260C469 260 477 264 516 264"
-          stroke="#B98D91"
-          strokeOpacity=".38"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        />
-        <circle cx="190" cy="180" r="4.5" fill="#A98A5B" />
-        <circle cx="350" cy="214" r="4.5" fill="#A98A5B" />
-
-        <path
-          d="M112 355C174 331 235 339 310 372C385 339 446 331 508 355V435C447 412 385 423 310 456C235 423 173 412 112 435V355Z"
-          fill="url(#folio-paper)"
-          stroke="#9D7D7A"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-        <path d="M310 372V456" stroke="#BDA69C" strokeWidth="1.2" />
-        <path d="M135 374C187 356 237 365 285 385M135 394C184 378 233 385 282 405M135 414C181 400 230 406 280 425" stroke="#BBA9A1" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M335 385C383 365 433 356 485 374M338 405C387 385 436 378 485 394M340 425C390 406 439 400 485 414" stroke="#BBA9A1" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M112 355C174 331 235 339 310 372C385 339 446 331 508 355" stroke="#593B53" strokeOpacity=".45" strokeWidth="1.5" />
-        <path d="M112 435C173 412 235 423 310 456C385 423 447 412 508 435" stroke="#593B53" strokeOpacity=".35" strokeWidth="1.5" />
-
-        <path d="M310 92V108M302 100H318" stroke="#A98A5B" strokeWidth="1.3" strokeLinecap="round" />
-        <path d="M294 492H326" stroke="#A98A5B" strokeWidth="1.2" strokeLinecap="round" />
+        <rect x="74" y="72" width="472" height="416" rx="236" fill="#F5EBD7" opacity=".82" />
+        <path d="M160 194 C198 147 264 125 326 135 C390 145 427 188 426 238 C425 289 384 326 334 360 C287 392 255 421 268 456" fill="none" stroke="#173F5F" strokeWidth="34" strokeLinecap="round" />
+        <path d="M268 456 C245 472 218 464 205 441 C188 411 201 382 229 363 C257 344 293 337 328 327 C369 315 399 298 409 267 C420 236 409 208 385 185" fill="none" stroke="#C68B35" strokeWidth="14" strokeLinecap="round" />
+        <path d="M160 194 C190 159 224 144 258 138" fill="none" stroke="#B54A3B" strokeWidth="14" strokeLinecap="round" />
+        <path d="M148 468 C228 493 360 500 470 468" fill="none" stroke="#B54A3B" strokeOpacity=".55" strokeWidth="3" strokeLinecap="round" />
       </svg>
-      <span className="landing-artwork__halo landing-artwork__halo--one" />
-      <span className="landing-artwork__halo landing-artwork__halo--two" />
+      <span className="landing-hero__visual-caption">जय जय श्री हित हरिवंश</span>
     </div>
   );
 }
-
 function ScrollCue() {
   return (
     <a className="landing-scroll-cue" href="#gatherings" aria-label="Scroll to explore Vaani">
