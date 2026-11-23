@@ -11,11 +11,12 @@ export default function ConfirmSubmitButton({ message, title, className, childre
   async function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     if (checking) return;
+    const button = event.currentTarget;
+    const form = button.form;
     setChecking(true);
     try {
       if (await confirm({ title, message, danger: true, confirmLabel: "Yes, continue" })) {
-        const form = event.currentTarget.form;
-        if (form) form.requestSubmit(event.currentTarget);
+        if (form) form.requestSubmit(button);
       }
     } finally { setChecking(false); }
   }
