@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
 import InlineFeedback from "@/components/inline-feedback";
-import DisclosureSection from "@/components/disclosure-section";
 import Link from "next/link";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 
@@ -190,26 +189,18 @@ function SessionCard({
 
 function SessionSection({
   title,
-  description,
   sessions,
   membershipMap,
   emptyMessage,
 }: {
   title: string;
-  description: string;
   sessions: Session[];
   membershipMap: Map<string, Membership>;
   emptyMessage: string;
 }) {
   return (
     <section id={title === "Discover sessions" ? "discover-sessions" : undefined} className="mt-10">
-      <DisclosureSection
-        title={title}
-        summary={description}
-        defaultOpen={title !== "Past gatherings" && title !== "Your drafts"}
-        className="mb-4"
-      >
-      <p className="mt-2 text-sm text-[var(--muted)]">{description}</p>
+      <h2 className="mb-4 text-xl font-semibold text-[var(--plum)]">{title}</h2>
 
       {sessions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--line)] p-7 text-center">
@@ -226,7 +217,6 @@ function SessionSection({
           ))}
         </div>
       )}
-      </DisclosureSection>
     </section>
   );
 }
@@ -369,10 +359,7 @@ async function SessionsContent({
       <SiteHeader name={displayName} email={email} avatarUrl={avatarUrl} />
       <div className="page-shell py-8 sm:py-10">
         <header className="mb-8 flex flex-col gap-5 pt-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
-            <p className="mt-2 text-sm text-[var(--muted)]">Plan, join, and manage gatherings with Sakhis.</p>
-          </div>
+          <h1 className="font-display text-4xl text-[var(--plum)] sm:text-5xl">Gatherings</h1>
           <a href="/sessions/new" className="button-primary w-fit">Create a Gathering</a>
         </header>
 
@@ -387,11 +374,7 @@ async function SessionsContent({
 
         {notifications && notifications.length > 0 && (
           <section className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-            <DisclosureSection
-              title="Updates"
-              summary={`${notifications.filter((item) => !item.read_at).length} unread · ${notifications.length} total`}
-              className="min-w-0"
-            >
+            <h2 className="text-lg font-semibold text-[var(--ink)]">Updates</h2>
             <div className="mt-3 divide-y divide-[var(--line)]">
               {notifications.map((item) => (
                 <div key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
@@ -405,7 +388,6 @@ async function SessionsContent({
                 </div>
               ))}
             </div>
-            </DisclosureSection>
           </section>
         )}
 
@@ -433,7 +415,6 @@ async function SessionsContent({
             {((drafts ?? []) as Session[]).length > 0 && (
               <SessionSection
                 title="Your drafts"
-                description="Gatherings you have saved but not published."
                 sessions={(drafts ?? []) as Session[]}
                 membershipMap={membershipMap}
                 emptyMessage="You have no saved drafts."
@@ -442,7 +423,6 @@ async function SessionsContent({
 
             <SessionSection
               title="Your sessions"
-              description="Sessions you organize or have joined."
               sessions={yourSessions}
               membershipMap={membershipMap}
               emptyMessage="You have not joined or organized any sessions yet."
@@ -451,7 +431,6 @@ async function SessionsContent({
             {historySessions.length > 0 && (
               <SessionSection
                 title="Past gatherings"
-                description="Gatherings you have been part of."
                 sessions={historySessions}
                 membershipMap={membershipMap}
                 emptyMessage="No past gatherings yet."
@@ -460,7 +439,6 @@ async function SessionsContent({
 
             <SessionSection
               title="Discover sessions"
-              description="Open sessions available to members."
               sessions={discoverSessions}
               membershipMap={membershipMap}
               emptyMessage="There are no other open gatherings available right now."

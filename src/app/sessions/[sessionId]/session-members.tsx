@@ -93,12 +93,15 @@ export default function SessionMembers({
 
   return (
     <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold text-[var(--ink)]">{showAll ? "All session members" : "Session members"}</h2><p className="mt-1 text-xs text-[var(--muted)]">{acceptedCount} joined {showAll ? "members" : "members"}</p></div>{!showAll && acceptedCount > 10 && <Link href={`/sessions/${sessionId}/members`} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">Show more</Link>}</div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-[var(--ink)]">{showAll ? "All session members" : "Session members"} <span className="text-sm font-normal text-[var(--muted)]">({acceptedCount})</span></h2>
+        {!showAll && acceptedCount > 10 && <Link href={`/sessions/${sessionId}/members`} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">Show more</Link>}
+      </div>
 
-      {members.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--muted)]">No member information is currently available.</p>
+      {acceptedMembers.length === 0 ? (
+        <p className="mt-4 text-sm text-[var(--muted)]">No members yet.</p>
       ) : (
-        <div className="mt-5 divide-y divide-stone-100">
+        <div className="mt-3 divide-y divide-[var(--line)]">
           {visibleMembers.map((member) => (
             <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4">
               <div className="flex min-w-0 items-center gap-3">
@@ -110,9 +113,6 @@ export default function SessionMembers({
                   <p className="mt-1 text-xs capitalize text-[var(--muted)]">{member.role.replaceAll("_", " ")}</p>
                 </div>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${"bg-[var(--surface-soft)] text-[var(--ink)]"}`}>
-                {"Accepted"}
-              </span>
             </div>
           ))}
         </div>

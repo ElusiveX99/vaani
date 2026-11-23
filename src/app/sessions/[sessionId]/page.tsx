@@ -348,7 +348,16 @@ async function SessionContent({ params, searchParams }: PageProps) {
     session.status !== "cancelled" &&
     (canManage || (isAccepted && session.allow_participant_invites));
   const canCreateInvite = canViewInviteLinks;
-  const {data:inviteLinks}=canViewInviteLinks?await supabase.from("session_invite_links").select("id,short_code,created_by,label,max_uses,use_count,expires_at,revoked_at,created_at").eq("session_id",session.id).order("created_at",{ascending:false}):{data:[]};
+  const inviteLinksResult = canViewInviteLinks
+    ? await supabase.from("session_invite_links")
+        .select("id,short_code,created_by,label,max_uses,use_count,expires_at,revoked_at,created_at")
+        .eq("session_id", session.id)
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
+  const inviteLinks = inviteLinksResult.data ?? [];
+  if (inviteLinksResult.error) {
+    console.error("Invitation link lookup failed:", inviteLinksResult.error);
+  }
   const inviteOrigin=process.env.NEXT_PUBLIC_SITE_URL||"https://vaaniju.vercel.app";
 
 
@@ -585,21 +594,61 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </section>
           )}
 
-        {canViewInviteLinks&&(
-          <section className="surface-card mt-7 p-6 sm:p-8">
-            <DisclosureSection title="Invitation links" summary={`${inviteLinks?.length ?? 0} existing links`} contentClassName="mt-4">
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">Share a link with someone you would like to join this gathering. Links can be reused until they expire, reach their use limit, or are revoked. Your existing active link is returned when you request it again.</p>
-            {canCreateInvite?(<form action={createInviteLink} className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--background)] p-4">
-              <input type="hidden" name="session_id" value={session.id}/><h3 className="text-sm font-semibold">Get an invitation link</h3>
-              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Choose the expiry and use limit. If you already have an active link, Vaani will show it again.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="field-label">Link expiry<CustomSelect id="expiry_hours" name="expiry_hours" defaultValue="168" className="field-input mt-2" options={[{value:"24",label:"24 hours"},{value:"72",label:"3 days"},{value:"168",label:"7 days"},{value:"720",label:"30 days"},{value:"0",label:"No expiry"}]} /></label>
-                <label className="field-label">Maximum uses<input name="max_uses" type="number" min="1" max="500" placeholder="Unlimited" className="field-input mt-2"/></label>
-              </div><button className="button-primary mt-4">Get invitation link</button>
-            </form>            ):<p className="mt-5 text-sm text-[var(--muted)]">This gathering is no longer accepting new invitations. Existing links are shown below for reference and cleanup.</p>}
-            {paramsData.invite&&<div className="mt-4 rounded-xl border border-[var(--line)] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Your link is ready</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" aria-label="Invitation link"/><CopyInviteLink value={paramsData.invite}/></div></div>}
-            <div className="mt-5"><h3 className="text-sm font-semibold">Existing links</h3>{!inviteLinks?.length?<p className="mt-2 text-sm text-[var(--muted)]">No invitation links have been created for this gathering yet.</p>:<div className="mt-3 divide-y divide-[var(--line)]">{inviteLinks.map(link=>{const url=`${inviteOrigin}/sessions/join/${link.short_code}`;const expired=!!link.expires_at&&new Date(link.expires_at).getTime()<=Date.now();const exhausted=link.max_uses!==null&&link.use_count>=link.max_uses;const state=link.revoked_at?"Revoked":expired?"Expired":exhausted?"Use limit reached":"Active";const active=state==="Active";return <div key={link.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{link.created_by===userId?"Your invitation link":"Participant invitation link"}</p><span className="rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] text-[var(--muted)]">{state}</span></div><p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p><p className="mt-1 text-xs text-[var(--muted)]">{link.use_count} {link.use_count===1?"use":"uses"}{link.max_uses===null?" · No use limit":` of ${link.max_uses}`}{link.expires_at?` · Expires ${formatDate(link.expires_at,session.time_zone)}`:" · No expiry"}</p></div><div className="flex shrink-0 flex-wrap gap-2">{active&&<CopyInviteLink value={url} />}{active&&(canManage||link.created_by===userId)&&<form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-10 !px-3 text-xs">Revoke</button></form>}</div></div>})}</div>}</div>
-            </DisclosureSection>
+        {canViewInviteLinks && (
+          <section className="surface-card mt-7 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-[var(--ink)]">Invitation links</h2>
+              {canCreateInvite && (
+                <form action={createInviteLink}>
+                  <input type="hidden" name="session_id" value={session.id} />
+                  <input type="hidden" name="expiry_hours" value="168" />
+                  <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">Create link</button>
+                </form>
+              )}
+            </div>
+            {paramsData.invite && (
+              <div className="mt-4 flex flex-col gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] p-3 sm:flex-row">
+                <input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" aria-label="Invitation link" />
+                <CopyInviteLink value={paramsData.invite} />
+              </div>
+            )}
+            {inviteLinksResult.error ? (
+              <InlineFeedback tone="error" className="mt-4">Invitation links could not be loaded.</InlineFeedback>
+            ) : inviteLinks.length === 0 ? (
+              <p className="mt-4 text-sm text-[var(--muted)]">No links yet.</p>
+            ) : (
+              <div className="mt-3 divide-y divide-[var(--line)]">
+                {inviteLinks.map((link) => {
+                  const url = `${inviteOrigin}/sessions/join/${link.short_code}`;
+                  const expired = !!link.expires_at && new Date(link.expires_at).getTime() <= Date.now();
+                  const exhausted = link.max_uses !== null && link.use_count >= link.max_uses;
+                  const state = link.revoked_at ? "Revoked" : expired ? "Expired" : exhausted ? "Limit reached" : "Active";
+                  const active = state === "Active";
+                  return (
+                    <div key={link.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium">{link.created_by === userId ? "Your link" : "Participant link"}</span>
+                          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-1 text-[10px] text-[var(--muted)]">{state}</span>
+                        </div>
+                        <p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">{link.use_count} {link.use_count === 1 ? "use" : "uses"} · {link.expires_at ? `Expires ${formatDate(link.expires_at, session.time_zone)}` : "No expiry"}</p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        {active && <CopyInviteLink value={url} />}
+                        {active && (canManage || link.created_by === userId) && (
+                          <form action={revokeInviteLink}>
+                            <input type="hidden" name="session_id" value={session.id} />
+                            <input type="hidden" name="link_id" value={link.id} />
+                            <button className="button-secondary !min-h-9 !px-3 !py-2 text-xs">Revoke</button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
         {canManage && session.waiting_room_enabled && (
@@ -642,8 +691,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
         {/* Session information */}
 
         <section className="surface-card mt-7 p-6">
-          <DisclosureSection title="Session information" summary="Access, organizer, schedule, and additional details" defaultOpen contentClassName="mt-4">
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+          <h2 className="text-lg font-semibold text-[var(--ink)]">Session information</h2>
+          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
 
             <div>
               <dt className="text-[var(--muted)]">
@@ -701,7 +750,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </div>
             )}
           </dl>
-          </DisclosureSection>
         </section>
       </div>
     </main>

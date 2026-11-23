@@ -29,6 +29,7 @@ export default function ModerationPanel({
   const [readerAccess, setReaderAccess] = useState<Record<string, boolean>>({});
   const [memberProfiles, setMemberProfiles] = useState<Record<string, { name: string; avatarUrl: string | null }>>({});
   const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [showAllMembers, setShowAllMembers] = useState(false);
 
   const isOrganizer = localRole === "organizer";
   const canManageParticipants =
@@ -138,6 +139,7 @@ export default function ModerationPanel({
   const managedMembers = Object.entries(memberRoles)
     .filter(([userId, role]) => userId !== getLiveKitUserId(participants.find((participant) => participant.isLocal) ?? { identity: "" } as never) && role !== "organizer")
     .sort(([a], [b]) => (memberProfiles[a]?.name ?? "").localeCompare(memberProfiles[b]?.name ?? ""));
+  const visibleManagedMembers = showAllMembers ? managedMembers : managedMembers.slice(0, 10);
 
   if (!open || !canManageParticipants) return null;
 
@@ -293,7 +295,7 @@ export default function ModerationPanel({
             </div>
           ) : (
             <div className="space-y-3">
-              {managedMembers.map(([targetUserId, targetRole]) => {
+              {visibleManagedMembers.map(([targetUserId, targetRole]) => {
                 const connections = connectedByUser.get(targetUserId) ?? [];
                 const canModerateTarget = isOrganizer || targetRole === "participant";
                 const canRemoveTarget = isOrganizer || targetRole === "participant";
@@ -369,6 +371,11 @@ export default function ModerationPanel({
                   </article>
                 );
               })}
+              {managedMembers.length > 10 && (
+                <button type="button" onClick={() => setShowAllMembers((value) => !value)} className="w-full rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-white/75 hover:bg-white/10">
+                  {showAllMembers ? "Show fewer" : `Show all ${managedMembers.length} members`}
+                </button>
+              )}
             </div>
           )}
 
