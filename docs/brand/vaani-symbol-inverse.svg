@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<title id="title">Vaani — abstract mark inverse</title>
+<desc id="desc">An abstract mark derived from the open bowl and rising shoulder of the custom Vaani lettering.</desc>
+<rect x="0" y="0" width="256" height="256" rx="54" fill="#F7F0E3"/>
+<path d="M58 143 C58 88 91 55 137 55 C181 55 209 87 207 130 C205 174 175 201 135 201 C96 201 65 174 62 139 C60 109 81 83 111 76 C143 68 175 85 184 112" fill="none" stroke="#173F4A" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M207 130 C208 158 207 183 208 205" fill="none" stroke="#B64E36" stroke-width="19" stroke-linecap="round"/>
+<path d="M58 143 C58 123 64 105 77 91" fill="none" stroke="#C58D32" stroke-width="10" stroke-linecap="round"/>
+</svg>
