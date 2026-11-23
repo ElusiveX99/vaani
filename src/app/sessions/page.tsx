@@ -130,7 +130,7 @@ function SessionCard({
 
         {membership && !session.is_draft && (
           <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
-            {membership.role.replace("_", " ")}
+            {membership.role.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase())}
           </span>
         )}
       </div>
