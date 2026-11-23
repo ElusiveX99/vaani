@@ -29,10 +29,6 @@ export default function CreateSessionForm({ action, error }: Props) {
     const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const form = formRef.current;
     if (!form) return;
-    const timeZoneField = form.elements.namedItem("time_zone");
-    if (browserTimeZone && timeZoneField instanceof HTMLInputElement) {
-      timeZoneField.value = browserTimeZone;
-    }
     const key = "vaani:create-gathering-form";
     if (error) {
       try {
@@ -48,6 +44,10 @@ export default function CreateSessionForm({ action, error }: Props) {
       } catch { /* Keep the form usable if browser storage is unavailable. */ }
     } else {
       sessionStorage.removeItem(key);
+    }
+    const timeZoneField = form.elements.namedItem("time_zone");
+    if (browserTimeZone && timeZoneField instanceof HTMLInputElement) {
+      timeZoneField.value = browserTimeZone;
     }
   }, [error]);
 
