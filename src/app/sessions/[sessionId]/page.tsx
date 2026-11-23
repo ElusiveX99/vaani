@@ -642,7 +642,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
         {/* Session information */}
 
         <section className="surface-card mt-7 p-6">
-          <DisclosureSection title="Session information" summary="Access, organizer, schedule, and additional details" contentClassName="mt-4">
+          <DisclosureSection title="Session information" summary="Access, organizer, schedule, and additional details" defaultOpen contentClassName="mt-4">
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
 
             <div>
