@@ -106,7 +106,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={\`\${display.variable} \${sans.variable} \${serif.variable} \${mono.variable} h-full antialiased\`}>
+    <html lang="en" className={[display.variable, sans.variable, serif.variable, mono.variable, "h-full antialiased"].join(" ")}>
       <body className="min-h-full flex flex-col">
         <InteractionProvider>
           <Suspense fallback={null}>
