@@ -16,6 +16,8 @@ import DisclosureSection from "@/components/disclosure-section";
 
 import {
   joinCommunitySession,
+  createInviteLink,
+  revokeInviteLink,
   leaveSession,
   startSession,
   endSession,
@@ -37,7 +39,6 @@ type PageProps = {
   searchParams: Promise<{
     success?: string;
     error?: string;
-    invite?: string;
   }>;
 };
 
@@ -57,11 +58,9 @@ type Session = {
   instructions: string | null;
   participant_limit: number | null;
   waiting_room_enabled: boolean;
-  allow_participant_invites: boolean;
   recurrence_rule: string | null;
   recurrence_until: string | null;
   recurrence_parent_id: string | null;
-  public_slug: string;
 };
 
 type Membership = {
@@ -104,7 +103,7 @@ const errorMessages: Record<string, string> = {
   resume_failed: "The gathering could not be resumed.",
 
   invalid_invite_link: "The invitation link could not be created.",
-  invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
+  invite_link_failed: "The invitation link is unavailable or could not be used.",
   publish_failed: "The draft could not be published. Check that its start time is in the future.",
   invalid_edit: "Check the title, access, and future start time.",
   update_failed: "The gathering could not be updated.",
@@ -193,7 +192,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
   const [{data:authUser},{data:ownProfile},{data:sessionData,error:sessionError}]=await Promise.all([
     supabase.auth.getUser(),
     supabase.from("profiles").select("display_name,avatar_url,avatar_path").eq("id",userId).maybeSingle(),
-    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,allow_participant_invites,recurrence_rule,recurrence_until,recurrence_parent_id,public_slug").eq("id",sessionId).maybeSingle(),
+    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,recurrence_rule,recurrence_until,recurrence_parent_id").eq("id",sessionId).maybeSingle(),
   ]);
   const email=authUser.user?.email||"";
   const displayName=ownProfile?.display_name||authUser.user?.user_metadata?.full_name||authUser.user?.user_metadata?.name||email.split("@")[0]||"Sakhi";
@@ -250,14 +249,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div className="sm:col-span-2"><DisclosureSection title="Recurrence" summary={session.recurrence_rule ? "This draft has a repeat schedule" : "Set this gathering to repeat"} contentClassName="mt-3"><RecurrenceFields initialRule={session.recurrence_rule || ""} initialUntil={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} /></DisclosureSection></div>
               <div className="sm:col-span-2"><DisclosureSection title="Participant instructions" summary="Optional information for participants" contentClassName="mt-3"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></DisclosureSection></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled} /> Use waiting room</label>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites} /> Allow participant invitations</label>
               <div className="sm:col-span-2 flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <ConfirmSubmitButton
                   formAction={deleteSessionDraft}
                   name="session_id"
                   value={session.id}
                   message="Permanently delete this draft? This cannot be undone."
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] transition hover:bg-[#fbefed]"
+                  className="button-danger"
                 >
                   Delete draft
                 </ConfirmSubmitButton>
@@ -342,13 +340,23 @@ async function SessionContent({ params, searchParams }: PageProps) {
     ])
   );
 
-  const canShareGatheringLink =
+  // Every accepted participant can create and manage their own reusable link.
+  // Organizers can view and revoke links created by any participant.
+  const canViewInviteLinks =
     session.status !== "ended" &&
     session.status !== "cancelled" &&
-    (session.access_type === "community"
-      ? isAccepted || canManage
-      : canManage || (isAccepted && session.allow_participant_invites));
-  const gatheringUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app"}/g/${session.public_slug}`;
+    (canManage || isAccepted);
+  const inviteLinksResult = canViewInviteLinks
+    ? await supabase.from("session_invite_links")
+        .select("id,short_code,created_by,revoked_at,created_at")
+        .eq("session_id", session.id)
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
+  const inviteLinks = inviteLinksResult.data ?? [];
+  const inviteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app";
+  if (inviteLinksResult.error) {
+    console.error("Invitation link lookup failed:", inviteLinksResult.error);
+  }
 
 
   const acceptedCount = members.filter(
@@ -518,7 +526,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <input type="hidden" name="session_id" value={session.id} />
                 <ConfirmSubmitButton
                   message="Permanently delete this ended gathering and its associated history? This cannot be undone."
-                  className="text-sm font-medium text-[#a34e56] underline-offset-4 hover:underline"
+                  className="button-danger"
                 >
                   Delete gathering
                 </ConfirmSubmitButton>
@@ -530,7 +538,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <input type="hidden" name="session_id" value={session.id} />
                 <ConfirmSubmitButton
                   message="Permanently delete this cancelled gathering and its associated records? This cannot be undone."
-                  className="text-sm font-medium text-[#a34e56] underline-offset-4 hover:underline"
+                  className="button-danger"
                 >
                   Delete gathering
                 </ConfirmSubmitButton>
@@ -570,13 +578,65 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </section>
           )}
 
-        {canShareGatheringLink && (
-          <section className="surface-card mt-7 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-[var(--ink)]">Gathering link</h2>
-              <p className="mt-1 truncate text-sm text-[var(--muted)]">{gatheringUrl}</p>
+        {canViewInviteLinks && (
+          <section className="surface-card mt-7 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--ink)]">Invitation links</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">Your reusable 10-character link for this gathering.</p>
+              </div>
+              <form action={createInviteLink}>
+                <input type="hidden" name="session_id" value={session.id} />
+                <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">Create link</button>
+              </form>
             </div>
-            <CopyInviteLink value={gatheringUrl} />
+            {paramsData.success === "invitation_created" && (
+              <InlineFeedback tone="success" className="mt-4">Your invitation link is ready. Copy it below.</InlineFeedback>
+            )}
+            {paramsData.success === "invitation_revoked" && (
+              <InlineFeedback tone="success" className="mt-4">The invitation link has been revoked.</InlineFeedback>
+            )}
+            {["invalid_invite_link", "invite_link_failed", "revoke_invitation_failed"].includes(paramsData.error || "") && (
+              <InlineFeedback tone="error" className="mt-4">
+                {paramsData.error === "revoke_invitation_failed"
+                  ? "The invitation link could not be revoked."
+                  : "The invitation link could not be created. Please try again."}
+              </InlineFeedback>
+            )}
+            {inviteLinksResult.error ? (
+              <InlineFeedback tone="error" className="mt-4">Invitation links could not be loaded.</InlineFeedback>
+            ) : inviteLinks.length === 0 ? (
+              <p className="mt-4 text-sm text-[var(--muted)]">No links yet.</p>
+            ) : (
+              <div className="mt-3 divide-y divide-[var(--line)]">
+                {inviteLinks.filter((link) => typeof link.short_code === "string" && link.short_code.length === 10).map((link) => {
+                  const url = `${inviteOrigin}/g/${link.short_code}`;
+                  const active = !link.revoked_at;
+                  return (
+                    <div key={link.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium">{link.created_by === userId ? "Your link" : "Participant link"}</span>
+                          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-1 text-[10px] text-[var(--muted)]">{active ? "Active" : "Revoked"}</span>
+                        </div>
+                        <p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">Reusable link · No expiration or usage limit</p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        {active && <CopyInviteLink value={url} />}
+                        {active && (canManage || link.created_by === userId) && (
+                          <form action={revokeInviteLink}>
+                            <input type="hidden" name="session_id" value={session.id} />
+                            <input type="hidden" name="link_id" value={link.id} />
+                            <button className="button-secondary !min-h-9 !px-3 !py-2 text-xs">Revoke</button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
         {canManage && session.waiting_room_enabled && (

@@ -126,10 +126,6 @@ export default function CreateSessionForm({ action, error }: Props) {
           <input type="checkbox" name="waiting_room_enabled" className="mt-1 size-4 accent-[var(--plum)]" />
           <span><strong className="block">Use a waiting room</strong><span className="text-[var(--muted)]">Participants wait for approval before entering.</span></span>
         </label>
-        <label className="flex items-start gap-3 text-sm text-[var(--ink)]">
-          <input type="checkbox" name="allow_participant_invites" className="mt-1 size-4 accent-[var(--plum)]" />
-          <span><strong className="block">Allow participants to invite others</strong><span className="text-[var(--muted)]">Participants can invite others when the organizer allows it.</span></span>
-        </label>
       </DisclosureSection>
 
       <DisclosureSection
