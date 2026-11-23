@@ -1,284 +1,289 @@
 import Link from "next/link";
-import { BrandMark } from "@/components/brand-lockup";
+import styles from "./landing.module.css";
 
-const practices = [
-  {
-    number: "01",
-    title: "Vaani Gaayan",
-    detail: "Sing the padas of Shree Hit Chaturasi Ji together.",
-    tone: "gaayan",
-  },
-  {
-    number: "02",
-    title: "Vaani Paath",
-    detail: "Read from the Vaani together, following each page at an unhurried pace.",
-    tone: "paath",
-  },
-] as const;
-
-function HeroArtwork() {
+function ArrowIcon() {
   return (
-    <div className="landing-artwork" aria-hidden="true">
-      <svg className="landing-artwork__svg" viewBox="0 0 620 560" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="folio-paper" x1="310" y1="30" x2="310" y2="530" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#FFFCF7" />
-            <stop offset="1" stopColor="#EDE4DC" />
-          </linearGradient>
-          <linearGradient id="voice-line" x1="105" y1="210" x2="512" y2="305" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#A77D82" />
-            <stop offset=".52" stopColor="#593B53" />
-            <stop offset="1" stopColor="#A98A5B" />
-          </linearGradient>
-        </defs>
-        <rect x="28" y="22" width="564" height="516" rx="7" fill="#EDE5DE" stroke="#D3C3B9" />
-        <rect x="43" y="37" width="534" height="486" rx="3" stroke="#C8B5AA" strokeOpacity=".7" />
-        <path d="M82 82H538" stroke="#CDBBB0" strokeOpacity=".75" />
-        <path d="M82 478H538" stroke="#CDBBB0" strokeOpacity=".75" />
-        <circle cx="82" cy="82" r="3" fill="#A98A5B" />
-        <circle cx="538" cy="82" r="3" fill="#A98A5B" />
-        <circle cx="82" cy="478" r="3" fill="#A98A5B" />
-        <circle cx="538" cy="478" r="3" fill="#A98A5B" />
-
-        <g stroke="#BDA9A0" strokeWidth="1.2" strokeLinecap="round" opacity=".65">
-          <path d="M110 126H230" />
-          <path d="M110 139H190" />
-          <path d="M390 126H510" />
-          <path d="M430 139H510" />
-        </g>
-
-        <path
-          d="M104 245C145 245 151 180 190 180C229 180 230 309 270 309C310 309 310 214 350 214C390 214 391 278 430 278C469 278 477 245 516 245"
-          stroke="url(#voice-line)"
-          strokeWidth="3.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M104 264C145 264 151 218 190 218C229 218 230 289 270 289C310 289 310 239 350 239C390 239 391 260 430 260C469 260 477 264 516 264"
-          stroke="#B98D91"
-          strokeOpacity=".38"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        />
-        <circle cx="190" cy="180" r="4.5" fill="#A98A5B" />
-        <circle cx="350" cy="214" r="4.5" fill="#A98A5B" />
-
-        <path
-          d="M112 355C174 331 235 339 310 372C385 339 446 331 508 355V435C447 412 385 423 310 456C235 423 173 412 112 435V355Z"
-          fill="url(#folio-paper)"
-          stroke="#9D7D7A"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-        <path d="M310 372V456" stroke="#BDA69C" strokeWidth="1.2" />
-        <path d="M135 374C187 356 237 365 285 385M135 394C184 378 233 385 282 405M135 414C181 400 230 406 280 425" stroke="#BBA9A1" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M335 385C383 365 433 356 485 374M338 405C387 385 436 378 485 394M340 425C390 406 439 400 485 414" stroke="#BBA9A1" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M112 355C174 331 235 339 310 372C385 339 446 331 508 355" stroke="#593B53" strokeOpacity=".45" strokeWidth="1.5" />
-        <path d="M112 435C173 412 235 423 310 456C385 423 447 412 508 435" stroke="#593B53" strokeOpacity=".35" strokeWidth="1.5" />
-
-        <path d="M310 92V108M302 100H318" stroke="#A98A5B" strokeWidth="1.3" strokeLinecap="round" />
-        <path d="M294 492H326" stroke="#A98A5B" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-      <span className="landing-artwork__halo landing-artwork__halo--one" />
-      <span className="landing-artwork__halo landing-artwork__halo--two" />
-    </div>
-  );
-}
-
-function ScrollCue() {
-  return (
-    <a className="landing-scroll-cue" href="#gatherings" aria-label="Scroll to explore Vaani">
-      <span>Scroll to explore</span>
-      <svg viewBox="0 0 16 20" fill="none" aria-hidden="true">
-        <path d="M8 1V17M2 11L8 17L14 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </a>
-  );
-}
-
-function PracticeMark({ kind }: { kind: "gaayan" | "paath" }) {
-  if (kind === "gaayan") {
-    return (
-      <svg viewBox="0 0 88 88" fill="none" aria-hidden="true">
-        <path d="M12 44H22L29 27L39 61L49 19L59 55L66 38H76" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M12 70H76" stroke="currentColor" strokeOpacity=".28" strokeWidth="1" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 88 88" fill="none" aria-hidden="true">
-      <path d="M12 25C25 19 36 22 44 29C52 22 63 19 76 25V66C63 60 52 63 44 70C36 63 25 60 12 66V25Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-      <path d="M44 29V70M20 34C28 31 34 33 38 36M50 36C54 33 60 31 68 34M20 45C28 42 34 44 38 47M50 47C54 44 60 42 68 45" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M3.5 10H16M10.5 4.5L16 10L10.5 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
+function Wordmark() {
+  return (
+    <Link href="/" className={styles.wordmark} aria-label="Vaani home">
+      Vaani<span aria-hidden="true">.</span>
+    </Link>
+  );
+}
+
+function ReaderPreview() {
+  return (
+    <div className={styles.preview} aria-label="Illustrative view of a Vaani gathering">
+      <div className={styles.previewTopbar}>
+        <div className={styles.previewBrand}>
+          <span className={styles.previewBrandDot} />
+          <span>VAANI GATHERING</span>
+        </div>
+        <span className={styles.previewLive}><span /> In progress</span>
+      </div>
+
+      <div className={styles.previewBody}>
+        <div className={styles.readerPanel}>
+          <div className={styles.readerHeading}>
+            <div>
+              <span className={styles.previewOverline}>SHARED READER</span>
+              <p>Vaani Paath</p>
+            </div>
+            <span className={styles.pageCount}>Page <strong>—</strong></span>
+          </div>
+          <div className={styles.paper}>
+            <span className={styles.paperRule} />
+            <span className={styles.paperTitle}>श्री हित चतुरासी जी</span>
+            <span className={styles.paperRuleShort} />
+            <span className={styles.paperLine} />
+            <span className={styles.paperLine} />
+            <span className={styles.paperLineNarrow} />
+            <span className={styles.paperGap} />
+            <span className={styles.paperLine} />
+            <span className={styles.paperLineNarrow} />
+            <span className={styles.paperLine} />
+            <span className={styles.paperFooter} />
+          </div>
+          <div className={styles.readerStatus}>
+            <span className={styles.readerStatusDot} />
+            Shared reading position
+          </div>
+        </div>
+
+        <div className={styles.gatheringPanel}>
+          <div className={styles.gatheringPanelHead}>
+            <span className={styles.previewOverline}>GATHERING</span>
+            <span className={styles.moreDots} aria-hidden="true">•••</span>
+          </div>
+          <div className={styles.participantTiles} aria-hidden="true">
+            <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
+            <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
+            <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
+          </div>
+          <div className={styles.gatheringDivider} />
+          <div className={styles.gatheringTool}><span className={styles.toolGlyph}>◖</span><span>Audio &amp; video</span></div>
+          <div className={styles.gatheringTool}><span className={styles.toolGlyph}>▤</span><span>Shared reader</span></div>
+          <div className={styles.gatheringTool}><span className={styles.toolGlyph}>▱</span><span>Gathering chat</span></div>
+        </div>
+      </div>
+      <p className={styles.previewCaption}>An illustrative view of the shared gathering experience</p>
+    </div>
+  );
+}
+
+const capabilities = [
+  {
+    number: "01",
+    title: "Plan a gathering",
+    body: "Schedule a future gathering or save a draft. Set its duration, repeat schedule, participant limit, and instructions.",
+  },
+  {
+    number: "02",
+    title: "Choose who can join",
+    body: "Make a gathering available to Vaani members or share an invitation link. Add a waiting room when organizer approval is needed.",
+  },
+  {
+    number: "03",
+    title: "Meet in one place",
+    body: "Gather with live audio and video, chat, membership tools, join requests, and organizer or session-admin controls.",
+  },
+  {
+    number: "04",
+    title: "Follow the Vaani",
+    body: "Read from a shared PDF reader. The organizer or an authorized reader can guide the shared page while participants keep local reading control.",
+  },
+];
+
 export default function LandingPage() {
   return (
-    <main className="landing-page">
-      <header className="landing-header">
-        <nav className="landing-nav" aria-label="Main navigation">
-          <BrandMark />
-          <div className="landing-nav__links">
-            <a className="landing-nav__quiet" href="#gatherings">Sakhi Sang</a>
-            <a className="landing-nav__quiet" href="#practices">Gaayan &amp; Paath</a>
-            <a className="landing-nav__quiet" href="#experience">How it works</a>
-            <Link href="/login" className="landing-nav__quiet">Sign in</Link>
-            <Link href="/signup" className="landing-nav__join">Join Vaani</Link>
+    <main className={styles.site}>
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <Wordmark />
+          <nav className={styles.nav} aria-label="Main navigation">
+            <a href="#practices">Gaayan &amp; Paath</a>
+            <a href="#reader">Shared reading</a>
+            <a href="#how-it-works">How it works</a>
+          </nav>
+          <div className={styles.headerActions}>
+            <Link href="/login" className={styles.signIn}>Sign in</Link>
+            <Link href="/signup" className={styles.headerJoin}>Join Vaani <ArrowIcon /></Link>
           </div>
-          <div className="landing-nav__mobile">
-            <Link href="/login" className="landing-nav__quiet">Sign in</Link>
-            <Link href="/signup" className="landing-nav__join">Join Vaani</Link>
-          </div>
-        </nav>
+        </div>
       </header>
 
-      <section className="landing-hero" aria-labelledby="landing-title">
-        <div className="landing-hero__ambient landing-hero__ambient--left" />
-        <div className="landing-hero__ambient landing-hero__ambient--right" />
-        <div className="landing-shell landing-hero__grid">
-          <div className="landing-hero__copy">
-            <p className="landing-eyebrow landing-reveal">Shree Harivansh · Sakhi Sang</p>
-            <h1 id="landing-title" className="landing-title landing-reveal">
-              A shared space for <em>Gaayan &amp; Paath.</em>
-            </h1>
-            <p className="landing-hero__description landing-reveal">
-              A quiet place for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.
+      <section className={styles.hero} aria-labelledby="hero-title">
+        <div className={styles.heroInner}>
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}><span /> SAKHI SANG <span className={styles.kickerDivider}>/</span> SHREE HARIVANSH</p>
+            <h1 id="hero-title">Come together<br />for the <em>Vaani.</em></h1>
+            <p className={styles.heroText}>
+              A shared space for Sakhis to gather for Shree Hit Chaturasi Ji Gaayan and Vaani Paath—with live audio and video, and a reader that follows the gathering.
             </p>
-            <div className="landing-hero__actions landing-reveal">
-              <Link href="/signup" className="landing-button landing-button--primary">
-                Join Vaani
-                <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                  <path d="M3 9H14M9 4L14 9L9 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
-              <Link href="/sessions" className="landing-button landing-button--text">View Sessions</Link>
+            <div className={styles.heroActions}>
+              <Link href="/signup" className={styles.primaryButton}>Join Vaani <ArrowIcon /></Link>
+              <Link href="/login" className={styles.secondaryButton}>Already a member? Sign in</Link>
             </div>
-            <p className="landing-hero__note landing-reveal">Vaani · Gaayan · Paath</p>
+            <p className={styles.heroFootnote}>GAAYAN <span>·</span> PAATH <span>·</span> SAKHI SANG</p>
           </div>
-          <div className="landing-hero__visual">
-            <HeroArtwork />
-            <span className="landing-hero__visual-caption">जय जय श्री हित हरिवंश</span>
+          <div className={styles.heroVisual}>
+            <ReaderPreview />
           </div>
         </div>
-        <div className="landing-shell landing-hero__foot">
-          <span className="landing-hero__rule" />
-          <ScrollCue />
-          <span className="landing-hero__rule" />
-        </div>
-      </section>
-
-      <section id="gatherings" className="landing-gathering landing-section">
-        <div className="landing-shell landing-gathering__layout">
-          <div className="landing-gathering__index landing-reveal">
-            <span>01</span>
-            <span className="landing-index-line" />
-            <span>SAKHI SANG</span>
-          </div>
-          <div className="landing-gathering__content landing-reveal">
-            <p className="landing-eyebrow">Together in Vaani</p>
-            <h2 className="landing-section-title">A shared space for <em>Gaayan</em> and <em>Paath.</em></h2>
-            <p className="landing-body-copy">
-              Come together quietly for pada gaayan and reading.
-            </p>
-          </div>
-          <div className="landing-gathering__ornament" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
+        <div className={styles.heroBottom}>
+          <span>MADE FOR SHARED GATHERINGS</span>
+          <span className={styles.heroBottomLine} />
+          <a href="#gathering">Explore Vaani <span aria-hidden="true">↓</span></a>
         </div>
       </section>
 
-      <section id="practices" className="landing-practices landing-section">
-        <div className="landing-shell">
-          <div className="landing-practices__heading landing-reveal">
-            <p className="landing-eyebrow">The practices</p>
-            <h2 className="landing-section-title">Two ways to be <em>together.</em></h2>
-          </div>
-          <div className="landing-practices__grid">
-            {practices.map((item) => (
-              <article className={`landing-practice landing-practice--${item.tone} landing-reveal`} key={item.number}>
-                <div className="landing-practice__top">
-                  <span className="landing-practice__number">{item.number}</span>
-                  <span className="landing-practice__mark" aria-hidden="true">
-                    <PracticeMark kind={item.tone} />
-                  </span>
-                </div>
-                <div className="landing-practice__bottom">
-                  <h3>{item.title}</h3>
-                  <p>{item.detail}</p>
-                </div>
-              </article>
-            ))}
-          </div>
+      <section id="gathering" className={styles.intro}>
+        <div className={styles.sectionIndex}>01 <span /> THE GATHERING</div>
+        <div className={styles.introContent}>
+          <p className={styles.kicker}>A PLACE TO COME TOGETHER</p>
+          <h2>The gathering comes first.<br /><em>The tools follow.</em></h2>
+          <p>
+            Vaani brings the practical parts of a gathering into one place: arranging a time, sharing an invitation, meeting together, and following the Vaani as it is read.
+          </p>
+        </div>
+        <div className={styles.introAside}>
+          <span className={styles.asideRule} />
+          <p>One shared space for Gaayan, Paath, and the Sakhis who gather for them.</p>
         </div>
       </section>
 
-      <section id="experience" className="landing-experience landing-section">
-        <div className="landing-shell">
-          <div className="landing-experience__heading landing-reveal">
-            <p className="landing-eyebrow">A gathering, together</p>
-            <h2 className="landing-section-title">From finding a space to <em>joining in.</em></h2>
-            <p className="landing-body-copy">Vaani brings the practical parts of gathering into one shared place.</p>
+      <section id="practices" className={styles.practices}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.kicker}>THE PRACTICES</p>
+            <h2>Two ways to gather.<br /><em>One shared space.</em></h2>
           </div>
-          <div className="landing-experience__steps">
-            <article className="landing-experience__step landing-reveal">
-              <span className="landing-experience__number">01</span>
-              <div>
-                <h3>Find a gathering</h3>
-                <p>Explore gatherings open to Vaani members and see what is coming up.</p>
-                <Link href="/sessions" className="landing-experience__link">View sessions <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8H13M8 3L13 8L8 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg></Link>
-              </div>
+          <p>Whether the gathering is for singing or reading, Vaani keeps the people and the practice together.</p>
+        </div>
+        <div className={styles.practiceGrid}>
+          <article className={styles.practice}>
+            <span className={styles.practiceNumber}>01 / GAAYAN</span>
+            <div className={styles.practiceArtwork} aria-hidden="true">
+              <svg viewBox="0 0 440 150" fill="none">
+                <path d="M4 77H77L102 40L132 112L166 20L201 130L235 48L265 91L293 61H436" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 94H436" stroke="currentColor" strokeOpacity=".16" />
+              </svg>
+            </div>
+            <h3>Vaani Gaayan</h3>
+            <p>Come together for pada gaayan. Live audio and video bring the gathering into one shared space.</p>
+          </article>
+          <article className={styles.practice}>
+            <span className={styles.practiceNumber}>02 / PAATH</span>
+            <div className={styles.practiceArtwork} aria-hidden="true">
+              <svg viewBox="0 0 440 150" fill="none">
+                <path d="M35 31C91 10 151 20 220 53C289 20 349 10 405 31V123C349 102 289 112 220 145C151 112 91 102 35 123V31Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M220 53V145M64 49C112 34 158 43 190 61M64 73C112 58 158 67 190 85M64 97C112 82 158 91 190 109M250 61C282 43 328 34 376 49M250 85C282 67 328 58 376 73M250 109C282 91 328 82 376 97" stroke="currentColor" strokeOpacity=".58" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h3>Vaani Paath</h3>
+            <p>Follow the Vaani as it is read, with a shared PDF reader that keeps the group's reading position in view.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="reader" className={styles.readerSection}>
+        <div className={styles.readerCopy}>
+          <p className={styles.kicker}>BUILT AROUND SHARED READING</p>
+          <h2>Read together.<br /><em>Stay in step.</em></h2>
+          <p>
+            The Vaani Reader is part of the gathering—not a separate screen to keep track of. An organizer or authorized reader can guide the shared page. Participants can move through the document on their own and return to the shared position when they are ready.
+          </p>
+          <ul className={styles.readerPoints}>
+            <li><span>01</span> A shared PDF reader inside the conference</li>
+            <li><span>02</span> A reading position synchronized for the gathering</li>
+            <li><span>03</span> Local page navigation with a way back to the shared position</li>
+          </ul>
+        </div>
+        <div className={styles.readerVisual}>
+          <div className={styles.readerVisualTop}><span>THE VAANI READER</span><span>SHARED DOCUMENT</span></div>
+          <div className={styles.openBook}>
+            <div className={styles.bookPage}>
+              <span className={styles.bookPageLabel}>SHREE HIT CHATURASI JI</span>
+              <span className={styles.bookHeading}>श्री हित चतुरासी जी</span>
+              <span className={styles.bookLine} /><span className={styles.bookLine} /><span className={styles.bookLineShort} />
+              <span className={styles.bookSpace} />
+              <span className={styles.bookLine} /><span className={styles.bookLineShort} /><span className={styles.bookLine} />
+              <span className={styles.bookPageNumber}>—</span>
+            </div>
+            <div className={styles.bookPage}>
+              <span className={styles.bookPageLabel}>SHARED READING</span>
+              <span className={styles.bookLine} /><span className={styles.bookLineShort} /><span className={styles.bookLine} />
+              <span className={styles.bookSpace} />
+              <span className={styles.bookLine} /><span className={styles.bookLine} /><span className={styles.bookLineShort} />
+              <span className={styles.bookSpace} />
+              <span className={styles.bookLine} /><span className={styles.bookLineShort} />
+              <span className={styles.bookPageNumber}>—</span>
+            </div>
+          </div>
+          <div className={styles.readerVisualFoot}><span className={styles.syncDot} /> Shared position <span className={styles.readerVisualFootDivider} /> Follow along at your pace</div>
+        </div>
+      </section>
+
+      <section id="how-it-works" className={styles.workflow}>
+        <div className={styles.workflowHeading}>
+          <p className={styles.kicker}>HOW A GATHERING WORKS</p>
+          <h2>From invitation<br /><em>to togetherness.</em></h2>
+          <p>Each gathering has a clear path from planning to joining in.</p>
+        </div>
+        <div className={styles.workflowSteps}>
+          <article className={styles.workflowStep}>
+            <span className={styles.workflowNumber}>01</span>
+            <div><h3>Make a gathering</h3><p>Create one for a future time or save it as a draft. Add the details Sakhis need before they join.</p></div>
+          </article>
+          <article className={styles.workflowStep}>
+            <span className={styles.workflowNumber}>02</span>
+            <div><h3>Share the invitation</h3><p>Open it to Vaani members or share an invitation link. A waiting room lets the organizer approve participants before they enter.</p></div>
+          </article>
+          <article className={styles.workflowStep}>
+            <span className={styles.workflowNumber}>03</span>
+            <div><h3>Gather and take part</h3><p>Meet with live audio and video, and follow the shared Vaani Reader during Paath.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.capabilities}>
+        <div className={styles.capabilitiesHeading}>
+          <p className={styles.kicker}>THOUGHT THROUGH, FROM START TO FINISH</p>
+          <h2>Everything a gathering<br /><em>needs around it.</em></h2>
+        </div>
+        <div className={styles.capabilityGrid}>
+          {capabilities.map((item) => (
+            <article className={styles.capability} key={item.number}>
+              <span>{item.number}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
             </article>
-            <article className="landing-experience__step landing-reveal">
-              <span className="landing-experience__number">02</span>
-              <div>
-                <h3>Create a gathering</h3>
-                <p>Arrange a gathering and invite Sakhis to join you.</p>
-                <Link href="/sessions/new" className="landing-experience__link">Create a session <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8H13M8 3L13 8L8 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg></Link>
-              </div>
-            </article>
-            <article className="landing-experience__step landing-reveal">
-              <span className="landing-experience__number">03</span>
-              <div>
-                <h3>Come together</h3>
-                <p>Join the conference when it is time for gaayan and Vaani paath.</p>
-                <Link href="/login" className="landing-experience__link">Sign in to Vaani <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8H13M8 3L13 8L8 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg></Link>
-              </div>
-            </article>
-          </div>
+          ))}
         </div>
       </section>
 
-      <section className="landing-closing landing-section">
-        <div className="landing-closing__ornament" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="landing-closing__content landing-reveal">
-          <p className="landing-eyebrow">Vaani</p>
-          <h2 className="landing-section-title">A place to gather.</h2>
-          <p className="landing-body-copy">Join the Sakhi Sang.</p>
-          <Link href="/signup" className="landing-button landing-button--primary">
-            Join Vaani
-            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M3 9H14M9 4L14 9L9 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
+      <section className={styles.closing}>
+        <p className={styles.kicker}>VAANI · SAKHI SANG</p>
+        <h2>Make room<br />for a <em>gathering.</em></h2>
+        <p>Join the Sakhis who come together for Gaayan and Paath.</p>
+        <div className={styles.closingActions}>
+          <Link href="/signup" className={styles.primaryButton}>Join Vaani <ArrowIcon /></Link>
+          <Link href="/login" className={styles.closingSignIn}>Already a member? Sign in</Link>
         </div>
       </section>
 
-      <footer className="landing-footer">
-        <div className="landing-shell landing-footer__inner">
-          <BrandMark />
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <Wordmark />
           <p>जय जय श्री हित हरिवंश</p>
-          <div className="landing-footer__links">
-            <Link href="/login">Sign in</Link>
-            <Link href="/signup">Join Vaani</Link>
-          </div>
+          <div><Link href="/login">Sign in</Link><Link href="/signup">Join Vaani</Link></div>
+          <span className={styles.copyright}>© 2026 Vaani</span>
         </div>
       </footer>
     </main>
