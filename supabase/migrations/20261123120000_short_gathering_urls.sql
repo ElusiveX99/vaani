@@ -41,7 +41,7 @@ as $$
     s.time_zone,
     s.duration_minutes,
     (select count(*) from public.session_members m
-      where m.session_id = s.id and m.status = 'accepted') as participant_count,
+      where m.session_id = s.id and m.status = 'accepted' and m.role = 'participant') as participant_count,
     s.participant_limit,
     s.waiting_room_enabled
   from public.sessions s
