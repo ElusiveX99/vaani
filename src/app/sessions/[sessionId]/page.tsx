@@ -257,7 +257,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                   name="session_id"
                   value={session.id}
                   message="Permanently delete this draft? This cannot be undone."
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] transition hover:bg-[#fbefed]"
+                  className="button-danger"
                 >
                   Delete draft
                 </ConfirmSubmitButton>
@@ -465,7 +465,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
                   <button
                     type="submit"
-                    className="rounded-lg border border-[#e7c8c7] px-5 py-2.5 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
+                    className="button-danger"
                   >
                     Cancel session
                   </button>
@@ -529,7 +529,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <input type="hidden" name="session_id" value={session.id} />
                 <ConfirmSubmitButton
                   message="Permanently delete this ended gathering and its associated history? This cannot be undone."
-                  className="text-sm font-medium text-[#a34e56] underline-offset-4 hover:underline"
+                  className="button-danger"
                 >
                   Delete gathering
                 </ConfirmSubmitButton>
@@ -541,7 +541,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 <input type="hidden" name="session_id" value={session.id} />
                 <ConfirmSubmitButton
                   message="Permanently delete this cancelled gathering and its associated records? This cannot be undone."
-                  className="text-sm font-medium text-[#a34e56] underline-offset-4 hover:underline"
+                  className="button-danger"
                 >
                   Delete gathering
                 </ConfirmSubmitButton>
