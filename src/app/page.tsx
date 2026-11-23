@@ -25,7 +25,7 @@ function ReaderPreview() {
           <span className={styles.previewBrandDot} />
           <span>VAANI GATHERING</span>
         </div>
-        <span className={styles.previewLive}><span /> In progress</span>
+        <span className={styles.previewLive}>CONFERENCE PREVIEW</span>
       </div>
 
       <div className={styles.previewBody}>
@@ -35,7 +35,7 @@ function ReaderPreview() {
               <span className={styles.previewOverline}>SHARED READER</span>
               <p>Vaani Paath</p>
             </div>
-            <span className={styles.pageCount}>Page <strong>—</strong></span>
+            <span className={styles.pageCount}>PDF</span>
           </div>
           <div className={styles.paper}>
             <span className={styles.paperRule} />
@@ -52,7 +52,7 @@ function ReaderPreview() {
           </div>
           <div className={styles.readerStatus}>
             <span className={styles.readerStatusDot} />
-            Shared reading position
+            Shared reader preview
           </div>
         </div>
 
@@ -62,14 +62,14 @@ function ReaderPreview() {
             <span className={styles.moreDots} aria-hidden="true">•••</span>
           </div>
           <div className={styles.participantTiles} aria-hidden="true">
-            <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
+            <div className={styles.participantTile}><span className={styles.participantAvatar} /><span /></div>
             <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
             <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
           </div>
           <div className={styles.gatheringDivider} />
-          <div className={styles.gatheringTool}><span className={styles.toolGlyph}>◖</span><span>Audio &amp; video</span></div>
-          <div className={styles.gatheringTool}><span className={styles.toolGlyph}>▤</span><span>Shared reader</span></div>
-          <div className={styles.gatheringTool}><span className={styles.toolGlyph}>▱</span><span>Gathering chat</span></div>
+          <div className={styles.gatheringTool}><span className={styles.toolGlyph} /><span>Audio &amp; video</span></div>
+          <div className={styles.gatheringTool}><span className={styles.toolGlyph} /><span>Shared reader</span></div>
+          <div className={styles.gatheringTool}><span className={styles.toolGlyph} /><span>Gathering chat</span></div>
         </div>
       </div>
       <p className={styles.previewCaption}>An illustrative view of the shared gathering experience</p>
