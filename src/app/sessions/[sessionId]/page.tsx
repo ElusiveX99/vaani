@@ -471,7 +471,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </>
             )}
 
-            {isOrganizer && session.status === "cancelled" && session.scheduled_start_at && new Date(session.scheduled_start_at).getTime() > Date.now() && (
+            {isOrganizer && session.status === "cancelled" && isFutureScheduledTime(session.scheduled_start_at) && (
               <form action={resumeSession}>
                 <input type="hidden" name="session_id" value={session.id}/>
                 <button className="button-primary">Resume gathering</button>
@@ -741,6 +741,10 @@ async function SessionContent({ params, searchParams }: PageProps) {
       </div>
     </main>
   );
+}
+
+function isFutureScheduledTime(value: string | null | undefined) {
+  return Boolean(value && new Date(value).getTime() > Date.now());
 }
 
 export default function SessionPage(props: PageProps) {
