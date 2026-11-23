@@ -1,2 +1,13 @@
-import type {MetadataRoute} from "next";
-export default function sitemap():MetadataRoute.Sitemap{const base="https://vaaniju.vercel.app";return ["/","/login","/signup"].map(path=>({url:new URL(path,base).toString(),lastModified:new Date(),changeFrequency:"monthly",priority:path==="/"?1:.35}));}
+import type { MetadataRoute } from "next";
+import { canonicalSiteUrl } from "@/lib/site-url";
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  if (process.env.VERCEL_ENV === "preview") return [];
+
+  return ["/", "/login", "/signup"].map((path) => ({
+    url: new URL(path, canonicalSiteUrl).toString(),
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: path === "/" ? 1 : 0.35,
+  }));
+}

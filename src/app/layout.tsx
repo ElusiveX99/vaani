@@ -5,6 +5,7 @@ import "./globals.css";
 import FormPendingFeedback from "@/components/form-pending-feedback";
 import ToastViewport from "@/components/toast-viewport";
 import InteractionProvider from "@/components/interaction-provider";
+import { canonicalSiteUrl, siteUrl } from "@/lib/site-url";
 
 const display = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -33,14 +34,16 @@ const mono = Geist_Mono({
   display: "swap",
 });
 
+const isPreview = process.env.VERCEL_ENV === "preview";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vaaniju.vercel.app"),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "Vaani — Sakhi Sang for Gaayan & Paath",
+    default: "Vaani — A shared space for Gaayan & Paath",
     template: "%s | Vaani",
   },
   description:
-    "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
+    "A quiet space for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.",
   applicationName: "Vaani",
   keywords: [
     "Vaani",
@@ -55,18 +58,25 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Vaani",
-    title: "Vaani — Sakhi Sang for Gaayan & Paath",
+    title: "Vaani — A shared space for Gaayan & Paath",
     description:
-      "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
-    url: "https://vaaniju.vercel.app",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Vaani — Sakhi Sang for Gaayan and Paath" }],
+      "A quiet space for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.",
+    url: canonicalSiteUrl,
+    images: [
+      {
+        url: "/opengraph-image?v=20261123",
+        width: 1200,
+        height: 630,
+        alt: "Vaani — A shared space for Gaayan and Paath",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vaani — Sakhi Sang for Gaayan & Paath",
+    title: "Vaani — A shared space for Gaayan & Paath",
     description:
-      "A place for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
-    images: ["/opengraph-image"],
+      "A quiet space for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.",
+    images: ["/opengraph-image?v=20261123"],
   },
   icons: {
     icon: [
@@ -82,11 +92,13 @@ export const metadata: Metadata = {
     title: "Vaani",
     statusBarStyle: "default",
   },
-  robots: { index: true, follow: true },
+  robots: isPreview
+    ? { index: false, follow: false, noarchive: true }
+    : { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f8f5f0",
+  themeColor: "#f6f3ee",
   colorScheme: "light",
   width: "device-width",
   initialScale: 1,
@@ -97,9 +109,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${display.variable} ${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <InteractionProvider>
-        <Suspense fallback={null}><FormPendingFeedback /></Suspense>
-        <ToastViewport />
-        {children}
+          <Suspense fallback={null}>
+            <FormPendingFeedback />
+          </Suspense>
+          <ToastViewport />
+          {children}
         </InteractionProvider>
       </body>
     </html>
