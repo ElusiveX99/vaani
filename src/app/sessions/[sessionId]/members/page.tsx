@@ -45,7 +45,7 @@ export default async function SessionMembersPage({ params }: PageProps) {
   );
   if (profilesError) throw new Error("Could not load session member profiles.");
 
-  const profileMap = new Map((profiles ?? []).map((item: {
+  const profileMap = new Map<string, { display_name: string; avatar_url: string | null }>((profiles ?? []).map((item: {
     id: string; display_name: string; avatar_url: string | null; avatar_path: string | null;
   }) => [item.id, {
     display_name: item.display_name || "Vaani member",
