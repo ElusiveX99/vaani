@@ -39,11 +39,11 @@ const isPreview = process.env.VERCEL_ENV === "preview";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Vaani — A shared space for Gaayan & Paath",
+    default: "Vaani — Gaayan and Vaani Paath, together",
     template: "%s | Vaani",
   },
   description:
-    "A quiet space for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.",
+    "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
   applicationName: "Vaani",
   keywords: [
     "Vaani",
@@ -58,25 +58,25 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Vaani",
-    title: "Vaani — A shared space for Gaayan & Paath",
+    title: "Vaani — Gaayan and Vaani Paath, together",
     description:
-      "A quiet space for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.",
+      "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
     url: canonicalSiteUrl,
     images: [
       {
-        url: "/opengraph-image?v=20261123-brand01",
+        url: "/opengraph-image?v=20261124-experience02",
         width: 1200,
         height: 630,
-        alt: "Vaani — A shared space for Gaayan and Paath",
+        alt: "Vaani — a gathering space for Gaayan and Vaani Paath",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vaani — A shared space for Gaayan & Paath",
+    title: "Vaani — Gaayan and Vaani Paath, together",
     description:
-      "A quiet space for Sakhis to gather for Shree Hit Chaturasi Ji gaayan and Vaani paath.",
-    images: ["/opengraph-image?v=20261123-brand01"],
+      "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
+    images: ["/opengraph-image?v=20261124-experience02"],
   },
   icons: {
     icon: [
@@ -98,7 +98,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f6f3ee",
+  themeColor: "#f5f2ec",
   colorScheme: "light",
   width: "device-width",
   initialScale: 1,
@@ -106,7 +106,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="en" className={\`\${display.variable} \${sans.variable} \${serif.variable} \${mono.variable} h-full antialiased\`}>
       <body className="min-h-full flex flex-col">
         <InteractionProvider>
           <Suspense fallback={null}>
