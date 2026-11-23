@@ -1,6 +1,7 @@
 "use client";
 
 import InlineFeedback from "@/components/inline-feedback";
+import { BrandMark } from "@/components/brand-lockup";
 
 import Link from "next/link";
 
@@ -146,7 +147,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
         <aside className="relative hidden min-h-[660px] flex-col justify-between overflow-hidden bg-[var(--plum-deep)] p-12 text-white lg:flex">
           <div className="absolute -right-28 top-20 h-80 w-80 rounded-full border border-white/10" />
           <div className="absolute -right-16 top-32 h-56 w-56 rounded-full border border-white/10" />
-          <Link href="/" className="brand-lockup relative !text-white"><span className="brand-word !text-white">Vaani</span></Link>
+          <BrandMark inverse />
           <div className="relative">
             <p className="eyebrow !text-[#d9b88b]">Shree Harivansh</p>
             <h1 className="font-display mt-6 text-6xl leading-[1.03]">Vaani</h1>
@@ -156,7 +157,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
 
         <section className="px-6 py-9 sm:px-10 sm:py-12 lg:px-14 lg:py-16">
           <div className="mb-8 lg:hidden">
-            <Link href="/" className="brand-lockup"><span className="brand-word">Vaani</span></Link>
+            <BrandMark />
           </div>
           <div className="mb-8">
             <p className="eyebrow">{mode === "login" ? "Welcome back" : "Create account"}</p>
