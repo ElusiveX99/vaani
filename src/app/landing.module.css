@@ -1,4 +1,4 @@
- .site {
+.site {
   --paper: #f5f2ec;
   --paper-light: #fbfaf7;
   --paper-deep: #ebe6dd;
@@ -122,6 +122,8 @@
   letter-spacing: -.075em;
   line-height: .99;
 }
+
+.heroBreak { display: block; }
 
 .heroTitle em {
   color: var(--accent);
@@ -356,9 +358,10 @@
   .signIn { font-size: .82rem; }
   .headerJoin { min-height: 42px; padding-inline: .95rem; font-size: .82rem; }
   .hero { padding-top: 4.8rem; }
-  .heroInner, .heroFooter, .gatheringSection, .readerInner, .toolsSection, .footerInner {
+  .heroInner, .gatheringSection, .readerInner, .toolsSection, .footerInner {
     width: calc(100% - 2rem);
   }
+  .heroBreak { display: none; }
   .heroTitle {
     margin-top: 1.35rem;
     font-size: clamp(3.35rem, 13vw, 5.6rem);
@@ -368,9 +371,6 @@
   .heroLower { margin-top: 2rem; padding-bottom: 3.5rem; }
   .heroDescription { font-size: 1rem; }
   .heroActions { width: 100%; align-items: flex-start; flex-direction: column; gap: 1rem; }
-  .heroFooter { grid-template-columns: 1fr; }
-  .heroFooter span { padding: .85rem 0; }
-  .heroFooter span + span { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; }
   .gatheringSection, .toolsSection { padding-top: 4.7rem; padding-bottom: 4.7rem; }
   .sectionIntro h2, .readerHeading h2, .toolsHeading h2, .closingInner h2 {
     font-size: clamp(2.45rem, 10vw, 3.5rem);
@@ -397,7 +397,7 @@
 }
 
 @media (max-width: 360px) {
-  .headerInner, .heroInner, .heroFooter, .gatheringSection, .readerInner, .toolsSection, .footerInner, .closingInner {
+  .headerInner, .heroInner, .gatheringSection, .readerInner, .toolsSection, .footerInner, .closingInner {
     width: calc(100% - 1.5rem);
   }
   .headerActions { gap: .65rem; }
