@@ -266,41 +266,71 @@ export async function createInviteLink(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
   }
 
-  const token = (BigInt("0x" + randomBytes(8).toString("hex")) % (BigInt(36) ** BigInt(10))).toString(36).padStart(10, "0");
-  const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = expiryHoursValue
     ? new Date(Date.now() + expiryHoursValue * 60 * 60 * 1000).toISOString()
     : null;
 
-  const { data: savedCode, error } = await supabase.rpc("create_session_invite_link", {
-    p_session_id: sessionId,
-    p_short_code: token,
-    p_token_hash: tokenHash,
-    p_expires_at: expiresAt,
-    p_max_uses: maxUsesValue,
-  });
+  // Ten characters is the agreed public invitation-code length.
+  // Generate an unbiased 10-character lowercase base-36 code (36^10 choices).
+  // Rejection sampling avoids modulo bias while retaining cryptographic randomness.
+  const generateInviteCode = () => {
+    const space = BigInt(36) ** BigInt(10);
+    const range = BigInt(1) << BigInt(64);
+    const limit = range - (range % space);
+    let value: bigint;
+    do {
+      value = BigInt("0x" + randomBytes(8).toString("hex"));
+    } while (value >= limit);
+    return (value % space).toString(36).padStart(10, "0");
+  };
 
-  if (error || typeof savedCode !== "string") {
+  let savedCode: string | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const token = generateInviteCode();
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const { data, error } = await supabase.rpc("create_session_invite_link", {
+      p_session_id: sessionId,
+      p_short_code: token,
+      p_token_hash: tokenHash,
+      p_expires_at: expiresAt,
+      p_max_uses: maxUsesValue,
+    });
+
+    if (!error && typeof data === "string") {
+      savedCode = data;
+      break;
+    }
+    if (error?.code === "23505") continue;
+
     console.error("Invitation link creation failed:", error?.code, error?.message, error?.details);
     redirect(`/sessions/${sessionId}?error=invite_link_failed`);
   }
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app";
-  const inviteUrl = `${origin}/sessions/join/${savedCode}`;
-  redirect(`/sessions/${sessionId}?invite=${encodeURIComponent(inviteUrl)}`);
+  if (!savedCode) {
+    redirect(`/sessions/${sessionId}?error=invite_link_failed`);
+  }
+
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?success=invitation_created`);
 }
 
 export async function redeemInviteLink(formData: FormData) {
-  const { supabase, userId } = await getAuthenticatedClient();
   const token = String(formData.get("token") ?? "").trim();
 
   if (!/^[a-z0-9]{10}$/.test(token)) redirect("/sessions?error=invalid_invite_link");
+
+  const supabase = await createClient();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user?.id) {
+    redirect(`/login?next=${encodeURIComponent(`/g/${token}`)}`);
+  }
+  const userId = auth.user.id;
 
   const { data: sessionId, error } = await supabase.rpc("redeem_session_invite_link", {
     p_token: token,
   });
 
-  if (error || typeof sessionId !== "string") redirect(`/sessions/join/${token}?error=redeem_failed`);
+  if (error || typeof sessionId !== "string") redirect(`/g/${token}?error=redeem_failed`);
 
   const [{data:membership},{data:pendingRequest}]=await Promise.all([
     supabase.from("session_members").select("status").eq("session_id",sessionId).eq("user_id",userId).maybeSingle(),

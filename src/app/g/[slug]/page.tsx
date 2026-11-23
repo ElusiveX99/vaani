@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { joinGatheringBySlug } from "@/app/sessions/actions";
+import InviteJoinPage, { generateMetadata as generateInviteMetadata } from "@/app/sessions/join/[token]/page";
 
-export const metadata: Metadata = { title: "Gathering | Vaani", robots: { index: false, follow: false } };
+
 export const instant = false;
 
 type Props = {
@@ -37,9 +38,29 @@ function dateLabel(value: string | null, zone: string) {
   }).format(date);
 }
 
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  if (/^[a-z0-9]{10}$/.test(slug)) {
+    const query = await searchParams;
+    return generateInviteMetadata({
+      params: Promise.resolve({ token: slug }),
+      searchParams: Promise.resolve({ error: query.error }),
+    });
+  }
+  return { title: "Gathering | Vaani", robots: { index: false, follow: false } };
+}
+
 export default async function ShortGatheringPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const query = await searchParams;
+  if (/^[a-z0-9]{10}$/.test(slug)) {
+    return (
+      <InviteJoinPage
+        params={Promise.resolve({ token: slug })}
+        searchParams={Promise.resolve({ error: query.error })}
+      />
+    );
+  }
   if (!/^[a-f0-9]{32}$/.test(slug)) notFound();
 
   const supabase = await createClient();
