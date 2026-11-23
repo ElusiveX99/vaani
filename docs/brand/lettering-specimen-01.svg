@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 2100" role="img" aria-labelledby="t d">
+<title id="t">Vaani — lettering specimen 01</title>
+<desc id="d">Three original vector-drawn lettering constructions for the word Vaani, with structural annotations. Exploratory artwork, not an approved logo.</desc>
+<rect width="1800" height="2100" fill="#F7F5F0"/>
+<g fill="#24231F">
+<text x="112" y="112" font-family="Arial,sans-serif" font-size="18" letter-spacing="5">VAANI / IDENTITY DEVELOPMENT</text>
+<text x="112" y="220" font-family="Georgia,serif" font-size="78">Lettering specimen 01</text>
+<text x="114" y="272" font-family="Arial,sans-serif" font-size="19" letter-spacing="1.8" fill="#77736B">ORIGINAL VECTOR STUDIES · MONOCHROME · EXPLORATORY, NOT FINAL</text>
+</g>
+<path d="M112 320H1688" stroke="#C9C4B9" stroke-width="2"/>
+<g transform="translate(112 385)">
+<text x="0" y="0" fill="#77736B" font-family="Arial,sans-serif" font-size="17" letter-spacing="4">01 / CONTINUOUS GESTURE</text>
+<text x="0" y="64" fill="#24231F" font-family="Georgia,serif" font-size="29">One controlled movement; the word remains readable.</text>
+<g transform="translate(0 105)" fill="none" stroke="#24231F" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+<!-- V -->
+<path d="M10 30 C34 85 54 143 80 202 C108 141 133 77 162 30"/>
+<!-- a -->
+<path d="M194 112 C194 71 223 49 258 55 C293 61 305 95 296 132 C287 169 254 185 224 167 C196 151 188 118 205 91 C220 68 251 61 279 72 M298 63 L298 178"/>
+<!-- a -->
+<path d="M345 112 C345 71 374 49 409 55 C444 61 456 95 447 132 C438 169 405 185 375 167 C347 151 339 118 356 91 C371 68 402 61 430 72 M449 63 L449 178"/>
+<!-- n -->
+<path d="M498 178 L498 65 M500 113 C515 74 541 53 570 62 C596 70 604 94 604 122 L604 178"/>
+<!-- i -->
+<path d="M649 65 L649 178 M649 24 L649 26"/>
+</g>
+<g fill="#77736B" font-family="Arial,sans-serif" font-size="16">
+<text x="0" y="355">V carries the entry and descent.</text><text x="340" y="355">Repeated a-form creates a measured refrain.</text><text x="950" y="355">Open n-shoulder; quiet i.</text>
+</g>
+<path d="M0 398H1576" stroke="#D6D1C8" stroke-width="1.5"/>
+</g>
+<g transform="translate(112 900)">
+<text x="0" y="0" fill="#77736B" font-family="Arial,sans-serif" font-size="17" letter-spacing="4">02 / EDITORIAL CONSTRUCTION</text>
+<text x="0" y="64" fill="#24231F" font-family="Georgia,serif" font-size="29">More measured and typographic; less dependent on flow.</text>
+<g transform="translate(0 105)" fill="none" stroke="#24231F" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter">
+<path d="M10 25 L83 205 L157 25"/>
+<path d="M195 123 C195 81 220 56 254 56 C289 56 309 83 309 123 C309 162 287 187 252 187 C218 187 195 162 195 123 Z M309 58 V187"/>
+<path d="M350 123 C350 81 375 56 409 56 C444 56 464 83 464 123 C464 162 442 187 407 187 C373 187 350 162 350 123 Z M464 58 V187"/>
+<path d="M511 187 V58 M511 115 C529 78 551 58 578 58 C607 58 622 79 622 111 V187"/>
+<path d="M670 58 V187 M657 25 H683"/>
+</g>
+<g fill="#77736B" font-family="Arial,sans-serif" font-size="16"><text x="0" y="355">Geometric bowls.</text><text x="350" y="355">Consistent stem and counter proportions.</text><text x="950" y="355">Risk: too neutral without a signature detail.</text></g>
+<path d="M0 398H1576" stroke="#D6D1C8" stroke-width="1.5"/>
+</g>
+<g transform="translate(112 1415)">
+<text x="0" y="0" fill="#77736B" font-family="Arial,sans-serif" font-size="17" letter-spacing="4">03 / PRESSURE AND PAUSE</text>
+<text x="0" y="64" fill="#24231F" font-family="Georgia,serif" font-size="29">A restrained contrast study; no ornamental exit strokes.</text>
+<g transform="translate(0 105)" fill="none" stroke="#24231F" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+<path d="M10 25 C36 83 57 148 83 207 C109 148 132 83 160 25" stroke-width="19"/>
+<path d="M197 121 C197 80 223 56 257 56 C290 56 307 84 298 122 C289 161 258 184 228 167 C201 152 192 121 207 94 C222 68 252 61 280 73 M300 65 L300 183" stroke-width="12"/>
+<path d="M350 121 C350 80 376 56 410 56 C443 56 460 84 451 122 C442 161 411 184 381 167 C354 152 345 121 360 94 C375 68 405 61 433 73 M453 65 L453 183" stroke-width="12"/>
+<path d="M504 183 L504 65 M506 114 C521 78 546 57 575 65 C599 72 608 97 608 124 L608 183" stroke-width="13"/>
+<path d="M654 65 L654 183" stroke-width="13"/>
+<circle cx="654" cy="28" r="7" fill="#24231F" stroke="none"/>
+</g>
+<g fill="#77736B" font-family="Arial,sans-serif" font-size="16"><text x="0" y="355">Contrast is concentrated in the V.</text><text x="350" y="355">Round forms stay calm and open.</text><text x="950" y="355">Risk: V may dominate the name.</text></g>
+</g>
+<path d="M112 1900H1688" stroke="#C9C4B9" stroke-width="2"/>
+<g font-family="Arial,sans-serif" fill="#77736B" font-size="16">
+<text x="112" y="1950" letter-spacing="2">CRITIQUE / CURRENT FINDING</text>
+<text x="112" y="1992">01 has the strongest potential gesture; 02 is the clearest baseline; 03 overweights the V.</text>
+<text x="112" y="2030">None passes the authorship, distinctiveness, or symbol-derivation gates yet. No mark or palette is proposed.</text>
+</g>
+</svg>
