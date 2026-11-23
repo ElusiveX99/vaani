@@ -62,7 +62,7 @@ export default function CopyInviteLink({ value }: { value: string }) {
       </div>
       {copyError && (
         <p role="status" className="text-xs text-[var(--muted)]">
-          Copy wasn't available. Select the link text to copy it manually.
+          Copy wasn&apos;t available. Select the link text to copy it manually.
         </p>
       )}
     </div>
