@@ -9,6 +9,8 @@ alter table public.sessions
   alter column public_slug drop not null;
 
 -- Remove the participant-invite opt-in from the schema and every write path.
+-- The recurrence trigger explicitly listed this column in its UPDATE OF clause.
+drop trigger if exists sessions_expand_recurrence on public.sessions;
 drop function public.create_gathering(text,text,text,boolean,timestamptz,timestamptz,text,integer,text,integer,boolean,boolean,text,timestamptz);
 drop function public.update_session_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,boolean,text,text,timestamptz);
 drop function public.publish_session_draft_with_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,boolean,text,text,timestamptz);
@@ -152,6 +154,10 @@ end;
 $function$;
 
 alter table public.sessions drop column allow_participant_invites;
+
+create trigger sessions_expand_recurrence
+after insert or update of recurrence_rule, recurrence_until, scheduled_start_at, title, description, access_type, time_zone, duration_minutes, instructions, participant_limit, waiting_room_enabled, is_draft
+on public.sessions for each row execute function public.expand_session_recurrence();
 
 -- These settings are no longer part of a reusable invitation. Revocation remains.
 alter table public.session_invite_links
