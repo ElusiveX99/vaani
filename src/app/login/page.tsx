@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 function getNextPath() { const value = new URLSearchParams(window.location.search).get("next"); return value && value.startsWith("/") && !value.startsWith("//") ? value : "/home"; }
 
 export default function LoginPage({ initialMode = "login" }: { initialMode?: "login" | "signup" }) {
-  const [supabase] = useState(() => createClient());
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
   const router = useRouter();
 
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
@@ -25,7 +25,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
   useEffect(() => {
     let active = true;
 
-    const client = supabase;
+    const client = createClient();
 
     async function initializeAuth() {
       const { data, error } = await client.auth.getSession();
@@ -50,6 +50,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
         }
       }
 
+      setSupabase(client);
       setAuthReady(true);
     }
 
@@ -65,7 +66,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [router]);
 
   async function handleEmailAuth(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -74,6 +75,8 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
     setError("");
 
     try {
+      if (!supabase) throw new Error("Authentication is still initializing. Please try again.");
+
       if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
