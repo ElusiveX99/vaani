@@ -153,6 +153,28 @@ export async function createSession(formData: FormData) {
   redirect(`/sessions/${sessionId}?success=${isDraft ? "draft_saved" : "created"}`);
 }
 
+export async function joinGatheringBySlug(formData: FormData) {
+  const { supabase } = await getAuthenticatedClient();
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!/^[a-f0-9]{18}$/.test(slug)) redirect("/sessions?error=invalid_gathering_link");
+
+  const { data, error } = await supabase.rpc("request_gathering_join_by_slug", {
+    p_slug: slug,
+  });
+  const result = Array.isArray(data) ? data[0] : data;
+  if (error || !result || typeof result.session_id !== "string") {
+    redirect(`/g/${slug}?error=join_failed`);
+  }
+
+  revalidatePath("/sessions");
+  revalidatePath("/home");
+  revalidatePath(`/sessions/${result.session_id}`);
+  if (result.outcome === "request_pending") {
+    redirect(`/g/${slug}?requested=1`);
+  }
+  redirect(`/sessions/${result.session_id}?success=joined_by_invite`);
+}
+
 export async function joinCommunitySession(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
 

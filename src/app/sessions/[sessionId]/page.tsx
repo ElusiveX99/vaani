@@ -20,12 +20,10 @@ import {
   startSession,
   endSession,
   cancelSession,
-  createInviteLink,
   publishSessionDraft,
   updateSessionDetails,
   approveJoinRequest,
   rejectJoinRequest,
-  revokeInviteLink,
   resumeSession,
   cancelJoinRequest,
   deleteEndedSession,
@@ -63,6 +61,7 @@ type Session = {
   recurrence_rule: string | null;
   recurrence_until: string | null;
   recurrence_parent_id: string | null;
+  public_slug: string;
 };
 
 type Membership = {
@@ -194,7 +193,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
   const [{data:authUser},{data:ownProfile},{data:sessionData,error:sessionError}]=await Promise.all([
     supabase.auth.getUser(),
     supabase.from("profiles").select("display_name,avatar_url,avatar_path").eq("id",userId).maybeSingle(),
-    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,allow_participant_invites,recurrence_rule,recurrence_until,recurrence_parent_id").eq("id",sessionId).maybeSingle(),
+    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,allow_participant_invites,recurrence_rule,recurrence_until,recurrence_parent_id,public_slug").eq("id",sessionId).maybeSingle(),
   ]);
   const email=authUser.user?.email||"";
   const displayName=ownProfile?.display_name||authUser.user?.user_metadata?.full_name||authUser.user?.user_metadata?.name||email.split("@")[0]||"Sakhi";
@@ -343,22 +342,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
     ])
   );
 
-  const canViewInviteLinks=
+  const canShareGatheringLink =
     session.status !== "ended" &&
     session.status !== "cancelled" &&
-    (canManage || (isAccepted && session.allow_participant_invites));
-  const canCreateInvite = canViewInviteLinks;
-  const inviteLinksResult = canViewInviteLinks
-    ? await supabase.from("session_invite_links")
-        .select("id,short_code,created_by,label,max_uses,use_count,expires_at,revoked_at,created_at")
-        .eq("session_id", session.id)
-        .order("created_at", { ascending: false })
-    : { data: [], error: null };
-  const inviteLinks = inviteLinksResult.data ?? [];
-  if (inviteLinksResult.error) {
-    console.error("Invitation link lookup failed:", inviteLinksResult.error);
-  }
-  const inviteOrigin=process.env.NEXT_PUBLIC_SITE_URL||"https://vaaniju.vercel.app";
+    (session.access_type === "community"
+      ? isAccepted || canManage
+      : canManage || (isAccepted && session.allow_participant_invites));
+  const gatheringUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://vaaniju.vercel.app"}/g/${session.public_slug}`;
 
 
   const acceptedCount = members.filter(
@@ -580,61 +570,13 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </section>
           )}
 
-        {canViewInviteLinks && (
-          <section className="surface-card mt-7 p-5 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-[var(--ink)]">Invitation links</h2>
-              {canCreateInvite && (
-                <form action={createInviteLink}>
-                  <input type="hidden" name="session_id" value={session.id} />
-                  <input type="hidden" name="expiry_hours" value="168" />
-                  <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">Create link</button>
-                </form>
-              )}
+        {canShareGatheringLink && (
+          <section className="surface-card mt-7 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-[var(--ink)]">Gathering link</h2>
+              <p className="mt-1 truncate text-sm text-[var(--muted)]">{gatheringUrl}</p>
             </div>
-            {paramsData.invite && (
-              <div className="mt-4 flex flex-col gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] p-3 sm:flex-row">
-                <input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" aria-label="Invitation link" />
-                <CopyInviteLink value={paramsData.invite} />
-              </div>
-            )}
-            {inviteLinksResult.error ? (
-              <InlineFeedback tone="error" className="mt-4">Invitation links could not be loaded.</InlineFeedback>
-            ) : inviteLinks.length === 0 ? (
-              <p className="mt-4 text-sm text-[var(--muted)]">No links yet.</p>
-            ) : (
-              <div className="mt-3 divide-y divide-[var(--line)]">
-                {inviteLinks.map((link) => {
-                  const url = `${inviteOrigin}/sessions/join/${link.short_code}`;
-                  const expired = !!link.expires_at && new Date(link.expires_at).getTime() <= Date.now();
-                  const exhausted = link.max_uses !== null && link.use_count >= link.max_uses;
-                  const state = link.revoked_at ? "Revoked" : expired ? "Expired" : exhausted ? "Limit reached" : "Active";
-                  const active = state === "Active";
-                  return (
-                    <div key={link.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium">{link.created_by === userId ? "Your link" : "Participant link"}</span>
-                          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-1 text-[10px] text-[var(--muted)]">{state}</span>
-                        </div>
-                        <p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">{link.use_count} {link.use_count === 1 ? "use" : "uses"} · {link.expires_at ? `Expires ${formatDate(link.expires_at, session.time_zone)}` : "No expiry"}</p>
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        {active && <CopyInviteLink value={url} />}
-                        {active && (canManage || link.created_by === userId) && (
-                          <form action={revokeInviteLink}>
-                            <input type="hidden" name="session_id" value={session.id} />
-                            <input type="hidden" name="link_id" value={link.id} />
-                            <button className="button-secondary !min-h-9 !px-3 !py-2 text-xs">Revoke</button>
-                          </form>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <CopyInviteLink value={gatheringUrl} />
           </section>
         )}
         {canManage && session.waiting_room_enabled && (
