@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-lockup";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -95,7 +96,7 @@ export default async function ShortGatheringPage({ params, searchParams }: Props
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-10 text-[var(--ink)]">
       <div className="mx-auto max-w-2xl pt-6 sm:pt-12">
-        <Link href="/" className="brand-lockup"><span className="brand-word">Vaani</span></Link>
+        <BrandMark />
         <section className="surface-card mt-7 overflow-hidden">
           <div className="border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 sm:px-9">
             <p className="eyebrow">Vaani gathering</p>
