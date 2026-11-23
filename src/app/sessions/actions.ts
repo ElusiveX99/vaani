@@ -156,7 +156,7 @@ export async function createSession(formData: FormData) {
 export async function joinGatheringBySlug(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const slug = String(formData.get("slug") ?? "").trim();
-  if (!/^[a-f0-9]{18}$/.test(slug)) redirect("/sessions?error=invalid_gathering_link");
+  if (!/^[a-f0-9]{32}$/.test(slug)) redirect("/sessions?error=invalid_gathering_link");
 
   const { data, error } = await supabase.rpc("request_gathering_join_by_slug", {
     p_slug: slug,

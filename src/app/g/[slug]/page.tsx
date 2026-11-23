@@ -40,7 +40,7 @@ function dateLabel(value: string | null, zone: string) {
 export default async function ShortGatheringPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const query = await searchParams;
-  if (!/^[a-f0-9]{18}$/.test(slug)) notFound();
+  if (!/^[a-f0-9]{32}$/.test(slug)) notFound();
 
   const supabase = await createClient();
   const [{ data: rows, error }, { data: claims }] = await Promise.all([
