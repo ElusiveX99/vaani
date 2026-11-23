@@ -138,7 +138,6 @@ export async function createSession(formData: FormData) {
     p_instructions: instructions || null,
     p_participant_limit: participantLimit,
     p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
-    p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
     p_recurrence_rule: recurrenceRule,
     p_recurrence_until: recurrenceUntil?.toISOString() ?? null,
   });
@@ -256,23 +255,11 @@ export async function cancelSession(formData: FormData) {
 export async function createInviteLink(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const sessionId = String(formData.get("session_id") ?? "");
-  const expiryHoursValue = Number(formData.get("expiry_hours") ?? 0);
-  const maxUsesRaw = String(formData.get("max_uses") ?? "").trim();
-  const maxUsesValue = maxUsesRaw ? Number(maxUsesRaw) : null;
 
   if (!isValidSessionId(sessionId)) redirect("/sessions?error=invalid_session");
-  if (![0, 24, 72, 168, 720].includes(expiryHoursValue) ||
-      (maxUsesValue !== null && (!Number.isInteger(maxUsesValue) || maxUsesValue < 1 || maxUsesValue > 500))) {
-    redirect(`/sessions/${sessionId}?error=invalid_invite_link`);
-  }
 
-  const expiresAt = expiryHoursValue
-    ? new Date(Date.now() + expiryHoursValue * 60 * 60 * 1000).toISOString()
-    : null;
-
-  // Ten characters is the agreed public invitation-code length.
-  // Generate an unbiased 10-character lowercase base-36 code (36^10 choices).
-  // Rejection sampling avoids modulo bias while retaining cryptographic randomness.
+  // One permanent, reusable link per participant and gathering.
+  // Revoking it allows a fresh code to be generated.
   const generateInviteCode = () => {
     const space = BigInt(36) ** BigInt(10);
     const range = BigInt(1) << BigInt(64);
@@ -292,8 +279,6 @@ export async function createInviteLink(formData: FormData) {
       p_session_id: sessionId,
       p_short_code: token,
       p_token_hash: tokenHash,
-      p_expires_at: expiresAt,
-      p_max_uses: maxUsesValue,
     });
 
     if (!error && typeof data === "string") {
@@ -306,9 +291,7 @@ export async function createInviteLink(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=invite_link_failed`);
   }
 
-  if (!savedCode) {
-    redirect(`/sessions/${sessionId}?error=invite_link_failed`);
-  }
+  if (!savedCode) redirect(`/sessions/${sessionId}?error=invite_link_failed`);
 
   revalidatePath(`/sessions/${sessionId}`);
   redirect(`/sessions/${sessionId}?success=invitation_created`);
@@ -433,7 +416,6 @@ export async function publishSessionDraft(formData: FormData) {
     p_duration_minutes: duration,
     p_participant_limit: limit,
     p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
-    p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
     p_instructions: instructions || null,
     p_recurrence_rule: recurrenceRule,
     p_recurrence_until: recurrenceUntil?.toISOString() ?? null,
@@ -477,7 +459,6 @@ export async function updateSessionDetails(formData: FormData) {
     p_duration_minutes: duration,
     p_participant_limit: limit,
     p_waiting_room_enabled: formData.get("waiting_room_enabled") === "on",
-    p_allow_participant_invites: formData.get("allow_participant_invites") === "on",
     p_instructions: String(formData.get("instructions") ?? "").trim() || null,
     p_recurrence_rule: recurrenceRule,
     p_recurrence_until: recurrenceUntil?.toISOString() ?? null,

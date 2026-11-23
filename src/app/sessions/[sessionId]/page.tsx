@@ -58,7 +58,6 @@ type Session = {
   instructions: string | null;
   participant_limit: number | null;
   waiting_room_enabled: boolean;
-  allow_participant_invites: boolean;
   recurrence_rule: string | null;
   recurrence_until: string | null;
   recurrence_parent_id: string | null;
@@ -104,7 +103,7 @@ const errorMessages: Record<string, string> = {
   resume_failed: "The gathering could not be resumed.",
 
   invalid_invite_link: "The invitation link could not be created.",
-  invite_link_failed: "The invitation link is invalid, expired, or could not be used.",
+  invite_link_failed: "The invitation link is unavailable or could not be used.",
   publish_failed: "The draft could not be published. Check that its start time is in the future.",
   invalid_edit: "Check the title, access, and future start time.",
   update_failed: "The gathering could not be updated.",
@@ -193,7 +192,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
   const [{data:authUser},{data:ownProfile},{data:sessionData,error:sessionError}]=await Promise.all([
     supabase.auth.getUser(),
     supabase.from("profiles").select("display_name,avatar_url,avatar_path").eq("id",userId).maybeSingle(),
-    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,allow_participant_invites,recurrence_rule,recurrence_until,recurrence_parent_id").eq("id",sessionId).maybeSingle(),
+    supabase.from("sessions").select("id,title,description,access_type,status,scheduled_start_at,started_at,ended_at,created_by,is_draft,time_zone,duration_minutes,instructions,participant_limit,waiting_room_enabled,recurrence_rule,recurrence_until,recurrence_parent_id").eq("id",sessionId).maybeSingle(),
   ]);
   const email=authUser.user?.email||"";
   const displayName=ownProfile?.display_name||authUser.user?.user_metadata?.full_name||authUser.user?.user_metadata?.name||email.split("@")[0]||"Sakhi";
@@ -250,7 +249,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div className="sm:col-span-2"><DisclosureSection title="Recurrence" summary={session.recurrence_rule ? "This draft has a repeat schedule" : "Set this gathering to repeat"} contentClassName="mt-3"><RecurrenceFields initialRule={session.recurrence_rule || ""} initialUntil={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} /></DisclosureSection></div>
               <div className="sm:col-span-2"><DisclosureSection title="Participant instructions" summary="Optional information for participants" contentClassName="mt-3"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></DisclosureSection></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled} /> Use waiting room</label>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites} /> Allow participant invitations</label>
               <div className="sm:col-span-2 flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <ConfirmSubmitButton
                   formAction={deleteSessionDraft}
@@ -342,16 +340,15 @@ async function SessionContent({ params, searchParams }: PageProps) {
     ])
   );
 
-  // Invitation links are creator-owned. Organizers can manage them; accepted
-  // participants can create and manage their own links only when participant
-  // invitations are enabled, regardless of the gathering's access type.
+  // Every accepted participant can create and manage their own reusable link.
+  // Organizers can view and revoke links created by any participant.
   const canViewInviteLinks =
     session.status !== "ended" &&
     session.status !== "cancelled" &&
-    (canManage || (isAccepted && session.allow_participant_invites));
+    (canManage || isAccepted);
   const inviteLinksResult = canViewInviteLinks
     ? await supabase.from("session_invite_links")
-        .select("id,short_code,created_by,max_uses,use_count,expires_at,revoked_at,created_at")
+        .select("id,short_code,created_by,revoked_at,created_at")
         .eq("session_id", session.id)
         .order("created_at", { ascending: false })
     : { data: [], error: null };
@@ -590,7 +587,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </div>
               <form action={createInviteLink}>
                 <input type="hidden" name="session_id" value={session.id} />
-                <input type="hidden" name="expiry_hours" value="168" />
                 <button className="button-primary !min-h-10 !px-4 !py-2 text-xs">Create link</button>
               </form>
             </div>
@@ -615,19 +611,16 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div className="mt-3 divide-y divide-[var(--line)]">
                 {inviteLinks.filter((link) => typeof link.short_code === "string" && link.short_code.length === 10).map((link) => {
                   const url = `${inviteOrigin}/g/${link.short_code}`;
-                  const expired = !!link.expires_at && new Date(link.expires_at).getTime() <= Date.now();
-                  const exhausted = link.max_uses !== null && link.use_count >= link.max_uses;
-                  const state = link.revoked_at ? "Revoked" : expired ? "Expired" : exhausted ? "Limit reached" : "Active";
-                  const active = state === "Active";
+                  const active = !link.revoked_at;
                   return (
                     <div key={link.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{link.created_by === userId ? "Your link" : "Participant link"}</span>
-                          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-1 text-[10px] text-[var(--muted)]">{state}</span>
+                          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-1 text-[10px] text-[var(--muted)]">{active ? "Active" : "Revoked"}</span>
                         </div>
                         <p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">{link.use_count} {link.use_count === 1 ? "use" : "uses"} · {link.expires_at ? `Expires ${formatDate(link.expires_at, session.time_zone)}` : "No expiry"}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">Reusable link · No expiration or usage limit</p>
                       </div>
                       <div className="flex shrink-0 gap-2">
                         {active && <CopyInviteLink value={url} />}
