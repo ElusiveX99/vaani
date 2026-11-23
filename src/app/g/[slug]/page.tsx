@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { joinGatheringBySlug } from "@/app/sessions/actions";
 
 export const metadata: Metadata = { title: "Gathering | Vaani", robots: { index: false, follow: false } };
+export const instant = false;
 
 type Props = {
   params: Promise<{ slug: string }>;
