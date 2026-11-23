@@ -342,8 +342,11 @@ async function SessionContent({ params, searchParams }: PageProps) {
     ])
   );
 
-  const canViewInviteLinks=canManage||(isAccepted&&session.allow_participant_invites);
-  const canCreateInvite=canViewInviteLinks&&session.status!=="ended"&&session.status!=="cancelled";
+  const canViewInviteLinks=
+    session.status !== "ended" &&
+    session.status !== "cancelled" &&
+    (canManage || (isAccepted && session.allow_participant_invites));
+  const canCreateInvite = canViewInviteLinks;
   const {data:inviteLinks}=canViewInviteLinks?await supabase.from("session_invite_links").select("id,short_code,created_by,label,max_uses,use_count,expires_at,revoked_at,created_at").eq("session_id",session.id).order("created_at",{ascending:false}):{data:[]};
   const inviteOrigin=process.env.NEXT_PUBLIC_SITE_URL||"https://vaaniju.vercel.app";
 
