@@ -523,6 +523,30 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </span>
             )}
 
+            {isOrganizer && session.status === "ended" && (
+              <form action={deleteEndedSession} className="inline-flex">
+                <input type="hidden" name="session_id" value={session.id} />
+                <ConfirmSubmitButton
+                  message="Permanently delete this ended gathering and its associated history? This cannot be undone."
+                  className="text-sm font-medium text-[#a34e56] underline-offset-4 hover:underline"
+                >
+                  Delete gathering
+                </ConfirmSubmitButton>
+              </form>
+            )}
+
+            {isOrganizer && session.status === "cancelled" && (
+              <form action={deleteCancelledSession} className="inline-flex">
+                <input type="hidden" name="session_id" value={session.id} />
+                <ConfirmSubmitButton
+                  message="Permanently delete this cancelled gathering and its associated records? This cannot be undone."
+                  className="text-sm font-medium text-[#a34e56] underline-offset-4 hover:underline"
+                >
+                  Delete gathering
+                </ConfirmSubmitButton>
+              </form>
+            )}
+
             {isInCharge && (
               <span className="text-sm font-medium text-[var(--forest)]">
                 You are an in-charge member.
@@ -553,44 +577,6 @@ async function SessionContent({ params, searchParams }: PageProps) {
                   End conference…
                 </ConfirmSubmitButton>
               </form>
-            </section>
-          )}
-
-          {session.status === "ended" && (
-            <section className="surface-card mt-7 border border-[var(--line)] p-6">
-              <p className="text-sm font-medium text-[var(--ink)]">
-                This gathering has ended.
-              </p>
-              {isOrganizer && (
-                <form action={deleteEndedSession} className="mt-4">
-                  <input type="hidden" name="session_id" value={session.id} />
-                  <ConfirmSubmitButton
-                    message="Permanently delete this ended gathering and its associated history? This cannot be undone."
-                    className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-[#fbefed]"
-                  >
-                    Permanently delete gathering
-                  </ConfirmSubmitButton>
-                </form>
-              )}
-            </section>
-          )}
-
-          {session.status === "cancelled" && (
-            <section className="surface-card mt-7 border border-red-200 bg-[#fbefed] p-6">
-              <p className="text-sm font-medium text-red-900">
-                This gathering was cancelled.
-              </p>
-              {isOrganizer && (
-                <form action={deleteCancelledSession} className="mt-4">
-                  <input type="hidden" name="session_id" value={session.id} />
-                  <ConfirmSubmitButton
-                    message="Permanently delete this cancelled gathering and its associated records? This cannot be undone."
-                    className="rounded-lg border border-[#e7c8c7] px-4 py-2 text-sm font-medium text-[#a34e56] hover:bg-white"
-                  >
-                    Permanently delete gathering
-                  </ConfirmSubmitButton>
-                </form>
-              )}
             </section>
           )}
 
