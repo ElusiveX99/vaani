@@ -58,7 +58,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
 
     const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        router.replace("/home");
+        router.replace(getNextPath());
       }
     });
 
@@ -89,7 +89,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
         if (error) throw error;
 
         if (data.session) {
-          router.replace("/home");
+          router.replace(getNextPath());
           return;
         }
 
@@ -102,7 +102,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
 
         if (error) throw error;
 
-        router.replace("/home");
+        router.replace(getNextPath());
         return;
       }
     } catch (err) {
