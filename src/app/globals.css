@@ -41,7 +41,8 @@ body {
   background: var(--background);
   color: var(--ink);
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "ss01" on;
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
   -webkit-font-smoothing: antialiased;
 }
 ::selection { background: #e8dadd; color: var(--plum-deep); }
@@ -59,7 +60,7 @@ html { scroll-padding-top: 5rem; }
   .page-shell { width: calc(100% - 1.25rem); }
 }
 
-.font-display { font-family: var(--font-cormorant), Georgia, serif; font-weight: 500; letter-spacing: -.025em; }
+.font-display { font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif; font-weight: 650; letter-spacing: -.035em; font-variant-numeric: lining-nums; }
 .site-header {
   border-bottom: 1px solid var(--line);
   background: rgba(255, 253, 249, .94);
