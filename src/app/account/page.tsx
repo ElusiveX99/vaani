@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
 import ProfileEditor from "./profile-editor";
+import DisclosureSection from "@/components/disclosure-section";
 
 function AccountLoading() {
   return <main className="page-shell py-16"><div className="h-64 animate-pulse rounded-3xl bg-[var(--surface-soft)]" /></main>;
@@ -39,12 +40,14 @@ async function AccountContent() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <ProfileEditor userId={userId} initialName={name} initialAvatarUrl={avatarUrl} initialAvatarPath={profile?.avatar_path ?? null} email={email} />
           <aside className="surface-card p-6">
-            <p className="eyebrow">Your account</p>
+            <DisclosureSection title="Your account" summary="Account email and sign-out" contentClassName="mt-4">
+            <p className="eyebrow">Account details</p>
             <p className="mt-4 break-all text-sm font-semibold text-[var(--ink)]">{email}</p>
             <p className="mt-2 text-xs leading-6 text-[var(--muted)]">Your account email is used for sign-in and cannot be changed here.</p>
             <form action={signOut} className="mt-8 border-t border-[var(--line)] pt-5">
               <button type="submit" className="button-secondary w-full">Sign out</button>
             </form>
+            </DisclosureSection>
           </aside>
         </div>
       </div>
