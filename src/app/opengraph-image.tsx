@@ -31,8 +31,8 @@ export default function Image() {
       <div style={{ display: "flex", marginTop: 26, color: "#805347", fontSize: 27, letterSpacing: 1 }}>
         Gaayan &amp; Paath
       </div>
-      <div style={{ display: "flex", marginTop: 30, maxWidth: 900, color: "#68675F", fontSize: 30, lineHeight: 1.4 }}>
-        A place for Sakhis to come together.
+      <div style={{ display: "flex", marginTop: 30, maxWidth: 900, color: "#68675F", fontSize: 25, lineHeight: 1.4 }}>
+        A place for Sakhis to gather for Shree Hit Chaturasi Ji Gaayan and Vaani Paath.
       </div>
       <div style={{ display: "flex", marginTop: 44, width: 100, height: 1, background: "#DCD6CC" }} />
       <div style={{ display: "flex", marginTop: 22, color: "#68675F", fontSize: 19 }}>
