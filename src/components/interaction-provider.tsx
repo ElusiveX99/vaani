@@ -11,6 +11,9 @@ type InteractionContextValue = {
   prompt: (options: DialogOptions) => Promise<string | null>;
 };
 const InteractionContext = createContext<InteractionContextValue | null>(null);
+function DialogMark({danger}:{danger:boolean}) {
+ return <div className="vaani-dialog-mark" data-danger={danger} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" className="size-6"><path d={danger?"M12 7v6m0 4h.01":"M12 3.5 14.6 9l5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8L12 3.5Z"} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></div>;
+}
 
 export function useVaaniDialog() {
   const context = useContext(InteractionContext);
@@ -34,7 +37,7 @@ export default function InteractionProvider({ children }: { children: ReactNode 
     return typeof value === "string" ? value : null;
   }, [open]);
   const finish = useCallback((value: boolean | string | null) => {
-    setPending((current) => {
+    setPending(current => {
       if (!current) return current;
       current.resolve(value);
       return null;
@@ -65,12 +68,12 @@ export default function InteractionProvider({ children }: { children: ReactNode 
 
   return <InteractionContext.Provider value={{ confirm, alert, prompt }}>
     {children}
-    {pending && <div className="vaani-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && pending.kind !== "confirm") finish(null); }}>
+    {pending && <div className="vaani-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && pending.kind !== "confirm") finish(null); }}>
       <section id="vaani-dialog-panel" role={pending.kind === "alert" ? "alertdialog" : "dialog"} aria-modal="true" aria-labelledby="vaani-dialog-title" aria-describedby="vaani-dialog-message" className="vaani-dialog-panel">
-        <div className="vaani-dialog-mark" data-danger={pending.danger || false}>{pending.danger ? "!" : "✦"}</div>
+        <DialogMark danger={Boolean(pending.danger)}/>
         <h2 id="vaani-dialog-title" className="vaani-dialog-title">{pending.title || (pending.kind === "confirm" ? "Are you sure?" : pending.kind === "prompt" ? "Enter a value" : "Notice")}</h2>
         <p id="vaani-dialog-message" className="vaani-dialog-message">{pending.message}</p>
-        {pending.kind === "prompt" && <input ref={inputRef} className="field-input mt-4" placeholder={pending.placeholder} defaultValue={pending.defaultValue} onKeyDown={(event) => { if (event.key === "Enter") finish(event.currentTarget.value); }} />}
+        {pending.kind === "prompt" && <input ref={inputRef} className="field-input mt-4" placeholder={pending.placeholder} defaultValue={pending.defaultValue} required={pending.required} onKeyDown={event => { if (event.key === "Enter" && (!pending.required || event.currentTarget.value.trim())) finish(event.currentTarget.value); }}/>}
         <div className="vaani-dialog-actions">
           {pending.kind !== "alert" && <button type="button" className="button-secondary" onClick={() => finish(null)}>{pending.cancelLabel || "Cancel"}</button>}
           <button id="vaani-dialog-confirm" type="button" className={pending.danger ? "button-danger" : "button-primary"} onClick={() => finish(pending.kind === "prompt" ? inputRef.current?.value ?? "" : true)}>{pending.confirmLabel || (pending.kind === "alert" ? "OK" : pending.kind === "prompt" ? "Continue" : "Confirm")}</button>
