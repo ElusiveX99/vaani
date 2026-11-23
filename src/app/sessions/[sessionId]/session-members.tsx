@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
-import DisclosureSection from "@/components/disclosure-section";
+import Link from "next/link";
 
 type Member = {
   user_id: string;
@@ -17,10 +17,12 @@ export default function SessionMembers({
   sessionId,
   currentUserId,
   initialMembers,
+  showAll = false,
 }: {
   sessionId: string;
   currentUserId: string;
   initialMembers: Member[];
+  showAll?: boolean;
 }) {
   const [members, setMembers] = useState(initialMembers);
 
@@ -85,17 +87,22 @@ export default function SessionMembers({
     };
   }, [sessionId]);
 
-  const acceptedCount = members.filter((member) => member.status === "accepted").length;
+  const acceptedMembers = members.filter((member) => member.status === "accepted");
+  const acceptedCount = acceptedMembers.length;
+  const visibleMembers = showAll ? acceptedMembers : acceptedMembers.slice(0, 10);
 
   return (
     <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
-      <DisclosureSection title="Session members" summary={`${acceptedCount} accepted · Member roles update live`} contentClassName="mt-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-[var(--ink)]">{showAll ? "All session members" : "Session members"} <span className="text-sm font-normal text-[var(--muted)]">({acceptedCount})</span></h2>
+        {!showAll && acceptedCount > 10 && <Link href={`/sessions/${sessionId}/members`} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">Show more</Link>}
+      </div>
 
-      {members.length === 0 ? (
-        <p className="mt-6 text-sm text-[var(--muted)]">No member information is currently available.</p>
+      {acceptedMembers.length === 0 ? (
+        <p className="mt-4 text-sm text-[var(--muted)]">No members yet.</p>
       ) : (
-        <div className="mt-5 divide-y divide-stone-100">
-          {members.map((member) => (
+        <div className="mt-3 divide-y divide-[var(--line)]">
+          {visibleMembers.map((member) => (
             <div key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 <ProfileAvatar name={member.display_name} avatarUrl={member.avatar_url} size="md" />
@@ -106,14 +113,11 @@ export default function SessionMembers({
                   <p className="mt-1 text-xs capitalize text-[var(--muted)]">{member.role.replaceAll("_", " ")}</p>
                 </div>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${"bg-[var(--surface-soft)] text-[var(--ink)]"}`}>
-                {"Accepted"}
-              </span>
             </div>
           ))}
         </div>
       )}
-      </DisclosureSection>
+      {showAll && <Link href={`/sessions/${sessionId}`} className="mt-4 inline-flex text-sm font-semibold text-[var(--plum)] hover:underline">Back to gathering</Link>}
     </section>
   );
 }
