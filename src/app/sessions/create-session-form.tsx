@@ -5,6 +5,7 @@ import InlineFeedback from "@/components/inline-feedback";
 import RecurrenceFields from "@/components/recurrence-fields";
 import CustomSelect from "@/components/custom-select";
 import DateTimePicker from "@/components/date-time-picker";
+import DisclosureSection from "@/components/disclosure-section";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -107,10 +108,12 @@ export default function CreateSessionForm({ action, error }: Props) {
         <input type="hidden" name="time_zone" value={timeZone} />
       </section>
 
-      <section className="space-y-4 border-t border-[var(--line)] pt-7">
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--ink)]">Access and participation</h2>
-        </div>
+      <DisclosureSection
+        title="Access and participation"
+        summary="Who can join, participant limit, and waiting-room settings"
+        className="border-t border-[var(--line)] pt-7"
+        contentClassName="mt-4 space-y-4"
+      >
         <div>
           <label htmlFor="access_type" className="field-label mb-2">Who can join?</label>
           <CustomSelect id="access_type" name="access_type" defaultValue="community" options={[{value:"community",label:"All Vaani members"},{value:"link",label:"Anyone with an invitation link"}]} />
@@ -127,16 +130,26 @@ export default function CreateSessionForm({ action, error }: Props) {
           <input type="checkbox" name="allow_participant_invites" className="mt-1 size-4 accent-[var(--plum)]" />
           <span><strong className="block">Allow participants to invite others</strong><span className="text-[var(--muted)]">Participants can invite others when the organizer allows it.</span></span>
         </label>
-      </section>
+      </DisclosureSection>
 
-      <section className="space-y-4 border-t border-[var(--line)] pt-7">
+      <DisclosureSection
+        title="Recurrence"
+        summary="Set this gathering to repeat on a schedule"
+        className="border-t border-[var(--line)] pt-7"
+        contentClassName="mt-4"
+      >
         <RecurrenceFields />
-      </section>
+      </DisclosureSection>
+      <DisclosureSection
+        title="Participant instructions"
+        summary="Optional information participants should know before joining"
+        className="border-t border-[var(--line)] pt-7"
+        contentClassName="mt-4"
+      >
+        <label htmlFor="instructions" className="field-label mb-2">Instructions for participants</label>
+        <textarea id="instructions" name="instructions" maxLength={2000} rows={3} placeholder="Anything participants should know before joining" className="field-input min-h-24 resize-y" />
+      </DisclosureSection>
       <section className="space-y-3 border-t border-[var(--line)] pt-7">
-        <div>
-          <label htmlFor="instructions" className="field-label mb-2">Instructions for participants</label>
-          <textarea id="instructions" name="instructions" maxLength={2000} rows={3} placeholder="Anything participants should know before joining" className="field-input min-h-24 resize-y" />
-        </div>
         <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-5 sm:flex-row sm:items-center sm:justify-between">
           <button type="submit" name="intent" value="publish" disabled={submitting} className="button-primary">
             {submitting ? "Saving..." : "Schedule gathering"}

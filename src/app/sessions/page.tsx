@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
 import InlineFeedback from "@/components/inline-feedback";
+import DisclosureSection from "@/components/disclosure-section";
 import Link from "next/link";
 import SessionRealtimeRefresh from "@/components/session-realtime-refresh";
 
@@ -202,14 +203,13 @@ function SessionSection({
 }) {
   return (
     <section id={title === "Discover sessions" ? "discover-sessions" : undefined} className="mt-10">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-[var(--ink)]">
-          {title}
-        </h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          {description}
-        </p>
-      </div>
+      <DisclosureSection
+        title={title}
+        summary={description}
+        defaultOpen={title !== "Past gatherings" && title !== "Your drafts"}
+        className="mb-4"
+      >
+      <p className="mt-2 text-sm text-[var(--muted)]">{description}</p>
 
       {sessions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--line)] p-7 text-center">
@@ -226,6 +226,7 @@ function SessionSection({
           ))}
         </div>
       )}
+      </DisclosureSection>
     </section>
   );
 }
@@ -386,7 +387,11 @@ async function SessionsContent({
 
         {notifications && notifications.length > 0 && (
           <section className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Updates</h2><span className="text-xs text-[var(--muted)]">{notifications.filter((item) => !item.read_at).length} unread</span></div>
+            <DisclosureSection
+              title="Updates"
+              summary={`${notifications.filter((item) => !item.read_at).length} unread · ${notifications.length} total`}
+              className="min-w-0"
+            >
             <div className="mt-3 divide-y divide-[var(--line)]">
               {notifications.map((item) => (
                 <div key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
@@ -400,6 +405,7 @@ async function SessionsContent({
                 </div>
               ))}
             </div>
+            </DisclosureSection>
           </section>
         )}
 

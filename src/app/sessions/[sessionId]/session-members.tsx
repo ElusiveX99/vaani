@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
+import DisclosureSection from "@/components/disclosure-section";
 
 type Member = {
   user_id: string;
@@ -88,13 +89,7 @@ export default function SessionMembers({
 
   return (
     <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">Session members</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Member roles update live.</p>
-        </div>
-        <span className="text-sm text-[var(--muted)]">{acceptedCount} accepted</span>
-      </div>
+      <DisclosureSection title="Session members" summary={`${acceptedCount} accepted · Member roles update live`} contentClassName="mt-4">
 
       {members.length === 0 ? (
         <p className="mt-6 text-sm text-[var(--muted)]">No member information is currently available.</p>
@@ -118,6 +113,7 @@ export default function SessionMembers({
           ))}
         </div>
       )}
+      </DisclosureSection>
     </section>
   );
 }

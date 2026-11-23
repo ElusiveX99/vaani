@@ -12,6 +12,7 @@ import DateTimePicker from "@/components/date-time-picker";
 import CopyInviteLink from "./copy-invite-link";
 import InlineFeedback from "@/components/inline-feedback";
 import RecurrenceFields from "@/components/recurrence-fields";
+import DisclosureSection from "@/components/disclosure-section";
 
 import {
   joinCommunitySession,
@@ -247,8 +248,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
               <div><label className="field-label mb-2" htmlFor="draft-duration">Expected duration</label><CustomSelect id="draft-duration" name="duration_minutes" defaultValue={String(session.duration_minutes ?? "")} options={[{value:"",label:"Not specified"},{value:"30",label:"30 minutes"},{value:"45",label:"45 minutes"},{value:"60",label:"1 hour"},{value:"90",label:"1 hour 30 minutes"},{value:"120",label:"2 hours"},{value:"180",label:"3 hours"},{value:"240",label:"4 hours"}]} /></div>
               <div><label className="field-label mb-2" htmlFor="draft-access">Who can join?</label><CustomSelect id="draft-access" name="access_type" defaultValue={session.access_type} options={[{value:"community",label:"All Vaani members"},{value:"link",label:"Anyone with an invitation link"}]} /></div>
               <div><label className="field-label mb-2" htmlFor="draft-limit">Participant limit</label><input id="draft-limit" name="participant_limit" type="number" min="2" max="500" placeholder="No limit" defaultValue={session.participant_limit ?? ""} className="field-input" /></div>
-              <RecurrenceFields initialRule={session.recurrence_rule || ""} initialUntil={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} />
-              <div className="sm:col-span-2"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></div>
+              <div className="sm:col-span-2"><DisclosureSection title="Recurrence" summary={session.recurrence_rule ? "This draft has a repeat schedule" : "Set this gathering to repeat"} contentClassName="mt-3"><RecurrenceFields initialRule={session.recurrence_rule || ""} initialUntil={dateInputValue(session.recurrence_until, session.time_zone || "Asia/Kolkata")} /></DisclosureSection></div>
+              <div className="sm:col-span-2"><DisclosureSection title="Participant instructions" summary="Optional information for participants" contentClassName="mt-3"><label className="field-label mb-2" htmlFor="draft-instructions">Instructions for participants</label><textarea id="draft-instructions" name="instructions" rows={2} maxLength={2000} defaultValue={session.instructions || ""} className="field-input resize-y" /></DisclosureSection></div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="waiting_room_enabled" defaultChecked={session.waiting_room_enabled} /> Use waiting room</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allow_participant_invites" defaultChecked={session.allow_participant_invites} /> Allow participant invitations</label>
               <div className="sm:col-span-2 flex flex-col-reverse gap-3 border-t border-[var(--line)] pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -586,7 +587,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
         {canViewInviteLinks&&(
           <section className="surface-card mt-7 p-6 sm:p-8">
-            <h2 className="text-xl font-semibold">Invitation links</h2>
+            <DisclosureSection title="Invitation links" summary={`${inviteLinks?.length ?? 0} existing links`} contentClassName="mt-4">
             <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted)]">Share a link with someone you would like to join this gathering. Links can be reused until they expire, reach their use limit, or are revoked. Your existing active link is returned when you request it again.</p>
             {canCreateInvite?(<form action={createInviteLink} className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--background)] p-4">
               <input type="hidden" name="session_id" value={session.id}/><h3 className="text-sm font-semibold">Get an invitation link</h3>
@@ -598,11 +599,12 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </form>            ):<p className="mt-5 text-sm text-[var(--muted)]">This gathering is no longer accepting new invitations. Existing links are shown below for reference and cleanup.</p>}
             {paramsData.invite&&<div className="mt-4 rounded-xl border border-[var(--line)] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Your link is ready</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input readOnly value={paramsData.invite} className="field-input min-w-0 flex-1 text-sm" aria-label="Invitation link"/><CopyInviteLink value={paramsData.invite}/></div></div>}
             <div className="mt-5"><h3 className="text-sm font-semibold">Existing links</h3>{!inviteLinks?.length?<p className="mt-2 text-sm text-[var(--muted)]">No invitation links have been created for this gathering yet.</p>:<div className="mt-3 divide-y divide-[var(--line)]">{inviteLinks.map(link=>{const url=`${inviteOrigin}/sessions/join/${link.short_code}`;const expired=!!link.expires_at&&new Date(link.expires_at).getTime()<=Date.now();const exhausted=link.max_uses!==null&&link.use_count>=link.max_uses;const state=link.revoked_at?"Revoked":expired?"Expired":exhausted?"Use limit reached":"Active";const active=state==="Active";return <div key={link.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{link.created_by===userId?"Your invitation link":"Participant invitation link"}</p><span className="rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] text-[var(--muted)]">{state}</span></div><p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p><p className="mt-1 text-xs text-[var(--muted)]">{link.use_count} {link.use_count===1?"use":"uses"}{link.max_uses===null?" · No use limit":` of ${link.max_uses}`}{link.expires_at?` · Expires ${formatDate(link.expires_at,session.time_zone)}`:" · No expiry"}</p></div><div className="flex shrink-0 flex-wrap gap-2">{active&&<CopyInviteLink value={url} />}{active&&(canManage||link.created_by===userId)&&<form action={revokeInviteLink}><input type="hidden" name="session_id" value={session.id}/><input type="hidden" name="link_id" value={link.id}/><button className="button-secondary !min-h-10 !px-3 text-xs">Revoke</button></form>}</div></div>})}</div>}</div>
+            </DisclosureSection>
           </section>
         )}
         {canManage && session.waiting_room_enabled && (
           <section className="surface-card mt-7 p-6 sm:p-8">
-            <h2 className="text-xl font-semibold">Join requests</h2>
+            <DisclosureSection title="Join requests" summary={`${joinRequests.length} pending · Review members waiting for approval`} defaultOpen={joinRequests.length > 0} contentClassName="mt-4">
             <p className="mt-1 text-sm text-[var(--muted)]">Review members waiting for approval.</p>
             {joinRequests.length === 0 ? <p className="mt-5 text-sm text-[var(--muted)]">No pending requests.</p> : (
               <div className="mt-5 divide-y divide-[var(--line)]">
@@ -617,6 +619,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
                 ))}
               </div>
             )}
+            </DisclosureSection>
           </section>
         )}
         {joinRequestLookupFailed && canManage && (
@@ -639,11 +642,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
         {/* Session information */}
 
         <section className="surface-card mt-7 p-6">
-          <h2 className="text-sm font-semibold text-[var(--ink)]">
-            Session information
-          </h2>
-
-          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+          <DisclosureSection title="Session information" summary="Access, organizer, schedule, and additional details" contentClassName="mt-4">
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
 
             <div>
               <dt className="text-[var(--muted)]">
@@ -701,6 +701,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </div>
             )}
           </dl>
+          </DisclosureSection>
         </section>
       </div>
     </main>
