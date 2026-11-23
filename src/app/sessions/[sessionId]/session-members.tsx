@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
-import DisclosureSection from "@/components/disclosure-section";
+import Link from "next/link";
 
 type Member = {
   user_id: string;
@@ -93,7 +93,7 @@ export default function SessionMembers({
 
   return (
     <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold text-[var(--ink)]">{showAll ? "All session members" : "Session members"}</h2><p className="mt-1 text-xs text-[var(--muted)]">{acceptedCount} joined {showAll ? "members" : "members"}</p></div>{!showAll && acceptedCount > 10 && <a href={`/sessions/${sessionId}/members`} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">Show more</a>}</div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold text-[var(--ink)]">{showAll ? "All session members" : "Session members"}</h2><p className="mt-1 text-xs text-[var(--muted)]">{acceptedCount} joined {showAll ? "members" : "members"}</p></div>{!showAll && acceptedCount > 10 && <Link href={`/sessions/${sessionId}/members`} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">Show more</Link>}</div>
 
       {members.length === 0 ? (
         <p className="mt-6 text-sm text-[var(--muted)]">No member information is currently available.</p>
@@ -117,7 +117,7 @@ export default function SessionMembers({
           ))}
         </div>
       )}
-      {showAll && <a href={`/sessions/${sessionId}`} className="mt-4 inline-flex text-sm font-semibold text-[var(--plum)] hover:underline">Back to gathering</a>}
+      {showAll && <Link href={`/sessions/${sessionId}`} className="mt-4 inline-flex text-sm font-semibold text-[var(--plum)] hover:underline">Back to gathering</Link>}
     </section>
   );
 }
