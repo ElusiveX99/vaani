@@ -154,9 +154,14 @@ export async function createSession(formData: FormData) {
 }
 
 export async function joinGatheringBySlug(formData: FormData) {
-  const { supabase } = await getAuthenticatedClient();
   const slug = String(formData.get("slug") ?? "").trim();
   if (!/^[a-f0-9]{32}$/.test(slug)) redirect("/sessions?error=invalid_gathering_link");
+
+  const supabase = await createClient();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user?.id) {
+    redirect(`/login?next=${encodeURIComponent(`/g/${slug}`)}`);
+  }
 
   const { data, error } = await supabase.rpc("request_gathering_join_by_slug", {
     p_slug: slug,
