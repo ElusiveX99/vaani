@@ -24,7 +24,8 @@
   --conference-raised: #342d38;
   --conference-line: rgba(232, 215, 224, .13);
   --conference-accent: #8b647e;
-  --font-ui: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-source-serif), Georgia, serif;
   --font-brand: var(--font-cormorant), Georgia, serif;
   --font-code: var(--font-geist-mono), ui-monospace, monospace;
   --type-page-title: clamp(2.25rem, 4vw, 3rem);
@@ -39,7 +40,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--ink);
-  --font-sans: var(--font-manrope);
+  --font-sans: var(--font-source-sans);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -85,14 +86,26 @@ html { scroll-padding-top: 5rem; }
 }
 
 .font-display {
-  font-family: var(--font-ui);
-  font-weight: 550;
-  letter-spacing: -.035em;
-  line-height: 1.15;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -.018em;
+  line-height: 1.12;
   font-variant-numeric: lining-nums;
 }
-.type-page-title { font-size: var(--type-page-title); font-weight: 600; line-height: 1.1; letter-spacing: -.04em; }
-.type-section-title { font-size: var(--type-section-title); font-weight: 600; line-height: 1.2; letter-spacing: -.03em; }
+.type-page-title {
+  font-family: var(--font-display);
+  font-size: var(--type-page-title);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -.022em;
+}
+.type-section-title {
+  font-family: var(--font-display);
+  font-size: var(--type-section-title);
+  font-weight: 500;
+  line-height: 1.16;
+  letter-spacing: -.018em;
+}
 .type-card-title { font-size: var(--type-card-title); font-weight: 550; line-height: 1.3; }
 .type-body { font-size: var(--type-body); line-height: 1.6; }
 .type-supporting { font-size: var(--type-supporting); line-height: 1.5; }
@@ -238,7 +251,7 @@ html { scroll-padding-top: 5rem; }
   padding: 0 .75rem;
   color: var(--gold-ink);
   font-size: .62rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: .16em;
 }
 .site-sidebar-links { display: grid; gap: .35rem; margin-top: .8rem; }
@@ -251,7 +264,7 @@ html { scroll-padding-top: 5rem; }
   padding: .65rem .8rem;
   color: var(--muted);
   font-size: .88rem;
-  font-weight: 650;
+  font-weight: 500;
   transition: background .18s ease, color .18s ease;
 }
 .site-sidebar-link:hover, .site-sidebar-link-active {
@@ -303,7 +316,7 @@ html { scroll-padding-top: 5rem; }
   border-radius: 10px;
   color: var(--muted);
   font-size: .67rem;
-  font-weight: 700;
+  font-weight: 500;
 }
 .site-bottom-link-active { color: var(--plum); background: var(--rose-soft); }
 main:has(> .site-mobile-header) { padding-bottom: calc(4.8rem + env(safe-area-inset-bottom)); }
@@ -400,10 +413,10 @@ button[data-submitting="true"]::after {
 .vaani-dialog-panel { width:min(100%, 27rem); border:1px solid var(--line); border-radius:var(--dialog-radius); background:var(--surface); color:var(--ink); padding:1.5rem; box-shadow:var(--dialog-shadow); animation:vaani-dialog-in .2s cubic-bezier(.2,.8,.2,1) both; }
 .vaani-dialog-mark { display:grid; width:2.5rem; height:2.5rem; place-items:center; border-radius:50%; background:var(--rose-soft); color:var(--plum); font-weight:800; }
 .vaani-dialog-mark[data-danger="true"] { background:color-mix(in srgb,var(--danger) 13%,var(--surface)); color:var(--danger); }
-.vaani-dialog-title { margin:1rem 0 0; font-size:1.12rem; font-weight:750; letter-spacing:-.02em; }
+.vaani-dialog-title { margin:1rem 0 0; font-family:var(--font-display); font-size:1.28rem; font-weight:500; line-height:1.2; letter-spacing:-.015em; }
 .vaani-dialog-message { margin:.55rem 0 0; color:var(--muted); font-size:.9rem; line-height:1.65; white-space:pre-line; }
 .vaani-dialog-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.65rem; margin-top:1.5rem; }
-.button-danger { display:inline-flex; min-height:42px; align-items:center; justify-content:center; border-radius:999px; padding:.65rem 1.15rem; background:var(--danger); color:white; font-size:.86rem; font-weight:750; cursor:pointer; }
+.button-danger { display:inline-flex; min-height:42px; align-items:center; justify-content:center; border-radius:999px; padding:.65rem 1.15rem; background:var(--danger); color:white; font-size:.86rem; font-weight:600; cursor:pointer; }
 .button-danger:hover { filter:brightness(.92); }
 .button-danger:disabled { cursor:wait; opacity:.55; }
 .button-danger:disabled { cursor:wait; opacity:.55; }
@@ -430,7 +443,7 @@ button[data-submitting="true"]::after {
   display:grid; grid-template-columns:2.5rem minmax(0,1fr) 2.5rem;
   align-items:center; justify-items:center; gap:.5rem; margin-bottom:.9rem;
 }
-.vaani-calendar-head strong { font-size:.94rem; font-weight:750; letter-spacing:-.015em; }
+.vaani-calendar-head strong { font-family:var(--font-display); font-size:1.05rem; font-weight:500; letter-spacing:-.01em; }
 .vaani-calendar-nav {
   display:grid; place-items:center; width:2.5rem; height:2.5rem; box-sizing:border-box;
   padding:0; border:1px solid var(--line); border-radius:50%;
@@ -459,7 +472,7 @@ button[data-submitting="true"]::after {
 .vaani-calendar-day[data-today="true"] { border-color:var(--focus-ring); }
 .vaani-calendar-day[data-selected="true"] {
   border-color:transparent; background:var(--calendar-selected);
-  color:var(--calendar-selected-ink); font-weight:750;
+  color:var(--calendar-selected-ink); font-weight:600;
 }
 .vaani-calendar-day:disabled { opacity:.28; cursor:not-allowed; }
 .vaani-calendar-time {
@@ -468,7 +481,7 @@ button[data-submitting="true"]::after {
 }
 .vaani-calendar-time-heading {
   display:flex; align-items:center; gap:.5rem; color:var(--ink);
-  font-size:.82rem; font-weight:700;
+  font-size:.82rem; font-weight:600;
 }
 .vaani-calendar-time-heading > svg { color:var(--muted); }
 .vaani-calendar-time-zone { margin-left:.15rem; color:var(--muted); font-size:.68rem; font-weight:500; }
@@ -488,11 +501,11 @@ button[data-submitting="true"]::after {
   width:100%; min-width:0; height:2.1rem; box-sizing:border-box;
   padding:0; border:0; border-block:1px solid var(--line);
   outline:none; background:var(--surface); color:var(--ink);
-  text-align:center; font:inherit; font-size:1rem; font-weight:750;
+  text-align:center; font:inherit; font-size:1rem; font-weight:600;
   font-variant-numeric:tabular-nums;
 }
 .vaani-time-unit input:focus { box-shadow:inset 0 0 0 1px var(--focus-ring); }
-.vaani-time-separator { color:var(--muted); font-weight:800; }
+.vaani-time-separator { color:var(--muted); font-weight:600; }
 .vaani-calendar-actions {
   display:flex; justify-content:flex-end; gap:.55rem; margin-top:1rem;
   padding-top:.85rem; border-top:1px solid var(--line);

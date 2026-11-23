@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Cormorant_Garamond, Manrope, Geist_Mono } from "next/font/google";
+import { Cormorant_Garamond, Geist_Mono, Source_Sans_3, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import FormPendingFeedback from "@/components/form-pending-feedback";
 import ToastViewport from "@/components/toast-viewport";
@@ -13,9 +13,17 @@ const display = Cormorant_Garamond({
   display: "swap",
 });
 
-const sans = Manrope({
-  variable: "--font-manrope",
+const sans = Source_Sans_3({
+  variable: "--font-source-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const serif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -86,7 +94,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="en" className={`${display.variable} ${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <InteractionProvider>
         <Suspense fallback={null}><FormPendingFeedback /></Suspense>
