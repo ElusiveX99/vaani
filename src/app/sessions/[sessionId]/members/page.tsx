@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "@/components/site-header";
 import SessionMembers from "../session-members";
 
+export const instant = false;
+
 type PageProps = { params: Promise<{ sessionId: string }> };
 
 export default async function SessionMembersPage({ params }: PageProps) {
