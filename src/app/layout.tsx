@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Cormorant_Garamond, Geist_Mono, Source_Sans_3, Source_Serif_4 } from "next/font/google";
+import { Cormorant_Garamond, Geist_Mono, Lora, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import FormPendingFeedback from "@/components/form-pending-feedback";
 import ToastViewport from "@/components/toast-viewport";
@@ -20,7 +20,7 @@ const sans = Source_Sans_3({
   display: "swap",
 });
 
-const serif = Source_Serif_4({
+const serif = Lora({
   variable: "--font-source-serif",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
