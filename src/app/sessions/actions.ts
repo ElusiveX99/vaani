@@ -495,15 +495,15 @@ export async function rejectJoinRequest(formData: FormData) {
   redirect(`/sessions/${sessionId}?success=join_request_rejected`);
 }
 
-export async function revokeInviteLink(formData: FormData) {
+export async function deleteInviteLink(formData: FormData) {
   const { supabase } = await getAuthenticatedClient();
   const sessionId = String(formData.get("session_id") ?? "");
   const linkId = String(formData.get("link_id") ?? "");
   if (!isValidSessionId(sessionId) || !isValidSessionId(linkId)) redirect("/sessions?error=invalid_session");
-  const { error } = await supabase.rpc("revoke_session_invite_link", { p_link_id: linkId });
-  if (error) redirect(`/sessions/${sessionId}?error=revoke_invitation_failed`);
+  const { error } = await supabase.rpc("delete_session_invite_link", { p_link_id: linkId });
+  if (error) redirect(`/sessions/${sessionId}?error=delete_invitation_failed`);
   revalidatePath(`/sessions/${sessionId}`);
-  redirect(`/sessions/${sessionId}?success=invitation_revoked`);
+  redirect(`/sessions/${sessionId}?success=invitation_deleted`);
 }
 
 export async function markSessionNotificationRead(formData: FormData) {

@@ -17,7 +17,7 @@ import DisclosureSection from "@/components/disclosure-section";
 import {
   joinCommunitySession,
   createInviteLink,
-  revokeInviteLink,
+  deleteInviteLink,
   leaveSession,
   startSession,
   endSession,
@@ -348,7 +348,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
     (canManage || isAccepted);
   const inviteLinksResult = canViewInviteLinks
     ? await supabase.from("session_invite_links")
-        .select("id,short_code,created_by,revoked_at,created_at")
+        .select("id,short_code,created_by,created_at")
         .eq("session_id", session.id)
         .order("created_at", { ascending: false })
     : { data: [], error: null };
@@ -591,44 +591,42 @@ async function SessionContent({ params, searchParams }: PageProps) {
               </form>
             </div>
             {paramsData.success === "invitation_created" && (
-              <InlineFeedback tone="success" className="mt-4">Your invitation link is ready. Copy it below.</InlineFeedback>
+              <InlineFeedback tone="success" className="mt-4">Invitation link created.</InlineFeedback>
             )}
-            {paramsData.success === "invitation_revoked" && (
-              <InlineFeedback tone="success" className="mt-4">The invitation link has been revoked.</InlineFeedback>
+            {paramsData.success === "invitation_deleted" && (
+              <InlineFeedback tone="success" className="mt-4">Invitation link deleted.</InlineFeedback>
             )}
-            {["invalid_invite_link", "invite_link_failed", "revoke_invitation_failed"].includes(paramsData.error || "") && (
+            {["invalid_invite_link", "invite_link_failed", "delete_invitation_failed"].includes(paramsData.error || "") && (
               <InlineFeedback tone="error" className="mt-4">
-                {paramsData.error === "revoke_invitation_failed"
-                  ? "The invitation link could not be revoked."
+                {paramsData.error === "delete_invitation_failed"
+                  ? "The invitation link could not be deleted."
                   : "The invitation link could not be created. Please try again."}
               </InlineFeedback>
             )}
             {inviteLinksResult.error ? (
               <InlineFeedback tone="error" className="mt-4">Invitation links could not be loaded.</InlineFeedback>
             ) : inviteLinks.length === 0 ? (
-              <p className="mt-4 text-sm text-[var(--muted)]">No links yet.</p>
+              <p className="mt-4 text-sm text-[var(--muted)]">No active invitation links.</p>
             ) : (
               <div className="mt-3 divide-y divide-[var(--line)]">
                 {inviteLinks.filter((link) => typeof link.short_code === "string" && link.short_code.length === 10).map((link) => {
                   const url = `${inviteOrigin}/g/${link.short_code}`;
-                  const active = !link.revoked_at;
                   return (
                     <div key={link.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{link.created_by === userId ? "Your link" : "Participant link"}</span>
-                          <span className="rounded-full bg-[var(--surface-soft)] px-2 py-1 text-[10px] text-[var(--muted)]">{active ? "Active" : "Revoked"}</span>
                         </div>
                         <p className="mt-1 break-all text-xs text-[var(--muted)]">{url}</p>
                         <p className="mt-1 text-xs text-[var(--muted)]">Reusable link · No expiration or usage limit</p>
                       </div>
                       <div className="flex shrink-0 gap-2">
-                        {active && <CopyInviteLink value={url} />}
-                        {active && (canManage || link.created_by === userId) && (
-                          <form action={revokeInviteLink}>
+                        <CopyInviteLink value={url} />
+                        {(canManage || link.created_by === userId) && (
+                          <form action={deleteInviteLink}>
                             <input type="hidden" name="session_id" value={session.id} />
                             <input type="hidden" name="link_id" value={link.id} />
-                            <button className="button-secondary !min-h-9 !px-3 !py-2 text-xs">Revoke</button>
+                            <ConfirmSubmitButton title="Delete invitation link" message="Anyone using this URL will no longer be able to open the invitation. You will need to create a new link to share again." className="button-secondary !min-h-9 !px-3 !py-2 text-xs">Delete link</ConfirmSubmitButton>
                           </form>
                         )}
                       </div>
