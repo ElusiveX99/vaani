@@ -9,6 +9,15 @@ function ArrowIcon() {
   );
 }
 
+function FeatureIcon({ kind }: { kind: "audio" | "reader" | "chat" }) {
+  const paths = {
+    audio: <><path d="M4 10V14M8 7V17M12 4V20M16 7V17M20 10V14" /></>,
+    reader: <><path d="M4 4.5C7.2 3.3 10 4 12 5.5C14 4 16.8 3.3 20 4.5V19C16.8 17.8 14 18.5 12 20C10 18.5 7.2 17.8 4 19V4.5Z" /><path d="M12 5.5V20" /></>,
+    chat: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-5 4v-4.4A2.5 2.5 0 0 1 4 13.5v-8Z" /><path d="M8 8h8M8 12h5" /></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={styles.toolGlyphSvg}><g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[kind]}</g></svg>;
+}
+
 function Wordmark() {
   return (
     <Link href="/" className={styles.wordmark} aria-label="Vaani home">
@@ -59,7 +68,7 @@ function ReaderPreview() {
         <div className={styles.gatheringPanel}>
           <div className={styles.gatheringPanelHead}>
             <span className={styles.previewOverline}>GATHERING</span>
-            <span className={styles.moreDots} aria-hidden="true">•••</span>
+            <svg className={styles.moreDots} viewBox="0 0 20 6" aria-hidden="true"><circle cx="2" cy="3" r="1.5" fill="currentColor"/><circle cx="10" cy="3" r="1.5" fill="currentColor"/><circle cx="18" cy="3" r="1.5" fill="currentColor"/></svg>
           </div>
           <div className={styles.participantTiles} aria-hidden="true">
             <div className={styles.participantTile}><span className={styles.participantAvatar} /><span /></div>
@@ -67,9 +76,9 @@ function ReaderPreview() {
             <div className={styles.participantTile}><span className={styles.participantAvatar}>S</span><span /></div>
           </div>
           <div className={styles.gatheringDivider} />
-          <div className={styles.gatheringTool}><span className={styles.toolGlyph} /><span>Audio &amp; video</span></div>
-          <div className={styles.gatheringTool}><span className={styles.toolGlyph} /><span>Shared reader</span></div>
-          <div className={styles.gatheringTool}><span className={styles.toolGlyph} /><span>Gathering chat</span></div>
+          <div className={styles.gatheringTool}><FeatureIcon kind="audio" /><span>Audio &amp; video</span></div>
+          <div className={styles.gatheringTool}><FeatureIcon kind="reader" /><span>Shared reader</span></div>
+          <div className={styles.gatheringTool}><FeatureIcon kind="chat" /><span>Gathering chat</span></div>
         </div>
       </div>
       <p className={styles.previewCaption}>An illustrative view of the shared gathering experience</p>
@@ -283,7 +292,7 @@ export default function LandingPage() {
           <Wordmark />
           <p>जय जय श्री हित हरिवंश</p>
           <div><Link href="/login">Sign in</Link><Link href="/signup">Join Vaani</Link></div>
-          <span className={styles.copyright}>© 2026 Vaani</span>
+          <span className={styles.copyright}>© {new Date().getFullYear()} Vaani</span>
         </div>
       </footer>
     </main>
