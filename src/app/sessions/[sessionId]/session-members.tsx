@@ -51,7 +51,7 @@ export default function SessionMembers({
           console.error("Session member profile RPC failed:", profileError);
           return;
         }
-        profilesById = new Map((profiles ?? []).map((profile) => [profile.id, {
+        profilesById = new Map((profiles ?? []).map((profile: { id: string; display_name: string | null; avatar_url: string | null; avatar_path: string | null }) => [profile.id, {
           display_name: profile.display_name,
           avatar_url: profile.avatar_url || (profile.avatar_path
             ? (profile.avatar_path.startsWith("http")
