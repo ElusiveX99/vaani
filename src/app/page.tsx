@@ -74,7 +74,7 @@ export default function LandingPage() {
 
             <h1 id="hero-title" className={styles.heroTitle}>
               Come together for
-              <br />
+              <br className={styles.heroBreak} />
               <em>Gaayan &amp; Paath.</em>
             </h1>
 
@@ -95,24 +95,19 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className={styles.heroFooter} aria-label="Vaani at a glance">
-            <span>Arrange a gathering</span>
-            <span>Meet with audio and video</span>
-            <span>Follow the shared Vaani</span>
-          </div>
         </section>
 
         <section id="gathering" className={styles.gatheringSection}>
           <div className={styles.sectionIntro}>
             <p className={styles.eyebrow}>From planning to presence</p>
             <h2>
-              Everything around a gathering,
+              A gathering, from first plan
               <br />
-              in one considered place.
+              to shared reading.
             </h2>
             <p>
-              The practical steps stay connected, so the focus can stay on the
-              time Sakhis have come together to share.
+              Plan a time, share the invitation, and meet in the same place
+              where the Vaani is read.
             </p>
           </div>
 
@@ -163,10 +158,10 @@ export default function LandingPage() {
         <section id="tools" className={styles.toolsSection}>
           <div className={styles.toolsHeading}>
             <p className={styles.eyebrow}>Made for the whole session</p>
-            <h2>The details are taken care of.</h2>
+            <h2>Tools for the whole gathering.</h2>
             <p>
-              From the first invitation to the last page, the tools needed to
-              organize and take part in a gathering are kept together.
+              From the first invitation to shared reading, Vaani keeps the
+              essentials together.
             </p>
           </div>
 
@@ -183,7 +178,7 @@ export default function LandingPage() {
         <section className={styles.closingSection}>
           <div className={styles.closingInner}>
             <p className={styles.eyebrow}>Vaani · Sakhi Sang</p>
-            <h2>Make room for the next gathering.</h2>
+            <h2>Your next gathering can begin here.</h2>
             <p>
               Join Vaani and take part in shared Gaayan and Vaani Paath.
             </p>
