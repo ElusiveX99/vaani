@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title id="title">Vaani</title>
-  <rect width="64" height="64" rx="16" fill="#593B53"/>
-  <path d="M12 13C20 13 24 23 32 49C40 23 44 13 52 13" fill="none" stroke="#FFFAF7" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M40 25C44 28 46 32 46 37" fill="none" stroke="#D9B88B" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M44 18C51 23 54 30 54 38" fill="none" stroke="#D9B88B" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="50" cy="48" r="2.2" fill="#D9B88B"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc"><title id="title">Vaani symbol</title><desc id="desc">An abstract square mark derived from the custom calligraphic initial of the Vaani wordmark.</desc><rect width="256" height="256" rx="52" fill="#173F4A"/><g transform="translate(10 5) scale(.94)"><path d="M48 46 C78 73 93 166 124 203 C132 213 142 213 150 202 C183 158 199 73 232 37 C242 26 253 33 246 46 C218 99 203 174 164 225 C149 245 126 246 109 228 C72 188 63 91 38 61 C30 51 38 39 48 46 Z" fill="#F7F0E3"/></g></svg>

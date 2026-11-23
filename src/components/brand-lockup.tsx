@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 type BrandMarkProps = {
@@ -11,39 +12,22 @@ export function BrandMark({
   showWord = true,
   inverse = false,
 }: BrandMarkProps) {
-  const dimension = size === "sm" ? 30 : 36;
+  const wordmark = inverse ? "/vaani-wordmark-inverse.svg" : "/vaani-wordmark.svg";
+  const symbol = inverse ? "/vaani-symbol-inverse.svg" : "/vaani-symbol.svg";
+  const wordWidth = size === "sm" ? 164 : 190;
+  const wordHeight = size === "sm" ? 70 : 82;
+  const symbolSize = size === "sm" ? 34 : 42;
 
   return (
-    <Link
-      href="/"
-      className={`brand-lockup${inverse ? " brand-lockup--inverse" : ""}`}
-      aria-label="Vaani home"
-    >
-      <svg
-        className="brand-symbol"
-        width={dimension}
-        height={dimension}
-        viewBox="0 0 48 48"
-        fill="none"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <path
-          d="M7 9C14 9 18 18 24 37C30 18 34 9 41 9"
-          stroke="currentColor"
-          strokeWidth="3.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M31 20C34 22 36 26 36 30M35 14C41 18 44 24 44 31"
-          stroke="#A77D82"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-        <circle cx="42" cy="39" r="1.8" fill="#A98A5B" />
-      </svg>
-      {showWord && <span className="brand-word">vaani</span>}
+    <Link href="/" className="brand-lockup" aria-label="Vaani home">
+      {showWord ? (
+        <>
+          <Image className="brand-lockup__artwork brand-lockup__artwork--word" src={wordmark} alt="" width={wordWidth} height={wordHeight} priority unoptimized />
+          <Image className="brand-lockup__artwork brand-lockup__artwork--symbol" src={symbol} alt="" width={symbolSize} height={symbolSize} priority unoptimized />
+        </>
+      ) : (
+        <Image className="brand-lockup__artwork brand-lockup__artwork--symbol" src={symbol} alt="" width={symbolSize} height={symbolSize} priority unoptimized />
+      )}
     </Link>
   );
 }
