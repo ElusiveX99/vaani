@@ -338,7 +338,8 @@ const SynchronizedReader = memo(
     }, [data?.document?.id, sessionId, localUserId]);
 
     useEffect(() => {
-      if (!data || data.canControl || !data.document || personalPosition?.documentId !== data.document.id) return;
+      const readerData = dataRef.current;
+      if (!readerData || readerData.canControl || !readerData.document || personalPosition?.documentId !== readerData.document.id) return;
       pageRef.current = personalPosition.page;
       offsetRef.current = personalPosition.offset;
       setCurrentPage(personalPosition.page);
@@ -1074,7 +1075,6 @@ const SynchronizedReader = memo(
             documentUrl={readerData.document.url}
             currentPage={currentPage}
             currentOffset={currentOffset}
-            canControl={readerData.canControl}
             onPageChange={changePage}
             onPositionChange={changePosition}
           />
