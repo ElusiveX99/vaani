@@ -182,10 +182,6 @@ export default function PdfReader({
   const metricFrameRef = useRef<number | null>(null);
   const metricsRef = useRef<Array<Metric | null>>([]);
   const currentPositionRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
-  currentPositionRef.current = {
-    page: Math.max(1, currentPage),
-    offset: clampOffset(currentOffset),
-  };
   const positionRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
   const lastSentRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
   const lastWidthRef = useRef(0);
@@ -315,6 +311,13 @@ export default function PdfReader({
     console.error("Vaani PDF page render failed:", { pageNumber, message, cause });
     setPhase("ready");
   }, []);
+
+  useEffect(() => {
+    currentPositionRef.current = {
+      page: Math.max(1, currentPage),
+      offset: clampOffset(currentOffset),
+    };
+  }, [currentPage, currentOffset]);
 
   useEffect(() => {
     const node = containerRef.current;
