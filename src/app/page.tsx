@@ -1,39 +1,21 @@
 import Link from "next/link";
 import styles from "./landing.module.css";
 
-const gatheringStages = [
+const gatheringSteps = [
   {
+    number: "01",
     title: "Prepare",
-    description:
-      "Create a gathering, save it as a draft, or publish it for a future time. Set the duration, access, and other details before sharing it.",
+    text: "Set the time, duration, and access before the gathering begins.",
   },
   {
+    number: "02",
     title: "Invite",
-    description:
-      "Share it with Vaani members or send a secure invitation link. A waiting room lets the organizer review requests before anyone enters.",
+    text: "Bring the Sakhis in through their Vaani membership or an invitation link.",
   },
   {
+    number: "03",
     title: "Gather",
-    description:
-      "Meet with live audio and video, use the gathering chat, and follow the Vaani together in the shared reader.",
-  },
-] as const;
-
-const gatheringTools = [
-  {
-    title: "Scheduling",
-    detail:
-      "Drafts, future start times, duration, time zone, repeat schedules, and participant instructions.",
-  },
-  {
-    title: "Access",
-    detail:
-      "Member gatherings, secure invitation links, participant limits, waiting rooms, and approval of join requests.",
-  },
-  {
-    title: "In the room",
-    detail:
-      "Live audio and video, gathering chat, organizer and session-admin controls, and membership management.",
+    text: "Enter the room together, with the call, chat, and shared reading in one place.",
   },
 ] as const;
 
@@ -52,8 +34,8 @@ export default function LandingPage() {
 
           <nav className={styles.navigation} aria-label="Main navigation">
             <a href="#gathering">The gathering</a>
-            <a href="#shared-reader">Shared reading</a>
-            <a href="#tools">What Vaani includes</a>
+            <a href="#reader">Shared reading</a>
+            <a href="#about">About Vaani</a>
           </nav>
 
           <div className={styles.headerActions}>
@@ -70,18 +52,19 @@ export default function LandingPage() {
       <div id="main-content">
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroInner}>
-            <p className={styles.eyebrow}>A place for Sakhi Sang</p>
+            <p className={styles.eyebrow}>For Sakhi Sang</p>
 
             <h1 id="hero-title" className={styles.heroTitle}>
-              Come together for
-              <br className={styles.heroBreak} />
-              <em>Gaayan &amp; Paath.</em>
+              Come together.
+              <br />
+              <em>Stay with the Vaani.</em>
             </h1>
 
             <div className={styles.heroLower}>
               <p className={styles.heroDescription}>
-                Vaani brings Sakhis together for Shree Hit Chaturasi Ji gaayan,
-                pada gaayan, and shared Vaani paath—online, in one place.
+                Vaani is a place for Sakhis to gather for Shree Hit Chaturasi
+                Ji gaayan, pada gaayan, and Vaani Paath — together, wherever
+                they are.
               </p>
 
               <div className={styles.heroActions}>
@@ -89,98 +72,116 @@ export default function LandingPage() {
                   Join Vaani
                 </Link>
                 <Link href="/login" className={styles.secondaryButton}>
-                  Sign in to your account
+                  Sign in
                 </Link>
               </div>
             </div>
-          </div>
 
+            <div className={styles.heroRule} aria-hidden="true">
+              <span>GAAYAN</span>
+              <span>PAATH</span>
+              <span>SANG</span>
+            </div>
+          </div>
         </section>
 
         <section id="gathering" className={styles.gatheringSection}>
           <div className={styles.sectionIntro}>
-            <p className={styles.eyebrow}>From planning to presence</p>
+            <p className={styles.eyebrow}>The gathering</p>
             <h2>
-              A gathering, from first plan
-              <br />
-              to shared reading.
+              Before the first word is sung, the gathering already has a
+              place.
             </h2>
             <p>
-              Plan a time, share the invitation, and meet in the same place
-              where the Vaani is read.
+              Vaani keeps the path from planning to presence simple. The
+              technology stays in the background so the gathering can stay in
+              the foreground.
             </p>
           </div>
 
-          <div className={styles.stageList}>
-            {gatheringStages.map((stage) => (
-              <article className={styles.stage} key={stage.title}>
-                <h3>{stage.title}</h3>
-                <p>{stage.description}</p>
+          <div className={styles.stepList}>
+            {gatheringSteps.map((step) => (
+              <article className={styles.step} key={step.number}>
+                <span className={styles.stepNumber}>{step.number}</span>
+                <div>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </div>
               </article>
             ))}
           </div>
         </section>
 
-        <section id="shared-reader" className={styles.readerSection}>
+        <section id="reader" className={styles.readerSection}>
           <div className={styles.readerInner}>
-            <div className={styles.readerHeading}>
-              <p className={styles.eyebrow}>The shared reader</p>
+            <div className={styles.readerCopy}>
+              <p className={styles.eyebrow}>Shared Vaani</p>
               <h2>
-                Follow the same Vaani.
+                One gathering.
                 <br />
-                Read at your own pace.
+                <em>One shared position.</em>
               </h2>
               <p>
-                The shared reader keeps everyone oriented to the same document
-                without taking away each person’s ability to read comfortably.
+                When the reading moves, everyone can stay oriented to the same
+                Vaani. Each person can still move through the document on
+                their own device and return to the shared position when ready.
               </p>
             </div>
 
-            <div className={styles.readerDetails}>
-              <article>
-                <h3>One shared position</h3>
-                <p>
-                  The organizer or an authorized reader can control the shared
-                  document page and reading position.
+            <div className={styles.readerPrinciple}>
+              <div className={styles.readerLine} aria-hidden="true">
+                <span />
+              </div>
+              <div className={styles.readerStatement}>
+                <p className={styles.readerLabel}>The idea</p>
+                <p className={styles.readerQuote}>
+                  The gathering moves together. The reading remains personal.
                 </p>
-              </article>
-              <article>
-                <h3>Your own navigation</h3>
-                <p>
-                  Participants can move through the document locally, then
-                  return to the shared position whenever they are ready.
-                </p>
-              </article>
+              </div>
+              <div className={styles.readerDetails}>
+                <div>
+                  <span>Shared</span>
+                  <p>The organizer or an authorized reader can guide the common reading position.</p>
+                </div>
+                <div>
+                  <span>Personal</span>
+                  <p>Every participant keeps local control of their own document view.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="tools" className={styles.toolsSection}>
-          <div className={styles.toolsHeading}>
-            <p className={styles.eyebrow}>Made for the whole session</p>
-            <h2>Tools for the whole gathering.</h2>
-            <p>
-              From the first invitation to shared reading, Vaani keeps the
-              essentials together.
-            </p>
-          </div>
+        <section id="about" className={styles.aboutSection}>
+          <div className={styles.aboutInner}>
+            <div className={styles.aboutHeading}>
+              <p className={styles.eyebrow}>The room around the Vaani</p>
+              <h2>Everything needed for the gathering, without making the gathering about the technology.</h2>
+            </div>
 
-          <div className={styles.toolList}>
-            {gatheringTools.map((tool) => (
-              <article className={styles.toolRow} key={tool.title}>
-                <h3>{tool.title}</h3>
-                <p>{tool.detail}</p>
-              </article>
-            ))}
+            <div className={styles.aboutText}>
+              <p>
+                Organizers can schedule and manage gatherings, control who
+                enters, and welcome participants through a waiting room.
+                Inside, live audio and video, gathering chat, and session
+                controls are kept together.
+              </p>
+              <p>
+                The shared reader then gives the room a common point of
+                reference — without asking everyone to give up their own way
+                of reading.
+              </p>
+            </div>
           </div>
         </section>
 
         <section className={styles.closingSection}>
           <div className={styles.closingInner}>
-            <p className={styles.eyebrow}>Vaani · Sakhi Sang</p>
-            <h2>Your next gathering can begin here.</h2>
+            <p className={styles.eyebrow}>Begin a gathering</p>
+            <h2>Make a place for the next Vaani.</h2>
             <p>
-              Join Vaani and take part in shared Gaayan and Vaani Paath.
+              Join Vaani and take part in gatherings centered on Gaayan and
+              Vaani Paath.
             </p>
             <div className={styles.closingActions}>
               <Link href="/signup" className={styles.primaryButton}>
