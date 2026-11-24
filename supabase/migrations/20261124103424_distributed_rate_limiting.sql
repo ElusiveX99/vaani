@@ -22,7 +22,6 @@ begin
     when 'livekit_token' then v_limit := 12; v_window_seconds := 60;
     when 'livekit_moderation' then v_limit := 30; v_window_seconds := 60;
     when 'document_mutation' then v_limit := 20; v_window_seconds := 60;
-    when 'library_attach' then v_limit := 20; v_window_seconds := 60;
     else return false;
   end case;
   v_key := v_user_id::text || ':' || p_action;
