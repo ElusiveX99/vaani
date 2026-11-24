@@ -390,12 +390,15 @@ $function$;
 REVOKE ALL
   ON FUNCTION public.claim_session_reader_control(uuid)
   FROM PUBLIC;
+
 REVOKE ALL
   ON FUNCTION public.release_session_reader_control(uuid)
   FROM PUBLIC;
+
 REVOKE ALL
   ON FUNCTION public.set_session_reader_access(uuid, uuid, boolean)
   FROM PUBLIC;
+
 REVOKE ALL
   ON FUNCTION public.remove_session_member(uuid, uuid)
   FROM PUBLIC;
@@ -403,12 +406,15 @@ REVOKE ALL
 GRANT EXECUTE
   ON FUNCTION public.claim_session_reader_control(uuid)
   TO authenticated;
+
 GRANT EXECUTE
   ON FUNCTION public.release_session_reader_control(uuid)
   TO authenticated;
+
 GRANT EXECUTE
   ON FUNCTION public.set_session_reader_access(uuid, uuid, boolean)
   TO authenticated;
+
 GRANT EXECUTE
   ON FUNCTION public.remove_session_member(uuid, uuid)
   TO authenticated;
