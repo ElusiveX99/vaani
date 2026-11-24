@@ -198,7 +198,7 @@ export async function GET(
     } = await supabase
       .from("session_documents")
       .select(
-        "id, title, storage_path, mime_type, size_bytes, library_document_id"
+        "id, title, storage_path, mime_type, size_bytes"
       )
       .eq("id", readerState.current_document_id)
       .eq("session_id", sessionId)
@@ -265,7 +265,7 @@ export async function GET(
     data: signedUrlData,
     error: signedUrlError,
   } = await supabase.storage
-    .from(document.library_document_id ? "vaani-library-pdfs" : "session-pdfs")
+    .from("session-pdfs")
     .createSignedUrl(
       document.storage_path,
       SIGNED_URL_LIFETIME
