@@ -11,11 +11,11 @@ alter table public.sessions
 -- Remove the participant-invite opt-in from the schema and every write path.
 -- The recurrence trigger explicitly listed this column in its UPDATE OF clause.
 drop trigger if exists sessions_expand_recurrence on public.sessions;
-drop function public.create_gathering(text,text,text,boolean,timestamptz,timestamptz,text,integer,text,integer,boolean,boolean,text,timestamptz);
-drop function public.update_session_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,boolean,text,text,timestamptz);
-drop function public.publish_session_draft_with_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,boolean,text,text,timestamptz);
+drop function if exists public.create_gathering(text,text,text,boolean,timestamptz,timestamptz,text,integer,text,integer,boolean,boolean,text,timestamptz);
+drop function if exists public.update_session_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,boolean,text,text,timestamptz);
+drop function if exists public.publish_session_draft_with_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,boolean,text,text,timestamptz);
 
-create function public.create_gathering(
+create or replace function public.create_gathering(
   p_title text, p_description text, p_access_type text, p_is_draft boolean,
   p_published_at timestamptz, p_scheduled_start_at timestamptz, p_time_zone text,
   p_duration_minutes integer, p_instructions text, p_participant_limit integer,
@@ -45,7 +45,7 @@ $function$;
 revoke all on function public.create_gathering(text,text,text,boolean,timestamptz,timestamptz,text,integer,text,integer,boolean,text,timestamptz) from public,anon;
 grant execute on function public.create_gathering(text,text,text,boolean,timestamptz,timestamptz,text,integer,text,integer,boolean,text,timestamptz) to authenticated;
 
-create function public.update_session_details(
+create or replace function public.update_session_details(
   p_session_id uuid,p_title text,p_description text,p_access_type text,
   p_scheduled_start_at timestamptz,p_time_zone text,p_duration_minutes integer,
   p_participant_limit integer,p_waiting_room_enabled boolean,p_instructions text,
@@ -83,7 +83,7 @@ $function$;
 revoke all on function public.update_session_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,text,text,timestamptz) from public,anon;
 grant execute on function public.update_session_details(uuid,text,text,text,timestamptz,text,integer,integer,boolean,text,text,timestamptz) to authenticated;
 
-create function public.publish_session_draft_with_details(
+create or replace function public.publish_session_draft_with_details(
   p_session_id uuid,p_title text,p_description text,p_access_type text,
   p_scheduled_start_at timestamptz,p_time_zone text,p_duration_minutes integer,
   p_participant_limit integer,p_waiting_room_enabled boolean,p_instructions text,
@@ -153,7 +153,7 @@ begin
 end;
 $function$;
 
-alter table public.sessions drop column allow_participant_invites;
+alter table public.sessions drop column if exists allow_participant_invites;
 
 create trigger sessions_expand_recurrence
 after insert or update of recurrence_rule, recurrence_until, scheduled_start_at, title, description, access_type, time_zone, duration_minutes, instructions, participant_limit, waiting_room_enabled, is_draft
@@ -168,8 +168,8 @@ alter table public.session_invite_links
   drop column if exists use_count,
   drop column if exists expires_at;
 
-drop function public.create_session_invite_link(uuid,text,text,timestamptz,integer);
-create function public.create_session_invite_link(p_session_id uuid,p_short_code text,p_token_hash text)
+drop function if exists public.create_session_invite_link(uuid,text,text,timestamptz,integer);
+create or replace function public.create_session_invite_link(p_session_id uuid,p_short_code text,p_token_hash text)
 returns text language plpgsql security definer set search_path to ''
 as $function$
 declare v_user uuid := (select auth.uid()); v_s public.sessions%rowtype; v_code text;

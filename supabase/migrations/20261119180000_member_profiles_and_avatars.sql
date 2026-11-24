@@ -46,12 +46,14 @@ SET public = true,
     allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 DROP POLICY IF EXISTS "Profile avatars are publicly readable" ON storage.objects;
+
 CREATE POLICY "Profile avatars are publicly readable"
 ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'profile-avatars');
 
 DROP POLICY IF EXISTS "Members upload their own profile avatar" ON storage.objects;
+
 CREATE POLICY "Members upload their own profile avatar"
 ON storage.objects FOR INSERT
 TO authenticated
@@ -61,6 +63,7 @@ WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Members update their own profile avatar" ON storage.objects;
+
 CREATE POLICY "Members update their own profile avatar"
 ON storage.objects FOR UPDATE
 TO authenticated
@@ -74,6 +77,7 @@ WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Members delete their own profile avatar" ON storage.objects;
+
 CREATE POLICY "Members delete their own profile avatar"
 ON storage.objects FOR DELETE
 TO authenticated
@@ -83,6 +87,7 @@ USING (
 );
 
 DROP POLICY IF EXISTS "Members can update their own profile" ON public.profiles;
+
 CREATE POLICY "Members can update their own profile"
 ON public.profiles FOR UPDATE
 TO authenticated
@@ -90,6 +95,7 @@ USING (id = (SELECT auth.uid()))
 WITH CHECK (id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "Members can create their own profile" ON public.profiles;
+
 CREATE POLICY "Members can create their own profile"
 ON public.profiles FOR INSERT
 TO authenticated

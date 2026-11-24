@@ -1,16 +1,17 @@
 begin;
 
 -- Permanent deletion replaces the previous soft-revocation state.
-delete from public.session_invite_links where revoked_at is not null;
+-- Preserve existing revoked-link rows; no historical data is deleted by this migration.
 
 drop index if exists public.session_invite_links_one_active_per_creator;
-create unique index session_invite_links_one_per_creator
+create unique index if not exists session_invite_links_one_per_creator
   on public.session_invite_links (session_id, created_by);
 
 -- Restore the only SELECT policy: creators see their own links, while
 -- session managers can see every participant's links.
 alter table public.session_invite_links enable row level security;
 grant select on table public.session_invite_links to authenticated;
+drop policy if exists "Session managers and creators can view invite links" on public.session_invite_links;
 drop policy if exists "Session managers and link creators can view invite links"
   on public.session_invite_links;
 create policy "Session managers and link creators can view invite links"
@@ -230,7 +231,7 @@ revoke all on function public.redeem_session_invite_link(text) from public,anon;
 grant execute on function public.redeem_session_invite_link(text) to authenticated;
 
 drop function if exists public.revoke_session_invite_link(uuid);
-create function public.delete_session_invite_link(p_link_id uuid)
+create or replace function public.delete_session_invite_link(p_link_id uuid)
 returns void
 language plpgsql
 security definer
