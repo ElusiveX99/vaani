@@ -195,7 +195,7 @@ export async function DELETE(
 
   const { data: document, error: lookupError } = await auth.supabase
     .from("session_documents")
-    .select("id, storage_path, library_document_id")
+    .select("id, storage_path")
     .eq("id", body.documentId)
     .eq("session_id", sessionId)
     .maybeSingle();
@@ -241,7 +241,6 @@ export async function DELETE(
     }
   }
 
-  if (!document.library_document_id) {
     const { error: storageError } = await auth.supabase.storage
       .from("session-pdfs")
       .remove([document.storage_path]);
