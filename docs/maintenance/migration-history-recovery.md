@@ -82,4 +82,17 @@ Before applying the branch to production:
 5. Apply the four later migrations with `supabase db push`.
 6. Re-run the catalog checks and verify the notification constraint now matches the intended 17-value contract.
 
+
+After the backup and object verification, the production-side tracking repair is:
+
+```bash
+supabase link --project-ref latpkjjrccxsnwdtttmx
+supabase migration list
+supabase migration repair 20261122093000 --status applied
+supabase migration list
+supabase db push
+```
+
+The repair command changes only the remote migration-history record; it does not execute the recovery migration's SQL. The four later migrations are then applied in timestamp order by `db push`. Review the migration list before and after each operation, and stop if the local/remote list differs from the documented 44-record baseline.
+
 Do not reset, squash, or rewrite the production migration ledger. Keep the archived legacy sources until the maintenance PR has been reviewed and merged.
