@@ -1,12 +1,18 @@
 -- Remove the postponed Vaani Library feature from the live schema.
-drop trigger if exists library_documents_updated_at on public.library_documents;
+do $
+begin
+  if to_regclass('public.library_documents') is not null then
+    drop trigger if exists library_documents_updated_at on public.library_documents;
+    drop policy if exists "Members can view published library documents" on public.library_documents;
+    drop table public.library_documents;
+  end if;
+end
+$;
 drop function if exists public.add_library_document_to_session(uuid,uuid);
 drop function if exists public.library_documents_updated_at();
 alter table public.session_documents drop constraint if exists session_documents_library_document_id_fkey;
 drop index if exists public.session_documents_library_document_id_idx;
 alter table public.session_documents drop column if exists library_document_id;
-drop policy if exists "Members can view published library documents" on public.library_documents;
-drop table if exists public.library_documents;
 
 -- Remove the obsolete rate-limit action while retaining the existing
 -- distributed limiter for the document mutation path.
