@@ -210,6 +210,10 @@ export async function DELETE(
   }
   if (!document) return json({ error: "Document not found." }, 404);
 
+  const deleteRateLimit = await enforceRateLimit(auth.supabase, "document_mutation");
+  if (deleteRateLimit.error) return json({ error: "Unable to verify request rate." }, 503);
+  if (!deleteRateLimit.allowed) return json({ error: "Too many document changes. Please wait and try again." }, 429);
+
   const { data: readerState, error: stateError } = await auth.supabase
     .from("session_reader_state")
     .select("current_document_id")
