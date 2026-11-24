@@ -11,23 +11,45 @@ function clearAuthCookies(response: NextResponse, request: NextRequest) {
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { cookies: {
-      getAll() { return request.cookies.getAll(); },
-      setAll(cookiesToSet, headers) {
-        cookiesToSet.forEach(({ name, value }) => { request.cookies.set(name, value); });
-        supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => { supabaseResponse.cookies.set(name, value, options); });
-        Object.entries(headers).forEach(([key, value]) => { supabaseResponse.headers.set(key, value); });
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet, headers) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+
+          supabaseResponse = NextResponse.next({ request });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
+
+          Object.entries(headers).forEach(([key, value]) => {
+            supabaseResponse.headers.set(key, value);
+          });
+        },
       },
     }
   );
+
   const { error } = await supabase.auth.getClaims();
+
   if (error) {
     const message = error.message.toLowerCase();
-    if (message.includes("invalid refresh token") || message.includes("refresh token not found")) clearAuthCookies(supabaseResponse, request);
+    if (
+      message.includes("invalid refresh token") ||
+      message.includes("refresh token not found")
+    ) {
+      clearAuthCookies(supabaseResponse, request);
+    }
   }
+
   return supabaseResponse;
 }
