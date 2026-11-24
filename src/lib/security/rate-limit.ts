@@ -3,8 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type RateLimitAction =
   | "livekit_token"
   | "livekit_moderation"
-  | "document_mutation"
-  | "library_attach";
+  | "document_mutation";
 
 export async function enforceRateLimit(
   supabase: SupabaseClient,
