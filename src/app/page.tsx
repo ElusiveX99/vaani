@@ -1,21 +1,45 @@
 import Link from "next/link";
 import styles from "./landing.module.css";
 
-const gatheringSteps = [
+const capabilities = [
   {
-    number: "01",
-    title: "Prepare",
-    text: "Set the time, duration, and access before the gathering begins.",
+    title: "Create a gathering",
+    text: "Save a gathering as a draft or publish it for a future time. Set its time, duration, access, participant limit, waiting room, and other instructions.",
   },
   {
-    number: "02",
-    title: "Invite",
-    text: "Bring the Sakhis in through their Vaani membership or an invitation link.",
+    title: "Invite people",
+    text: "Share a gathering with Vaani members or send a secure invitation link to the people you want to join.",
   },
   {
-    number: "03",
-    title: "Gather",
-    text: "Enter the room together, with the call, chat, and shared reading in one place.",
+    title: "Welcome everyone",
+    text: "Use a waiting room when you want participants to wait for approval before entering the gathering.",
+  },
+  {
+    title: "Gather live",
+    text: "Meet with live audio and video, organizer and session controls, and gathering chat in the same room.",
+  },
+  {
+    title: "Read Vaani together",
+    text: "Follow a synchronized PDF reader during Vaani Paath. A shared reading position keeps the gathering oriented while each person can navigate locally.",
+  },
+] as const;
+
+const gatheringFlow = [
+  {
+    title: "Set it up",
+    text: "Create the gathering, choose when it happens, and decide how people will enter.",
+  },
+  {
+    title: "Bring the Sakhis in",
+    text: "Use Vaani membership access or a secure invitation link. If a waiting room is enabled, the organizer approves entry.",
+  },
+  {
+    title: "Meet",
+    text: "Everyone enters the same gathering for live audio and video, chat, and session controls.",
+  },
+  {
+    title: "Open the Vaani",
+    text: "Use the shared reader during Paath so the common reading position can be followed without taking away each person's local navigation.",
   },
 ] as const;
 
@@ -33,9 +57,9 @@ export default function LandingPage() {
           </Link>
 
           <nav className={styles.navigation} aria-label="Main navigation">
-            <a href="#gathering">The gathering</a>
-            <a href="#reader">Shared reading</a>
-            <a href="#about">About Vaani</a>
+            <a href="#what-you-can-do">What you can do</a>
+            <a href="#gathering">How a gathering works</a>
+            <a href="#reader">Shared reader</a>
           </nav>
 
           <div className={styles.headerActions}>
@@ -52,19 +76,20 @@ export default function LandingPage() {
       <div id="main-content">
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroInner}>
-            <p className={styles.eyebrow}>For Sakhi Sang</p>
+            <p className={styles.heroKicker}>Vaani</p>
 
             <h1 id="hero-title" className={styles.heroTitle}>
-              Come together.
+              Gather for Gaayan
               <br />
-              <em>Stay with the Vaani.</em>
+              and Vaani Paath.
             </h1>
 
             <div className={styles.heroLower}>
               <p className={styles.heroDescription}>
-                Vaani is a place for Sakhis to gather for Shree Hit Chaturasi
-                Ji gaayan, pada gaayan, and Vaani Paath — together, wherever
-                they are.
+                Vaani gives Sakhis a place to create, join, and take part in
+                live gatherings centered on Shree Hit Chaturasi Ji Gaayan,
+                pada Gaayan, and Vaani Paath — with the gathering and shared
+                reading kept together.
               </p>
 
               <div className={styles.heroActions}>
@@ -76,112 +101,120 @@ export default function LandingPage() {
                 </Link>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className={styles.heroRule} aria-hidden="true">
-              <span>GAAYAN</span>
-              <span>PAATH</span>
-              <span>SANG</span>
+        <section id="what-you-can-do" className={styles.capabilitiesSection}>
+          <div className={styles.sectionShell}>
+            <div className={styles.sectionHeading}>
+              <p className={styles.sectionLabel}>What you can do</p>
+              <h2>Everything needed to hold the gathering in one place.</h2>
+            </div>
+
+            <div className={styles.capabilityList}>
+              {capabilities.map((item) => (
+                <article className={styles.capability} key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
         <section id="gathering" className={styles.gatheringSection}>
-          <div className={styles.sectionIntro}>
-            <p className={styles.eyebrow}>The gathering</p>
-            <h2>
-              Before the first word is sung, the gathering already has a
-              place.
-            </h2>
-            <p>
-              Vaani keeps the path from planning to presence simple. The
-              technology stays in the background so the gathering can stay in
-              the foreground.
-            </p>
-          </div>
+          <div className={styles.sectionShell}>
+            <div className={styles.sectionHeading}>
+              <p className={styles.sectionLabel}>How a gathering works</p>
+              <h2>From creating the gathering to reading together.</h2>
+            </div>
 
-          <div className={styles.stepList}>
-            {gatheringSteps.map((step) => (
-              <article className={styles.step} key={step.number}>
-                <span className={styles.stepNumber}>{step.number}</span>
-                <div>
-                  <h3>{step.title}</h3>
-                  <p>{step.text}</p>
-                </div>
-              </article>
-            ))}
+            <div className={styles.flow}>
+              {gatheringFlow.map((item) => (
+                <article className={styles.flowItem} key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
         <section id="reader" className={styles.readerSection}>
-          <div className={styles.readerInner}>
-            <div className={styles.readerCopy}>
-              <p className={styles.eyebrow}>Shared Vaani</p>
-              <h2>
-                One gathering.
-                <br />
-                <em>One shared position.</em>
-              </h2>
-              <p>
-                When the reading moves, everyone can stay oriented to the same
-                Vaani. Each person can still move through the document on
-                their own device and return to the shared position when ready.
-              </p>
-            </div>
-
-            <div className={styles.readerPrinciple}>
-              <div className={styles.readerLine} aria-hidden="true">
-                <span />
-              </div>
-              <div className={styles.readerStatement}>
-                <p className={styles.readerLabel}>The idea</p>
-                <p className={styles.readerQuote}>
-                  The gathering moves together. The reading remains personal.
+          <div className={styles.sectionShell}>
+            <div className={styles.readerGrid}>
+              <div className={styles.sectionHeading}>
+                <p className={styles.sectionLabel}>Shared reader</p>
+                <h2>Read from the same Vaani, together.</h2>
+                <p className={styles.supportingText}>
+                  During Vaani Paath, the reader can keep everyone oriented to
+                  a common reading position. Each participant still has local
+                  control of their document view.
                 </p>
               </div>
-              <div className={styles.readerDetails}>
-                <div>
-                  <span>Shared</span>
-                  <p>The organizer or an authorized reader can guide the common reading position.</p>
+
+              <div className={styles.readerExplanation}>
+                <div className={styles.readerPath}>
+                  <div>
+                    <strong>Shared position</strong>
+                    <span>Organizer or authorized reader guides the common reading.</span>
+                  </div>
+                  <div className={styles.readerArrow} aria-hidden="true">
+                    →
+                  </div>
+                  <div>
+                    <strong>Local reading</strong>
+                    <span>Each participant can move through the document on their own device.</span>
+                  </div>
                 </div>
-                <div>
-                  <span>Personal</span>
-                  <p>Every participant keeps local control of their own document view.</p>
-                </div>
+
+                <p className={styles.readerNote}>
+                  The point is simple: the gathering can move through the
+                  Vaani together without forcing every participant into the
+                  same local view.
+                </p>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="about" className={styles.aboutSection}>
-          <div className={styles.aboutInner}>
-            <div className={styles.aboutHeading}>
-              <p className={styles.eyebrow}>The room around the Vaani</p>
-              <h2>Everything needed for the gathering, without making the gathering about the technology.</h2>
-            </div>
+        <section className={styles.roomSection}>
+          <div className={styles.sectionShell}>
+            <div className={styles.roomGrid}>
+              <div className={styles.sectionHeading}>
+                <p className={styles.sectionLabel}>Inside the gathering</p>
+                <h2>The live room handles the rest.</h2>
+              </div>
 
-            <div className={styles.aboutText}>
-              <p>
-                Organizers can schedule and manage gatherings, control who
-                enters, and welcome participants through a waiting room.
-                Inside, live audio and video, gathering chat, and session
-                controls are kept together.
-              </p>
-              <p>
-                The shared reader then gives the room a common point of
-                reference — without asking everyone to give up their own way
-                of reading.
-              </p>
+              <div className={styles.roomList}>
+                <p>
+                  <strong>Live audio and video</strong>
+                  <span>Meet the Sakhis in the same live session.</span>
+                </p>
+                <p>
+                  <strong>Gathering chat</strong>
+                  <span>Keep messages with the gathering instead of moving to another service.</span>
+                </p>
+                <p>
+                  <strong>Organizer controls</strong>
+                  <span>Manage the session and the people entering it.</span>
+                </p>
+                <p>
+                  <strong>Membership and access</strong>
+                  <span>Use member access, join requests, or invitation links as appropriate for the gathering.</span>
+                </p>
+              </div>
             </div>
           </div>
         </section>
 
         <section className={styles.closingSection}>
           <div className={styles.closingInner}>
-            <p className={styles.eyebrow}>Begin a gathering</p>
-            <h2>Make a place for the next Vaani.</h2>
+            <p className={styles.sectionLabel}>Join Vaani</p>
+            <h2>Create or join your next gathering.</h2>
             <p>
-              Join Vaani and take part in gatherings centered on Gaayan and
-              Vaani Paath.
+              Vaani is built for Sakhis who want to gather for Gaayan and
+              Vaani Paath together.
             </p>
             <div className={styles.closingActions}>
               <Link href="/signup" className={styles.primaryButton}>
@@ -200,7 +233,7 @@ export default function LandingPage() {
           <Link href="/" className={styles.footerWordmark}>
             Vaani
           </Link>
-          <p className={styles.footerInvocation}>जय जय श्री हित हरिवंश</p>
+          <p className={styles.footerText}>Gather for Gaayan and Vaani Paath.</p>
           <div className={styles.footerLinks}>
             <Link href="/login">Sign in</Link>
             <Link href="/signup">Join Vaani</Link>
