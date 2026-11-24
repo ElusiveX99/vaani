@@ -188,10 +188,6 @@ export async function DELETE(
   const auth = await getContext(sessionId);
   if ("response" in auth) return auth.response;
 
-  const rateLimit = await enforceRateLimit(auth.supabase, "document_mutation");
-  if (rateLimit.error) return json({ error: "Unable to verify request rate." }, 503);
-  if (!rateLimit.allowed) return json({ error: "Too many document changes. Please wait and try again." }, 429);
-
   const parsed = await readJsonBody<{ documentId?: unknown }>(request, 4096);
   if (!parsed.ok) return json({ error: "Invalid request body." }, parsed.status);
   const body = parsed.data;
