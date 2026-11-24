@@ -13,7 +13,6 @@ type Props = {
   documentUrl: string;
   currentPage: number;
   currentOffset: number;
-  canControl: boolean;
   onPageChange: (page: number) => void;
   onPositionChange: (page: number, offset: number) => void;
 };
@@ -32,8 +31,8 @@ const MAX_DPR = 1.75;
 const OVERSCAN = 2;
 const POSITION_INTERVAL = 80;
 
-function pageNumberKey(page: number, width: number, retry: number) {
-  return `${page}:${Math.round(width)}:${retry}`;
+function pageNumberKey(page: number, width: number) {
+  return `${page}:${Math.round(width)}`;
 }
 
 function clampPage(value: number, count: number) {
@@ -176,7 +175,6 @@ export default function PdfReader({
   documentUrl,
   currentPage,
   currentOffset,
-  canControl,
   onPageChange,
   onPositionChange,
 }: Props) {
@@ -201,11 +199,9 @@ export default function PdfReader({
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<"loading" | "rendering" | "ready" | "error">("loading");
   const [error, setError] = useState("");
-  const [pageErrors, setPageErrors] = useState<Record<number, string>>({});
   const [pageDraft, setPageDraft] = useState("");
   const [zoom, setZoom] = useState(1);
   const [retryToken, setRetryToken] = useState(0);
-  const [pageRetryToken, setPageRetryToken] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(false);
 
   const pageWidth = Math.max(1, Math.min(MAX_RENDER_WIDTH, width * zoom));
@@ -305,20 +301,13 @@ export default function PdfReader({
     }
   }, [pageWidth]);
 
-  const handlePageRendered = useCallback((pageNumber: number) => {
+  const handlePageRendered = useCallback(() => {
     setPhase("ready");
-    setPageErrors(previous => {
-      if (!(pageNumber in previous)) return previous;
-      const next = { ...previous };
-      delete next[pageNumber];
-      return next;
-    });
   }, []);
 
   const handleRenderError = useCallback((pageNumber: number, cause: unknown) => {
     const message = cause instanceof Error ? cause.message : "Unknown PDF rendering error";
     console.error("Vaani PDF page render failed:", { pageNumber, message, cause });
-    setPageErrors(previous => ({ ...previous, [pageNumber]: message }));
     setPhase("ready");
   }, []);
 
@@ -342,7 +331,6 @@ export default function PdfReader({
       setPhase("loading");
       setError("");
       setProgress(0);
-      setPageErrors({});
       setPdf(null);
 
       if (timerRef.current !== null) {
@@ -591,7 +579,7 @@ export default function PdfReader({
                 <div key={index + 1} className="mx-auto flex w-full justify-center pb-5" style={{ minHeight: estimatedHeight + PAGE_GAP }}>
                   <div className="w-full">
                     <PdfCanvas
-                      key={pageNumberKey(index + 1, pageWidth, pageRetryToken)}
+                      key={pageNumberKey(index + 1, pageWidth)}
                       pdf={pdf}
                       pageNumber={index + 1}
                       width={pageWidth}
