@@ -51,11 +51,11 @@ async function HomeContent() {
 
   const [{ data: sessions }, { data: memberships }] = await Promise.all([
     supabase.from("sessions")
-      .select("id, title, status, scheduled_start_at, access_type")
+      .select("id, title, status, scheduled_start_at, access_type, recurrence_rule, recurrence_until, recurrence_parent_id")
       .eq("is_draft", false)
       .in("status", ["scheduled", "live"])
       .order("created_at", { ascending: false })
-      .limit(8),
+      .limit(100),
     supabase.from("session_members")
       .select("session_id, role")
       .eq("user_id", userId)
@@ -65,8 +65,13 @@ async function HomeContent() {
   const joined = new Set((memberships ?? []).map((item) => item.session_id));
   const organized = new Set((memberships ?? []).filter((item) => item.role === "organizer").map((item) => item.session_id));
   const relevantSessions = (sessions ?? [])
+    .filter((item) => item.recurrence_parent_id === null)
     .filter((item) => item.access_type === "community" || joined.has(item.id))
     .slice(0, 3);
+  const totalRelevantSessions = (sessions ?? [])
+    .filter((item) => item.recurrence_parent_id === null)
+    .filter((item) => item.access_type === "community" || joined.has(item.id))
+    .length;
 
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--ink)]">
@@ -95,6 +100,7 @@ async function HomeContent() {
                     <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
                       {session.status === "live" && <span className="h-2 w-2 rounded-full bg-[#6d916f]" />}
                       {session.status === "live" ? "Live now" : "Upcoming"}
+                      {session.recurrence_rule && <span className="ml-1">· Series</span>}
                     </div>
                     <h3 className="mt-4 font-display text-2xl text-[var(--plum)]">{session.title}</h3>
                     <p className="mt-2 text-xs text-[var(--muted)]">
@@ -102,6 +108,12 @@ async function HomeContent() {
                         ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(session.scheduled_start_at))
                         : "Time not set"}
                     </p>
+                    {session.recurrence_rule && (
+                      <p className="mt-2 text-xs text-[var(--muted)]">
+                        {session.recurrence_rule === "DAILY" ? "Every day" : session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : session.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : session.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"}
+                        {session.recurrence_until ? ` · Until ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date(session.recurrence_until))}` : ""}
+                      </p>
+                    )}
                   </Link>
                   {session.status === "live" && joined.has(session.id) && (
                     <Link href={`/sessions/${session.id}/conference`} className="button-primary mt-4 inline-flex !min-h-9 !px-4 !py-1.5 text-xs">Join conference</Link>
@@ -119,6 +131,16 @@ async function HomeContent() {
             <div className="surface-card mt-5 p-7">
               <p className="text-sm text-[var(--muted)]">No gatherings are available here just now.</p>
               <Link href="/sessions#discover-sessions" className="button-secondary mt-4">Find a session</Link>
+            </div>
+          )}
+          {totalRelevantSessions > 3 && (
+            <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-5 py-4">
+              <p className="text-sm text-[var(--muted)]">
+                You have {totalRelevantSessions} gatherings available to you.
+              </p>
+              <Link href="/sessions" className="shrink-0 text-sm font-semibold text-[var(--plum)] hover:underline">
+                View all gatherings →
+              </Link>
             </div>
           )}
         </section>
