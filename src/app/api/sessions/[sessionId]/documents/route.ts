@@ -99,10 +99,6 @@ export async function PATCH(
   const auth = await getContext(sessionId);
   if ("response" in auth) return auth.response;
 
-  const rateLimit = await enforceRateLimit(auth.supabase, "document_mutation");
-  if (rateLimit.error) return json({ error: "Unable to verify request rate." }, 503);
-  if (!rateLimit.allowed) return json({ error: "Too many document changes. Please wait and try again." }, 429);
-
   const parsed = await readJsonBody<{ documentId?: unknown }>(request, 4096);
   if (!parsed.ok) return json({ error: "Invalid request body." }, parsed.status);
   const body = parsed.data;
@@ -135,6 +131,10 @@ export async function PATCH(
   if (!canControlReader) {
     return json({ error: "You do not have permission to control the shared reader." }, 403);
   }
+
+  const rateLimit = await enforceRateLimit(auth.supabase, "document_mutation");
+  if (rateLimit.error) return json({ error: "Unable to verify request rate." }, 503);
+  if (!rateLimit.allowed) return json({ error: "Too many document changes. Please wait and try again." }, 429);
 
   const { data: claimData, error: claimError } = await auth.supabase.rpc(
     "claim_session_reader_control",
