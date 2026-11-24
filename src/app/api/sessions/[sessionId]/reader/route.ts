@@ -227,7 +227,7 @@ export async function GET(
     } = await supabase
       .from("session_documents")
       .select(
-        "id, title, storage_path, mime_type, size_bytes"
+        "id, title, storage_path, mime_type, size_bytes, library_document_id"
       )
       .eq("session_id", sessionId)
       .eq("is_active", true)
@@ -517,58 +517,3 @@ export async function PATCH(
         "Reader page update failed:",
         updateError
       );
-
-      return json(
-        { error: "Unable to update reader state." },
-        500
-      );
-    }
-
-    if (!updatedState) {
-      return json(
-        { error: "Reader document changed. Please refresh." },
-        409
-      );
-    }
-  } else {
-    // Document selection is a shared-reader action. Use a conditional
-    // update so an expired or replaced controller cannot overwrite the
-    // new controller's selection after the earlier lease lookup.
-    const {
-      data: updatedState,
-      error: updateError,
-    } = await supabase
-      .from("session_reader_state")
-      .update({
-        current_document_id: documentId,
-        ...readerStateUpdate,
-      })
-      .eq("session_id", sessionId)
-      .eq("controller_user_id", userId)
-      .eq("controller_epoch", lease.controller_epoch)
-      .gt("controller_expires_at", new Date().toISOString())
-      .select("session_id")
-      .maybeSingle();
-
-    if (updateError) {
-      console.error(
-        "Reader document selection failed:",
-        updateError
-      );
-
-      return json(
-        { error: "Unable to update reader state." },
-        500
-      );
-    }
-
-    if (!updatedState) {
-      return json(
-        { error: "Reader control changed. Claim control again before selecting a document." },
-        409
-      );
-    }
-  }
-
-  return json({ success: true });
-}
