@@ -338,7 +338,7 @@ async function SessionsContent({
     acceptedSessionIds.length
       ? supabase
           .from("sessions")
-          .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
+          .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by, recurrence_rule, recurrence_until, recurrence_parent_id")
           .in("status", ["ended", "cancelled"])
           .in("id", acceptedSessionIds)
           .order("ended_at", { ascending: false })
