@@ -1,0 +1,46 @@
+name: Temporary dependency repair analysis
+
+on:
+  push:
+    branches:
+      - maintenance/rate-limiting-and-recovery
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+      - name: Capture initial audit
+        run: npm audit --json > npm-audit-before.json || true
+      - name: Apply non-breaking dependency fixes
+        run: npm audit fix || true
+      - name: Capture resulting audit
+        run: npm audit --json > npm-audit-after.json || true
+      - name: Reinstall from repaired lockfile
+        run: npm ci
+      - name: Verify lint
+        run: npm run lint
+      - name: Verify production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://vju.vercel.app
+      - name: Export repaired dependency files and audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporary-dependency-repair
+          path: |
+            package.json
+            package-lock.json
+            npm-audit-before.json
+            npm-audit-after.json
+          if-no-files-found: error
+          retention-days: 1
