@@ -35,10 +35,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimit = await enforceRateLimit(supabase, "livekit_token");
-    if (rateLimit.error) return NextResponse.json({ error: "Unable to verify request rate." }, { status: 503 });
-    if (!rateLimit.allowed) return NextResponse.json({ error: "Too many conference token requests. Please wait a moment and try again." }, { status: 429 });
-
     const parsedBody = await readJsonBody<{ sessionId?: unknown }>(request, 4096);
     if (!parsedBody.ok) {
       const message = parsedBody.status === 413 ? "Request body is too large." : parsedBody.status === 415 ? "Content-Type must be application/json." : "Invalid request body.";
@@ -121,6 +117,11 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    const rateLimit = await enforceRateLimit(supabase, "livekit_token");
+    if (rateLimit.error) return NextResponse.json({ error: "Unable to verify request rate." }, { status: 503 });
+    if (!rateLimit.allowed) return NextResponse.json({ error: "Too many conference token requests. Please wait a moment and try again." }, { status: 429 });
+
 
     const [{ data: profile, error: profileError }, { data: authUserData }] = await Promise.all([
       supabase.from("profiles")
