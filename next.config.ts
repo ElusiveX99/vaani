@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
     rules: {
       "*.css": {
+        condition: {
+          not: {
+            path: /\.module\.css$/,
+          },
+        },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },
