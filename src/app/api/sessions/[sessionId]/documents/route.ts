@@ -245,7 +245,7 @@ export async function DELETE(
       .from("session-pdfs")
       .remove([document.storage_path]);
 
-    if (storageError) {
+  if (storageError) {
       console.error("PDF storage deletion failed:", storageError);
 
       if (wasActive) {
@@ -266,8 +266,7 @@ export async function DELETE(
         }
       }
 
-      return json({ error: "The PDF could not be removed from storage. The reader was restored; please retry." }, 500);
-    }
+    return json({ error: "The PDF could not be removed from storage. The reader was restored; please retry." }, 500);
   }
 
   const { error: deleteError } = await auth.supabase
