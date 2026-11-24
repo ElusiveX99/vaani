@@ -286,4 +286,3 @@ export async function DELETE(
 
   return json({ success: true, removedActiveDocument: wasActive });
 }
-}
