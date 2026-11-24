@@ -78,7 +78,7 @@ async function updateSessionLifecycle(
 }
 
 export async function createSession(formData: FormData) {
-  const { supabase, userId } = await getAuthenticatedClient();
+  const { supabase } = await getAuthenticatedClient();
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
