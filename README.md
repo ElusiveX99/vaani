@@ -82,7 +82,7 @@ RLS and database functions enforce gathering membership, invitation redemption, 
 
 ## Invitation links
 
-Invitation URLs use short codes. The database validates each code against its token hash and keeps the code in a protected link record so the creator and gathering managers can retrieve the same share URL later. Links can have an expiry and a maximum number of uses, and can be revoked by their creator or a gathering manager. The invitation page shows the gathering details before asking a visitor to sign in.
+Invitation URLs use short codes. The database validates each code against its token hash and stores the code in a protected link record so the creator and gathering managers can retrieve the same share URL later. Accepted participants can also create a reusable link for a gathering they have joined. The current link schema does not enforce an expiry date or maximum-use count. A link can be revoked by its creator or a gathering manager; revocation deletes the link record. The invitation page shows gathering details before asking a visitor to sign in.
 
 A gathering with a waiting room still requires organizer approval after an invitation is redeemed. The invitation does not bypass that approval.
 
