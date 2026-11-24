@@ -15,41 +15,34 @@ returns boolean
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $function$
 declare
-  v_user_id uuid;
+  v_user_id uuid := auth.uid();
   v_limit integer;
-  v_window_seconds integer;
+  v_window_seconds integer := 60;
   v_key text;
-  v_now timestamptz;
-  v_allowed boolean;
+  v_allowed boolean := false;
 begin
-  v_user_id := auth.uid();
   if v_user_id is null then return false; end if;
-
   case p_action
-    when 'livekit_token' then v_limit := 30; v_window_seconds := 60;
-    when 'livekit_moderation' then v_limit := 30; v_window_seconds := 60;
-    when 'document_mutation' then v_limit := 20; v_window_seconds := 60;
+    when 'livekit_token' then v_limit := 30;
+    when 'livekit_moderation' then v_limit := 30;
+    when 'document_mutation' then v_limit := 20;
     else return false;
   end case;
-
   v_key := v_user_id::text || ':' || p_action;
-  v_now := pg_catalog.now();
-
-  insert into private.rate_limit_buckets(user_id, action, window_started_at, request_count)
-  values (v_user_id, p_action, v_now, 1)
-  on conflict (user_id, action) do update
+  insert into private.rate_limit_buckets as bucket (key, window_started_at, request_count)
+  values (v_key, pg_catalog.now(), 1)
+  on conflict (key) do update
     set window_started_at = case
-      when private.rate_limit_buckets.window_started_at <= v_now - pg_catalog.make_interval(secs => v_window_seconds)
-        then v_now else private.rate_limit_buckets.window_started_at end,
+          when bucket.window_started_at <= pg_catalog.now() - pg_catalog.make_interval(secs => v_window_seconds)
+          then pg_catalog.now() else bucket.window_started_at end,
         request_count = case
-      when private.rate_limit_buckets.window_started_at <= v_now - pg_catalog.make_interval(secs => v_window_seconds)
-        then 1 else private.rate_limit_buckets.request_count + 1 end
-    where private.rate_limit_buckets.window_started_at <= v_now - pg_catalog.make_interval(secs => v_window_seconds)
-       or private.rate_limit_buckets.request_count < v_limit
+          when bucket.window_started_at <= pg_catalog.now() - pg_catalog.make_interval(secs => v_window_seconds)
+          then 1 else bucket.request_count + 1 end
+    where bucket.window_started_at <= pg_catalog.now() - pg_catalog.make_interval(secs => v_window_seconds)
+       or bucket.request_count < v_limit
   returning true into v_allowed;
-
   return coalesce(v_allowed, false);
 end;
-$$;
+$function$;
