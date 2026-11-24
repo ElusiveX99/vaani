@@ -91,6 +91,7 @@ const SynchronizedReader = memo(
     const { localParticipant } = useLocalParticipant();
     const localUserId = localParticipant.attributes?.user_id ?? localParticipant.identity;
     const remoteParticipants = useRemoteParticipants();
+    const documentId = data?.document?.id;
 
     const [syncStatus, setSyncStatus] =
       useState<SyncStatus>("idle");
@@ -300,12 +301,12 @@ const SynchronizedReader = memo(
     );
 
     useEffect(() => {
-      if (!data || !data.document || !localUserId) {
+      if (!documentId || !localUserId) {
         setPersonalPosition(null);
         return;
       }
 
-      const key = `vaani-reading-position:${sessionId}:${localUserId}:${data.document.id}`;
+      const key = `vaani-reading-position:${sessionId}:${localUserId}:${documentId}`;
       try {
         const stored = window.localStorage.getItem(key);
         if (!stored) {
@@ -327,7 +328,7 @@ const SynchronizedReader = memo(
         }
 
         setPersonalPosition({
-          documentId: data.document.id,
+          documentId,
           page: parsed.page,
           offset: Math.min(1, Math.max(0, parsed.offset)),
         });
@@ -335,7 +336,7 @@ const SynchronizedReader = memo(
         console.warn("Could not restore personal Vaani reading position:", storageError);
         setPersonalPosition(null);
       }
-    }, [data?.document?.id, sessionId, localUserId]);
+    }, [documentId, sessionId, localUserId]);
 
     useEffect(() => {
       const readerData = dataRef.current;
