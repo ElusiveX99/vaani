@@ -241,6 +241,36 @@ export async function DELETE(
     }
   }
 
+  if (!document.library_document_id) {
+    const { error: storageError } = await auth.supabase.storage
+      .from("session-pdfs")
+      .remove([document.storage_path]);
+
+    if (storageError) {
+      console.error("PDF storage deletion failed:", storageError);
+
+      if (wasActive) {
+        const { error: restoreError } = await auth.supabase
+          .from("session_reader_state")
+          .update({
+            current_document_id: document.id,
+            current_page: readerState?.current_page ?? 1,
+            current_offset: readerState?.current_offset ?? 0,
+            updated_by: auth.userId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("session_id", sessionId)
+          .is("current_document_id", null);
+
+        if (restoreError) {
+          console.error("Reader state rollback after failed PDF storage deletion also failed:", restoreError);
+        }
+      }
+
+      return json({ error: "The PDF could not be removed from storage. The reader was restored; please retry." }, 500);
+    }
+  }
+
   const { error: deleteError } = await auth.supabase
     .from("session_documents")
     .delete()
@@ -248,48 +278,12 @@ export async function DELETE(
     .eq("session_id", sessionId);
 
   if (deleteError) {
-    console.error("PDF metadata deletion failed:", deleteError);
-
-    if (wasActive) {
-      const { error: restoreError } = await auth.supabase
-        .from("session_reader_state")
-        .update({
-          current_document_id: document.id,
-          current_page: readerState?.current_page ?? 1,
-          current_offset: readerState?.current_offset ?? 0,
-          updated_by: auth.userId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("session_id", sessionId)
-        .is("current_document_id", null);
-
-      if (restoreError) {
-        console.error("Reader state rollback after failed PDF deletion also failed:", restoreError);
-      }
-    }
-
-    return json({ error: "The PDF record could not be deleted. The file was kept; please retry." }, 500);
+    console.error("PDF metadata deletion failed after storage removal:", deleteError);
+    return json({
+      error: "The PDF file was removed, but its session record remains. Retry deletion to finish cleanup.",
+    }, 500);
   }
 
-  let storageCleanupPending = false;
-  if (!document.library_document_id) {
-    const { error: storageError } = await auth.supabase.storage
-      .from("session-pdfs")
-      .remove([document.storage_path]);
-
-    if (storageError) {
-      storageCleanupPending = true;
-      console.error("Private PDF storage cleanup is pending after metadata deletion:", {
-        sessionId,
-        storagePath: document.storage_path,
-        error: storageError,
-      });
-    }
-  }
-
-  return json({
-    success: true,
-    removedActiveDocument: wasActive,
-    storageCleanupPending,
-  });
+  return json({ success: true, removedActiveDocument: wasActive });
+}
 }
