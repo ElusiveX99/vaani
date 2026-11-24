@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 import { createClient } from "@/lib/supabase/server";
 import { readJsonBody } from "@/lib/security/request";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 function isValidUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -116,6 +117,11 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    const rateLimit = await enforceRateLimit(supabase, "livekit_token");
+    if (rateLimit.error) return NextResponse.json({ error: "Unable to verify request rate." }, { status: 503 });
+    if (!rateLimit.allowed) return NextResponse.json({ error: "Too many conference token requests. Please wait a moment and try again." }, { status: 429 });
+
 
     const [{ data: profile, error: profileError }, { data: authUserData }] = await Promise.all([
       supabase.from("profiles")

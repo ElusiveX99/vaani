@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { readJsonBody } from "@/lib/security/request";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 function json(body: unknown, status = 200) {
   return NextResponse.json(body, {
@@ -131,6 +132,10 @@ export async function PATCH(
     return json({ error: "You do not have permission to control the shared reader." }, 403);
   }
 
+  const rateLimit = await enforceRateLimit(auth.supabase, "document_mutation");
+  if (rateLimit.error) return json({ error: "Unable to verify request rate." }, 503);
+  if (!rateLimit.allowed) return json({ error: "Too many document changes. Please wait and try again." }, 429);
+
   const { data: claimData, error: claimError } = await auth.supabase.rpc(
     "claim_session_reader_control",
     { p_session_id: sessionId }
@@ -201,9 +206,13 @@ export async function DELETE(
   }
   if (!document) return json({ error: "Document not found." }, 404);
 
+  const deleteRateLimit = await enforceRateLimit(auth.supabase, "document_mutation");
+  if (deleteRateLimit.error) return json({ error: "Unable to verify request rate." }, 503);
+  if (!deleteRateLimit.allowed) return json({ error: "Too many document changes. Please wait and try again." }, 429);
+
   const { data: readerState, error: stateError } = await auth.supabase
     .from("session_reader_state")
-    .select("current_document_id")
+    .select("current_document_id, current_page, current_offset")
     .eq("session_id", sessionId)
     .maybeSingle();
 
@@ -239,7 +248,26 @@ export async function DELETE(
 
     if (storageError) {
       console.error("PDF storage deletion failed:", storageError);
-      return json({ error: "The PDF could not be deleted from storage." }, 500);
+
+      if (wasActive) {
+        const { error: restoreError } = await auth.supabase
+          .from("session_reader_state")
+          .update({
+            current_document_id: document.id,
+            current_page: readerState?.current_page ?? 1,
+            current_offset: readerState?.current_offset ?? 0,
+            updated_by: auth.userId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("session_id", sessionId)
+          .is("current_document_id", null);
+
+        if (restoreError) {
+          console.error("Reader state rollback after failed PDF storage deletion also failed:", restoreError);
+        }
+      }
+
+      return json({ error: "The PDF could not be removed from storage. The reader was restored; please retry." }, 500);
     }
   }
 
@@ -251,24 +279,9 @@ export async function DELETE(
 
   if (deleteError) {
     console.error("PDF metadata deletion failed after storage removal:", deleteError);
-    return json({ error: "The PDF file was removed, but its library record could not be deleted. Contact support before retrying." }, 500);
-  }
-
-  const { error: finalDetachError } = await auth.supabase
-    .from("session_reader_state")
-    .update({
-      current_document_id: null,
-      current_page: 1,
-      current_offset: 0,
-      updated_by: auth.userId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("session_id", sessionId)
-    .eq("current_document_id", document.id);
-
-  if (finalDetachError) {
-    console.error("Could not clear the deleted document from reader state:", finalDetachError);
-    return json({ error: "The PDF was deleted, but the shared reader state could not be refreshed. Please refresh the conference." }, 500);
+    return json({
+      error: "The PDF file was removed, but its session record remains. Retry deletion to finish cleanup.",
+    }, 500);
   }
 
   return json({ success: true, removedActiveDocument: wasActive });

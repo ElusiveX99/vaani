@@ -3,6 +3,7 @@ import { RoomServiceClient } from "livekit-server-sdk";
 import { createClient } from "@/lib/supabase/server";
 import { readJsonBody } from "@/lib/security/request";
 import { getLiveKitUserId } from "@/lib/livekit/identity";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -101,6 +102,10 @@ export async function POST(request: NextRequest) {
     if (!target || target.status !== "accepted" || target.role === "organizer" || (actor.role !== "organizer" && target.role !== "participant")) {
       return NextResponse.json({ error: "Participant cannot be moderated" }, { status: 403 });
     }
+
+    const rateLimit = await enforceRateLimit(supabase, "livekit_moderation");
+    if (rateLimit.error) return NextResponse.json({ error: "Unable to verify request rate" }, { status: 503 });
+    if (!rateLimit.allowed) return NextResponse.json({ error: "Too many moderation requests. Please wait and try again." }, { status: 429 });
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;

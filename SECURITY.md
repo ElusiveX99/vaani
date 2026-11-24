@@ -8,6 +8,7 @@ This file separates repository protections from controls requiring provider-dash
 - LiveKit token and moderation endpoints use bounded JSON parsing.
 - State-changing endpoints retain same-origin checks.
 - LiveKit tokens are issued only after server-side identity, live-session, and accepted-membership checks; token lifetime is reduced to two hours.
+- Database-backed rate limits cover LiveKit token issuance and moderation, session document mutations, and Library attachments. Limits are enforced per authenticated user and action.
 - Private session/reader responses use no-store headers where implemented.
 
 ## Provider verification required
@@ -40,7 +41,7 @@ This file separates repository protections from controls requiring provider-dash
 - Review dependency audit findings before upgrading packages.
 
 ## Still required
-- A distributed rate limiter for login-adjacent, token-issuing, chat, upload, and session-creation actions. Process-local memory is not a reliable security boundary on serverless infrastructure.
+- Extend distributed rate limiting to login-adjacent actions, gathering chat, PDF uploads, and session creation. The current database-backed limiter covers LiveKit token issuance and moderation, session document mutations, and Library attachments; process-local memory is not a reliable security boundary on serverless infrastructure.
 - Centralized alerts for repeated authentication failures, authorization denials, token issuance spikes, unusual database usage, and resource consumption.
 - Tested backup restoration, incident response, credential rotation, and rollback procedures.
 - An enforcing CSP tailored to actual script, image, font, Supabase, and LiveKit origins. Do not deploy a guessed CSP; it can break authentication and conference connectivity.

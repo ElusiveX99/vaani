@@ -164,7 +164,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to delete the PDF.");
-      setNotice("PDF deleted.");
+      setNotice(result.storageCleanupPending ? "PDF removed from the session. Private storage cleanup is pending." : "PDF deleted.");
       window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
       await load();
     } catch (err) {
