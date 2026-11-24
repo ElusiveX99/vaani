@@ -3,8 +3,6 @@
 import InlineFeedback from "@/components/inline-feedback";
 import { BrandMark } from "@/components/brand-lockup";
 
-import Link from "next/link";
-
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
