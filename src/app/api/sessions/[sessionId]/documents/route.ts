@@ -131,8 +131,6 @@ export async function PATCH(
     return json({ error: "You do not have permission to control the shared reader." }, 403);
   }
 
-  // Claim the lease atomically before selecting. The database RPC lets
-  // organizers reclaim control even when an assigned admin holds the lease.
   const { data: claimData, error: claimError } = await auth.supabase.rpc(
     "claim_session_reader_control",
     { p_session_id: sessionId }
@@ -185,9 +183,9 @@ export async function DELETE(
   const auth = await getContext(sessionId);
   if ("response" in auth) return auth.response;
 
-  let body: { documentId?: unknown };
-  try { body = await request.json(); }
-  catch { return json({ error: "Invalid request body." }, 400); }
+  const parsed = await readJsonBody<{ documentId?: unknown }>(request, 4096);
+  if (!parsed.ok) return json({ error: "Invalid request body." }, parsed.status);
+  const body = parsed.data;
   if (!isUuid(body.documentId)) return json({ error: "Invalid document ID." }, 400);
 
   const { data: document, error: lookupError } = await auth.supabase
@@ -254,8 +252,6 @@ export async function DELETE(
     return json({ error: "The PDF file was removed, but its library record could not be deleted. Contact support before retrying." }, 500);
   }
 
-  // A controller could have selected this document while storage deletion
-  // was in progress. Clear it again after the metadata row is gone.
   const { error: finalDetachError } = await auth.supabase
     .from("session_reader_state")
     .update({
