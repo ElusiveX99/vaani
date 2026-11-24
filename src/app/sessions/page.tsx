@@ -31,6 +31,9 @@ type Session = {
   ended_at?: string | null;
   created_by: string;
   is_draft?: boolean;
+  recurrence_rule?: string | null;
+  recurrence_until?: string | null;
+  recurrence_parent_id?: string | null;
 };
 
 type Membership = {
@@ -127,6 +130,12 @@ function SessionCard({
         <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
           {session.scheduled_start_at ? formatSchedule(session.scheduled_start_at) : "Time not set"}
         </span>
+
+        {session.recurrence_rule && (
+          <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
+            {session.recurrence_rule === "DAILY" ? "Every day" : session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : session.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : session.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"}
+          </span>
+        )}
 
         {membership && !session.is_draft && (
           <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1">
@@ -262,7 +271,7 @@ async function SessionsContent({
       .select("id, session_id, type, title, body, read_at, created_at")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
     supabase.from("sessions")
-      .select("id, title, description, access_type, status, scheduled_start_at, created_by, is_draft")
+      .select("id, title, description, access_type, status, scheduled_start_at, created_by, is_draft, recurrence_rule, recurrence_until, recurrence_parent_id")
       .eq("is_draft", false)
       .in("status", ["scheduled", "live"])
       .order("created_at", { ascending: false })
@@ -295,6 +304,7 @@ async function SessionsContent({
   );
 
   const yourSessions = visibleSessions.filter((session) => {
+    if (session.recurrence_parent_id) return false;
     const membership = membershipMap.get(session.id);
 
     return (
@@ -304,6 +314,7 @@ async function SessionsContent({
   });
 
   const discoverSessions = visibleSessions.filter((session) => {
+    if (session.recurrence_parent_id) return false;
     const membership = membershipMap.get(session.id);
 
     return (
@@ -319,7 +330,7 @@ async function SessionsContent({
   const [ownedHistoryResult, joinedHistoryResult] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
+      .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by, recurrence_rule, recurrence_until, recurrence_parent_id")
       .in("status", ["ended", "cancelled"])
       .eq("created_by", userId)
       .order("ended_at", { ascending: false })
@@ -327,7 +338,7 @@ async function SessionsContent({
     acceptedSessionIds.length
       ? supabase
           .from("sessions")
-          .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by")
+          .select("id, title, description, access_type, status, scheduled_start_at, ended_at, created_by, recurrence_rule, recurrence_until, recurrence_parent_id")
           .in("status", ["ended", "cancelled"])
           .in("id", acceptedSessionIds)
           .order("ended_at", { ascending: false })
@@ -338,6 +349,7 @@ async function SessionsContent({
   const historyError = ownedHistoryResult.error || joinedHistoryResult.error;
   const historySessions = [...new Map<string, Session>(
     [...(ownedHistoryResult.data ?? []), ...(joinedHistoryResult.data ?? [])]
+      .filter((session) => session.recurrence_parent_id == null)
       .map((session): [string, Session] => [session.id, session as Session])
   ).values()].sort((a, b) => {
     const aTime = a.ended_at ? new Date(a.ended_at).getTime() : 0;

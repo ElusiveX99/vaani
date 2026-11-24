@@ -204,6 +204,32 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
   const session = sessionData as Session;
 
+  const seriesRootId = session.recurrence_parent_id ?? session.id;
+  const [{ data: seriesRootData }, { data: occurrenceData }] = await Promise.all([
+    session.recurrence_parent_id
+      ? supabase.from("sessions").select("id,title,scheduled_start_at,status,recurrence_rule,recurrence_until,time_zone").eq("id",seriesRootId).maybeSingle()
+      : Promise.resolve({ data: session }),
+    supabase.from("sessions").select("id,title,status,scheduled_start_at,time_zone,recurrence_parent_id").eq("recurrence_parent_id",seriesRootId).order("scheduled_start_at",{ascending:true}),
+  ]);
+
+  const seriesRoot = (seriesRootData ?? session) as Session;
+  const seriesOccurrences = [
+    seriesRoot,
+    ...((occurrenceData ?? []) as Array<{
+      id: string;
+      title: string;
+      status: Session["status"];
+      scheduled_start_at: string | null;
+      time_zone: string;
+      recurrence_parent_id: string | null;
+    }>),
+  ].filter((item,index,all) => all.findIndex(candidate => candidate.id === item.id) === index)
+    .sort((a,b) => {
+      const aTime = a.scheduled_start_at ? new Date(a.scheduled_start_at).getTime() : Number.POSITIVE_INFINITY;
+      const bTime = b.scheduled_start_at ? new Date(b.scheduled_start_at).getTime() : Number.POSITIVE_INFINITY;
+      return aTime - bTime;
+    });
+
   const [ownMembershipResult,ownJoinRequestResult]=await Promise.all([
     supabase.from("session_members").select("user_id,role,status").eq("session_id",session.id).eq("user_id",userId).maybeSingle(),
     session.waiting_room_enabled
@@ -676,6 +702,53 @@ async function SessionContent({ params, searchParams }: PageProps) {
 
         {/* Session information */}
 
+        {seriesRoot.recurrence_rule && (
+          <section className="surface-card mt-7 p-6 sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Recurring series</p>
+                <h2 className="mt-1 text-xl font-semibold text-[var(--ink)]">{seriesRoot.title}</h2>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  {seriesRoot.recurrence_rule === "DAILY" ? "Every day" : seriesRoot.recurrence_rule === "WEEKLY" ? "Every week" : seriesRoot.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : seriesRoot.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : seriesRoot.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"}
+                  {seriesRoot.recurrence_until ? " · Until " + formatDate(seriesRoot.recurrence_until, seriesRoot.time_zone) : ""}
+                  {" · " + seriesOccurrences.length + " gatherings in this series"}
+                </p>
+              </div>
+              {session.id !== seriesRoot.id && (
+                <Link href={"/sessions/" + seriesRoot.id} className="button-secondary !min-h-9 !px-4 !py-2 text-xs">
+                  Open series
+                </Link>
+              )}
+            </div>
+
+            <div className="mt-5 divide-y divide-[var(--line)] border-t border-[var(--line)]">
+              {seriesOccurrences.map((occurrence,index) => (
+                <div key={occurrence.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--ink)]">
+                      Gathering {index + 1}
+                      {occurrence.id === session.id && <span className="ml-2 text-xs font-normal text-[var(--muted)]">Current</span>}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {occurrence.scheduled_start_at ? formatDate(occurrence.scheduled_start_at, occurrence.time_zone) : "Time not set"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold">
+                      {statusLabel(occurrence.status)}
+                    </span>
+                    {occurrence.status === "live" && (
+                      <Link href={"/sessions/" + occurrence.id + "/conference"} className="text-sm font-semibold text-[var(--plum)] hover:underline">
+                        Enter conference
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="surface-card mt-7 p-6">
           <h2 className="text-lg font-semibold text-[var(--ink)]">Session information</h2>
           <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
@@ -709,8 +782,8 @@ async function SessionContent({ params, searchParams }: PageProps) {
             </div>
             {session.duration_minutes && <div><dt className="text-[var(--muted)]">Expected duration</dt><dd className="mt-1 text-[var(--ink)]">{session.duration_minutes} minutes</dd></div>}
             {session.instructions && <div className="sm:col-span-2"><dt className="text-[var(--muted)]">Participant instructions</dt><dd className="mt-1 whitespace-pre-wrap text-[var(--ink)]">{session.instructions}</dd></div>}
-            {session.recurrence_parent_id && <div><dt className="text-[var(--muted)]">Series</dt><dd className="mt-1 text-[var(--ink)]">This is one occurrence in a recurring gathering.</dd></div>}
-            {session.recurrence_rule && <div><dt className="text-[var(--muted)]">Repeats</dt><dd className="mt-1 text-[var(--ink)]">{session.recurrence_rule === "DAILY" ? "Every day" : session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : session.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : session.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"} until {formatDate(session.recurrence_until, session.time_zone)}</dd></div>}
+            {session.recurrence_parent_id && <div><dt className="text-[var(--muted)]">Series</dt><dd className="mt-1 text-[var(--ink)]">This gathering is part of a recurring series.</dd></div>}
+            {session.recurrence_rule && !session.recurrence_parent_id && <div><dt className="text-[var(--muted)]">Repeats</dt><dd className="mt-1 text-[var(--ink)]">{session.recurrence_rule === "DAILY" ? "Every day" : session.recurrence_rule === "WEEKLY" ? "Every week" : session.recurrence_rule === "BIWEEKLY" ? "Every two weeks" : session.recurrence_rule === "EVERY_3_WEEKS" ? "Every three weeks" : session.recurrence_rule === "EVERY_4_WEEKS" ? "Every four weeks" : "Every month"} until {formatDate(session.recurrence_until, session.time_zone)}</dd></div>}
 
             {session.started_at && (
               <div>
