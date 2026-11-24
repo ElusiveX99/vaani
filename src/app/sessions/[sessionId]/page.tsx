@@ -32,7 +32,6 @@ import {
   deleteEndedSession,
   deleteCancelledSession,
   deleteSessionDraft,
-  updateSessionDraft,
 } from "../actions";
 
 type PageProps = {
