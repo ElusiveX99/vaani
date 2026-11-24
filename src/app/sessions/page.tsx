@@ -31,6 +31,9 @@ type Session = {
   ended_at?: string | null;
   created_by: string;
   is_draft?: boolean;
+  recurrence_rule?: string | null;
+  recurrence_until?: string | null;
+  recurrence_parent_id?: string | null;
 };
 
 type Membership = {
@@ -346,6 +349,7 @@ async function SessionsContent({
   const historyError = ownedHistoryResult.error || joinedHistoryResult.error;
   const historySessions = [...new Map<string, Session>(
     [...(ownedHistoryResult.data ?? []), ...(joinedHistoryResult.data ?? [])]
+      .filter((session) => session.recurrence_parent_id == null)
       .map((session): [string, Session] => [session.id, session as Session])
   ).values()].sort((a, b) => {
     const aTime = a.ended_at ? new Date(a.ended_at).getTime() : 0;
