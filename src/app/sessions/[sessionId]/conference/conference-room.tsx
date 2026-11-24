@@ -26,7 +26,6 @@ import {
 import "@livekit/components-styles";
 
 import PdfUploader from "./pdf-uploader";
-import DocumentLibrary from "./document-library";
 import ModerationPanel from "./moderation-panel";
 import PersistentChat from "./persistent-chat";
 import SynchronizedReader from "./synchronized-reader";
@@ -812,7 +811,6 @@ function ConferenceWorkspace({
               Close
             </button>
           </div>
-          <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
           <PdfUploader sessionId={sessionId} canManage={canManageDocuments} />
         </div>
       )}
