@@ -4,18 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 function clearAuthCookies(response: NextResponse, request: NextRequest) {
   for (const cookie of request.cookies.getAll()) {
     if (cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token")) {
-      response.cookies.set(cookie.name, "", {
-        path: "/",
-        maxAge: 0,
-      });
+      response.cookies.set(cookie.name, "", { path: "/", maxAge: 0 });
     }
   }
 }
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,9 +25,7 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value);
           });
 
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          supabaseResponse = NextResponse.next({ request });
 
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options);
@@ -46,37 +39,16 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // The proxy is the single server-side place responsible for refreshing
-  // Supabase sessions. Do not refresh the same session again in a page.
-  const { data, error } = await supabase.auth.getClaims();
+  const { error } = await supabase.auth.getClaims();
 
   if (error) {
     const message = error.message.toLowerCase();
-
-    // A stale/revoked refresh token should not poison every subsequent
-    // request. Clear the browser's Supabase auth cookies and let the user
-    // continue as signed out.
     if (
       message.includes("invalid refresh token") ||
       message.includes("refresh token not found")
     ) {
       clearAuthCookies(supabaseResponse, request);
     }
-
-    return supabaseResponse;
-  }
-
-  // Keep the public landing page out of the way for authenticated members.
-  if (request.nextUrl.pathname === "/" && typeof data?.claims?.sub === "string") {
-    const destination = request.nextUrl.clone();
-    destination.pathname = "/home";
-    destination.search = "";
-
-    const redirectResponse = NextResponse.redirect(destination);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie);
-    });
-    return redirectResponse;
   }
 
   return supabaseResponse;
