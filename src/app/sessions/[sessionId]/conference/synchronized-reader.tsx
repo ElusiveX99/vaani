@@ -338,6 +338,14 @@ const SynchronizedReader = memo(
     }, [data?.document?.id, sessionId, localUserId]);
 
     useEffect(() => {
+      if (!data || data.canControl || !data.document || personalPosition?.documentId !== data.document.id) return;
+      pageRef.current = personalPosition.page;
+      offsetRef.current = personalPosition.offset;
+      setCurrentPage(personalPosition.page);
+      setCurrentOffset(personalPosition.offset);
+    }, [data?.canControl, data?.document?.id, personalPosition]);
+
+    useEffect(() => {
       let active = true;
 
       const supabase = createClient();
