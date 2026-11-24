@@ -34,10 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimit = await enforceRateLimit(supabase, "livekit_moderation");
-    if (rateLimit.error) return NextResponse.json({ error: "Unable to verify request rate" }, { status: 503 });
-    if (!rateLimit.allowed) return NextResponse.json({ error: "Too many moderation requests. Please wait and try again." }, { status: 429 });
-
     const parsedBody = await readJsonBody<{
       sessionId?: unknown;
       targetUserId?: unknown;
@@ -106,6 +102,10 @@ export async function POST(request: NextRequest) {
     if (!target || target.status !== "accepted" || target.role === "organizer" || (actor.role !== "organizer" && target.role !== "participant")) {
       return NextResponse.json({ error: "Participant cannot be moderated" }, { status: 403 });
     }
+
+    const rateLimit = await enforceRateLimit(supabase, "livekit_moderation");
+    if (rateLimit.error) return NextResponse.json({ error: "Unable to verify request rate" }, { status: 503 });
+    if (!rateLimit.allowed) return NextResponse.json({ error: "Too many moderation requests. Please wait and try again." }, { status: 429 });
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
