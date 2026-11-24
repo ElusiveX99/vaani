@@ -11,7 +11,7 @@ type Props = {
   avatarUrl?: string | null;
 };
 
-type NavigationIconName = "home" | "calendar" | "profile";
+type NavigationIconName = "home" | "calendar" | "library" | "profile";
 
 function NavigationIcon({ name, className }: { name: NavigationIconName; className?: string }) {
   const common = {
@@ -32,6 +32,15 @@ function NavigationIcon({ name, className }: { name: NavigationIconName; classNa
         <path d="m3.5 10 8.5-7 8.5 7" />
         <path d="M5.5 9v11h13V9" />
         <path d="M9.5 20v-6h5v6" />
+      </svg>
+    );
+  }
+
+  if (name === "library") {
+    return (
+      <svg {...common}>
+        <path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2V4.5Z" />
+        <path d="M5 6.5h9M8 10h7M8 13h7M8 16h5" />
       </svg>
     );
   }
@@ -57,6 +66,7 @@ function NavigationIcon({ name, className }: { name: NavigationIconName; classNa
 const links = [
   { href: "/home", label: "Home", icon: "home" as const },
   { href: "/sessions", label: "Gatherings", icon: "calendar" as const },
+  { href: "/library", label: "Library", icon: "library" as const },
 ];
 
 function isActive(pathname: string, href: string) {

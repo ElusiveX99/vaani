@@ -27,6 +27,8 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [libraryDocuments, setLibraryDocuments] = useState<Array<{id:string;title:string;description:string|null;size_bytes:number}>>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
   const loadingRef=useRef(false);
 
   const load = useCallback(async () => {
@@ -85,6 +87,43 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     };
   }, [sessionId, load]);
 
+  async function loadLibrary() {
+    setLibraryLoading(true);
+    try {
+      const response = await fetch("/api/sessions/" + sessionId + "/library", { cache: "no-store", credentials: "same-origin" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to load the Vaani Library.");
+      setLibraryDocuments(result.documents ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load the Vaani Library.");
+    } finally {
+      setLibraryLoading(false);
+    }
+  }
+
+  async function addLibraryDocument(libraryDocumentId: string) {
+    setBusyId(libraryDocumentId);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/sessions/" + sessionId + "/library", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        body: JSON.stringify({ libraryDocumentId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to add the Library PDF.");
+      setNotice("Library PDF added to this session.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to add the Library PDF.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
     setError("");
@@ -142,14 +181,36 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
 
   return (
     <details className="conference-workspace min-w-0 rounded-xl">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+      <summary onClick={() => { if (canControlReader) void loadLibrary(); }} className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
         <span className="text-xs font-semibold">PDF library</span>
         <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/70">
           {documents.length}
         </span>
       </summary>
 
-      <div className="max-h-[52svh] space-y-2 overflow-y-auto border-t border-[var(--conference-line)] p-2.5 sm:max-h-80">
+      <div className="max-h-[60svh] space-y-2 overflow-y-auto border-t border-[var(--conference-line)] p-2.5 sm:max-h-96">
+        {canControlReader && (
+          <section className="rounded-lg border border-[var(--conference-line)] bg-white/[0.03] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/45">Vaani Library</p>
+              {libraryLoading && <span className="text-[10px] text-white/40">Loading…</span>}
+            </div>
+            {libraryDocuments.length > 0 ? (
+              <div className="mt-2 space-y-1.5">
+                {libraryDocuments.map((doc) => (
+                  <button key={doc.id} type="button" disabled={busyId !== null} onClick={() => void addLibraryDocument(doc.id)}
+                    className="flex w-full min-h-9 items-center justify-between gap-2 rounded-md bg-white/[0.06] px-2.5 py-2 text-left text-[10px] text-white/75 hover:bg-white/[0.1] disabled:opacity-40">
+                    <span className="min-w-0 truncate">{doc.title}</span>
+                    <span className="shrink-0 text-white/35">Add</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[10px] text-white/40">No published Library PDFs are available.</p>
+            )}
+          </section>
+        )}
+
         {loading ? (
           <p className="py-3 text-center text-xs text-white/50">Loading…</p>
         ) : documents.length === 0 ? (

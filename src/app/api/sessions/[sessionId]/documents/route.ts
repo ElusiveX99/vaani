@@ -190,7 +190,7 @@ export async function DELETE(
 
   const { data: document, error: lookupError } = await auth.supabase
     .from("session_documents")
-    .select("id, storage_path")
+    .select("id, storage_path, library_document_id")
     .eq("id", body.documentId)
     .eq("session_id", sessionId)
     .maybeSingle();
@@ -232,13 +232,15 @@ export async function DELETE(
     }
   }
 
-  const { error: storageError } = await auth.supabase.storage
-    .from("session-pdfs")
-    .remove([document.storage_path]);
+  if (!document.library_document_id) {
+    const { error: storageError } = await auth.supabase.storage
+      .from("session-pdfs")
+      .remove([document.storage_path]);
 
-  if (storageError) {
-    console.error("PDF storage deletion failed:", storageError);
-    return json({ error: "The PDF could not be deleted from storage." }, 500);
+    if (storageError) {
+      console.error("PDF storage deletion failed:", storageError);
+      return json({ error: "The PDF could not be deleted from storage." }, 500);
+    }
   }
 
   const { error: deleteError } = await auth.supabase
