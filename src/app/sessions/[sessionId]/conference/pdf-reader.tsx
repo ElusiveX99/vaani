@@ -181,6 +181,11 @@ export default function PdfReader({
   const containerRef = useRef<HTMLDivElement>(null);
   const metricFrameRef = useRef<number | null>(null);
   const metricsRef = useRef<Array<Metric | null>>([]);
+  const currentPositionRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
+  currentPositionRef.current = {
+    page: Math.max(1, currentPage),
+    offset: clampOffset(currentOffset),
+  };
   const positionRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
   const lastSentRef = useRef<Position>({ page: Math.max(1, currentPage), offset: clampOffset(currentOffset) });
   const lastWidthRef = useRef(0);
@@ -347,20 +352,15 @@ export default function PdfReader({
       }
 
       setPageCount(0);
-      setVisiblePage(Math.max(1, currentPage));
-      lastSentRef.current = {
-        page: Math.max(1, currentPage),
-        offset: clampOffset(currentOffset),
-      };
+      const initialPosition = currentPositionRef.current;
+      setVisiblePage(initialPosition.page);
+      lastSentRef.current = { ...initialPosition };
       setVisibleRange({ first: 0, last: 3 });
       setMetrics([]);
       metricsRef.current = [];
       lastAppliedRef.current = "";
       lastWidthRef.current = 0;
-      positionRef.current = {
-        page: Math.max(1, currentPage),
-        offset: clampOffset(currentOffset),
-      };
+      positionRef.current = { ...initialPosition };
 
       try {
         task = pdfjs.getDocument({
