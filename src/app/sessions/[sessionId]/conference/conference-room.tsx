@@ -412,7 +412,43 @@ function ConferenceWorkspace({
 
     void refreshRole();
     return () => { active = false; };
-  }, [sessionId, localUserId, room, onMembershipRevoked, realtimeRevision]);
+  }, [sessionId, localUserId, room, onMembershipRevoked, realtimeStatus]);
+
+  useEffect(() => {
+    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
+    if (realtimeEvent.table === "session_members") {
+      // Membership changes affect authorization; refresh only this user's
+      // membership record, never on unrelated chat/PDF/notification events.
+      const changedUserId =
+        String(realtimeEvent.new.user_id ?? realtimeEvent.old.user_id ?? "");
+      if (!changedUserId || changedUserId === localUserId) {
+        const supabase = createClient();
+        void supabase
+          .from("session_members")
+          .select("role, status, can_control_reader")
+          .eq("session_id", sessionId)
+          .eq("user_id", localUserId)
+          .maybeSingle()
+          .then(({ data, error }) => {
+            if (error) {
+              console.error("Conference membership update failed:", error);
+              return;
+            }
+            if (data?.status !== "accepted") {
+              room.disconnect();
+              onMembershipRevoked();
+              return;
+            }
+            setMembershipRole(data.role);
+            setMembershipCanControlReader(
+              data.role === "organizer" ||
+              data.role === "in_charge" ||
+              (data.role === "admin" && data.can_control_reader === true)
+            );
+          });
+      }
+    }
+  }, [realtimeEvent, sessionId, localUserId, room, onMembershipRevoked]);
   const isOrganizer = membershipRole === "organizer";
   const canManageParticipants =
     isOrganizer ||
