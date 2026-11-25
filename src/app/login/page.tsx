@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/brand-lockup";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 function getNextPath() { const value = new URLSearchParams(window.location.search).get("next"); return value && value.startsWith("/") && !value.startsWith("//") ? value : "/home"; }
 
@@ -55,7 +56,7 @@ export default function LoginPage({ initialMode = "login" }: { initialMode?: "lo
 
     void initializeAuth();
 
-    const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = client.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (session) {
         router.replace(getNextPath());
       }
