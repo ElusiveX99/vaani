@@ -123,7 +123,7 @@ const SynchronizedReader = memo(
     const loadRequestId = useRef(0);
     const lastUrlRefreshAt = useRef(0);
 
-    const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
+    const { status: realtimeStatus } = useConferenceRealtime();
 
     const loadReaderState = useCallback(
       async (
@@ -354,7 +354,15 @@ const SynchronizedReader = memo(
     }, [loadReaderState, realtimeStatus]);
 
     useEffect(() => {
-      if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
+      const handleRealtime = (browserEvent: Event) => {
+        const realtimeEvent = (browserEvent as CustomEvent<{
+          sessionId?: string;
+          table?: string;
+          event?: string;
+          new: Record<string, unknown>;
+          old: Record<string, unknown>;
+        } | null>).detail;
+        if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
 
       if (
         realtimeEvent.table === "session_documents" ||
@@ -427,7 +435,11 @@ const SynchronizedReader = memo(
       setCurrentPage(remotePage);
       setCurrentOffset(remoteOffset);
       setSyncStatus("synced");
-    }, [realtimeEvent, sessionId, loadReaderState]);
+      };
+      window.addEventListener("vaani:conference-realtime", handleRealtime);
+      return () => window.removeEventListener("vaani:conference-realtime", handleRealtime);
+    }, [sessionId, loadReaderState]);
+
     // Persist only the active reader controller's position.
     useEffect(() => {
       const documentId = data?.document?.id;
