@@ -87,6 +87,14 @@ export default function PersistentChat({
     onUnreadChange(unreadCount);
   }, [unreadCount, onUnreadChange]);
 
+  // Keep the composer compact while allowing a few lines without a visible scrollbar.
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 88)}px`;
+  }, [input]);
+
   const browserOnline = typeof navigator === "undefined" ? true : navigator.onLine;
   const connectionStatus = !isOnline || !browserOnline
     ? "You're offline. Messages will refresh when you're connected again."
@@ -518,7 +526,7 @@ export default function PersistentChat({
 
       <form
         onSubmit={sendMessage}
-        className="shrink-0 border-t border-white/[0.08] bg-[#1b171f] p-3.5 sm:p-4"
+        className="flex shrink-0 items-end gap-2 border-t border-white/[0.08] bg-[#1b171f] p-3 sm:p-4"
       >
         <textarea
           ref={inputRef}
@@ -543,11 +551,11 @@ export default function PersistentChat({
           rows={1}
           maxLength={MAX_MESSAGE_LENGTH}
           aria-label="Message to the gathering"
-          placeholder="Share a message with the gathering..."
+          placeholder="Write a message…"
           disabled={
             sending || !currentUserId
           }
-          className="min-h-11 max-h-32 min-w-0 flex-1 resize-none rounded-xl border border-[#8f728a]/25 bg-[#2c2630] px-4 py-3 text-[13px] leading-relaxed text-white outline-none placeholder:text-[#c8bac7]/40 transition focus:border-[#c19db8]/65 focus:ring-2 focus:ring-[#9b7892]/15 disabled:opacity-50"
+          className="min-h-10 max-h-[5.5rem] min-w-0 w-full flex-1 resize-none overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl border border-[#8f728a]/25 bg-[#2c2630] px-3 py-2 text-[13px] leading-relaxed text-white outline-none placeholder:text-[#c8bac7]/40 transition focus:border-[#c19db8]/65 focus:ring-2 focus:ring-[#9b7892]/15 disabled:opacity-50"
         />
 
         <button
@@ -557,7 +565,7 @@ export default function PersistentChat({
             !input.trim() ||
             !currentUserId
           }
-          className="h-11 shrink-0 rounded-xl bg-[#8a6682] px-4 text-xs font-semibold tracking-wide text-white shadow-sm transition hover:bg-[#a17a98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d6b5cc] disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-10 shrink-0 self-end rounded-xl bg-[#8a6682] px-3 text-xs font-semibold tracking-wide text-white shadow-sm transition hover:bg-[#a17a98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d6b5cc] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {sending ? "..." : "Send"}
         </button>
