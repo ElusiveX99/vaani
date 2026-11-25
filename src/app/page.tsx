@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-lockup";
 
 const features = [
   {
@@ -37,9 +38,7 @@ export default function LandingPage() {
 
       <header className="site-header">
         <div className="site-nav">
-          <Link href="/" className="brand-lockup" aria-label="Vaani home">
-            <span className="brand-word">Vaani</span>
-          </Link>
+          <BrandMark />
 
           <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
             <a href="#features" className="nav-link text-sm font-medium text-[#756d73] transition hover:text-[#29242a]">
@@ -309,9 +308,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-[#e5ddd5] bg-[#f6f3ee]">
         <div className="site-nav flex-wrap py-7">
-          <Link href="/" className="brand-lockup" aria-label="Vaani home">
-            <span className="brand-word text-[30px]">Vaani</span>
-          </Link>
+          <BrandMark size="sm" />
           <p className="text-xs text-[#756d73]">Gaayan and Vaani Paath, together.</p>
           <div className="flex gap-5 text-xs font-semibold text-[#756d73]">
             <Link href="/login" className="transition hover:text-[#29242a]">Sign in</Link>
