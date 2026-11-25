@@ -20,7 +20,7 @@ function hasValidOrigin(request: Request) {
   return Boolean(origin) && origin === new URL(request.url).origin;
 }
 
-async function getContext(sessionId: string) {
+async function getAcceptedContext(sessionId: string) {
   const supabase = await createClient();
   const { data: auth, error: authError } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
@@ -41,11 +41,22 @@ async function getContext(sessionId: string) {
     return { response: json({ error: "Unable to verify permissions." }, 500) };
   }
 
-  if (!membership || !["organizer", "in_charge", "admin"].includes(membership.role)) {
-    return { response: json({ error: "You cannot manage this session library." }, 403) };
+  if (!membership) {
+    return { response: json({ error: "You are not an accepted member of this session." }, 403) };
   }
 
   return { supabase, userId, membership };
+}
+
+async function getContext(sessionId: string) {
+  const auth = await getAcceptedContext(sessionId);
+  if ("response" in auth) return auth;
+
+  if (!["organizer", "in_charge", "admin"].includes(auth.membership.role)) {
+    return { response: json({ error: "You cannot manage this session library." }, 403) };
+  }
+
+  return auth;
 }
 
 export async function GET(
@@ -55,7 +66,9 @@ export async function GET(
   const { sessionId } = await context.params;
   if (!isUuid(sessionId)) return json({ error: "Invalid session ID." }, 400);
 
-  const auth = await getContext(sessionId);
+  // Every accepted conference member may view the shared PDF library.
+  // Mutating operations continue to use the manager-only getContext below.
+  const auth = await getAcceptedContext(sessionId);
   if ("response" in auth) return auth.response;
 
   const { data: documents, error: documentsError } = await auth.supabase
