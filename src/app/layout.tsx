@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     url: canonicalSiteUrl,
     images: [
       {
-        url: "/opengraph-image?v=20261125-embed03",
+        url: "/opengraph-image?v=20261125-embed04",
         width: 1200,
         height: 630,
         alt: "Vaani — a gathering space for Gaayan and Vaani Paath",
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     title: "Vaani — Gaayan and Vaani Paath, together",
     description:
       "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
-    images: ["/opengraph-image?v=20261125-embed03"],
+    images: ["/opengraph-image?v=20261125-embed04"],
   },
   appleWebApp: {
     capable: true,
