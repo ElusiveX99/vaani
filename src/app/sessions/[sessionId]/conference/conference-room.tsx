@@ -429,7 +429,7 @@ function ConferenceWorkspace({
           .eq("session_id", sessionId)
           .eq("user_id", localUserId)
           .maybeSingle()
-          .then(({ data, error }) => {
+          .then(({ data, error }: { data: { role: string; status: string; can_control_reader: boolean | null } | null; error: unknown }) => {
             if (error) {
               console.error("Conference membership update failed:", error);
               return;
@@ -502,7 +502,7 @@ function ConferenceWorkspace({
     void supabase.from("profiles")
       .select("id, display_name, avatar_url, avatar_path")
       .in("id", ids)
-      .then(({ data, error }) => {
+      .then(({ data, error }: { data: Array<{ id: string; display_name: string | null; avatar_url: string | null; avatar_path: string | null }> | null; error: unknown }) => {
       if (!active) return;
       if (error) { console.error("Conference participant profiles could not be loaded:", error); return; }
       const next: Record<string, { displayName: string; avatarUrl: string | null }> = {};
