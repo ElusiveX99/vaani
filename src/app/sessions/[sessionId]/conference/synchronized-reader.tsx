@@ -351,7 +351,18 @@ const SynchronizedReader = memo(
 
     useEffect(() => {
       void loadReaderState();
-    }, [loadReaderState, realtimeRevision]);
+    }, [loadReaderState, realtimeStatus]);
+
+    useEffect(() => {
+      if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
+      if (
+        realtimeEvent.table === "session_reader_state" ||
+        realtimeEvent.table === "session_documents" ||
+        realtimeEvent.table === "session_members"
+      ) {
+        void loadReaderState(true, false);
+      }
+    }, [realtimeEvent, sessionId, loadReaderState]);
     // Persist only the active reader controller's position.
     useEffect(() => {
       const documentId = data?.document?.id;
