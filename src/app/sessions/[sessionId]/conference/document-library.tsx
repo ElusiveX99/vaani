@@ -51,7 +51,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     }
   }, [sessionId]);
 
-  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
+  const { status: realtimeStatus } = useConferenceRealtime();
 
   useEffect(() => {
     // Initial load and reconnect reconciliation.
@@ -59,14 +59,45 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   }, [load, realtimeStatus === "connected"]);
 
   useEffect(() => {
-    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
-    if (
-      realtimeEvent.table === "session_documents" ||
-      realtimeEvent.table === "session_reader_state"
-    ) {
-      void load();
-    }
-  }, [realtimeEvent, sessionId, load]);
+    // Consume each database event synchronously. React state can batch
+    // consecutive provider updates; a direct event listener prevents a
+    // document INSERT followed by a reader-state UPDATE from hiding the
+    // document-list refresh.
+    const handleConferenceRealtime = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        table?: string;
+      } | null>).detail;
+
+      // A null detail is the provider's successful-subscription/reconnect
+      // reconciliation signal.
+      if (!detail) {
+        void load();
+        return;
+      }
+
+      if (detail.sessionId !== sessionId) return;
+
+      if (
+        detail.table === "session_documents" ||
+        detail.table === "session_reader_state"
+      ) {
+        void load();
+      }
+    };
+
+    window.addEventListener(
+      "vaani:conference-realtime",
+      handleConferenceRealtime
+    );
+
+    return () => {
+      window.removeEventListener(
+        "vaani:conference-realtime",
+        handleConferenceRealtime
+      );
+    };
+  }, [sessionId, load]);
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
     setError("");
