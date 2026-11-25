@@ -13,5 +13,24 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "any",
     background_color: "#f6f3ee",
     theme_color: "#f6f3ee",
+    icons: [
+      {
+        src: "/icon",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/apple-icon",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   };
 }

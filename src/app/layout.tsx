@@ -45,6 +45,13 @@ export const metadata: Metadata = {
   description:
     "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
   applicationName: "Vaani",
+  icons: {
+    icon: [
+      { url: "/brand/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
   keywords: [
     "Vaani",
     "Sakhi Sang",
@@ -64,7 +71,7 @@ export const metadata: Metadata = {
     url: canonicalSiteUrl,
     images: [
       {
-        url: "/opengraph-image?v=20261125-embed04",
+        url: "/opengraph-image?v=20261125-brand01",
         width: 1200,
         height: 630,
         alt: "Vaani — a gathering space for Gaayan and Vaani Paath",
@@ -76,7 +83,7 @@ export const metadata: Metadata = {
     title: "Vaani — Gaayan and Vaani Paath, together",
     description:
       "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
-    images: ["/opengraph-image?v=20261125-embed04"],
+    images: ["/opengraph-image?v=20261125-brand01"],
   },
   appleWebApp: {
     capable: true,
