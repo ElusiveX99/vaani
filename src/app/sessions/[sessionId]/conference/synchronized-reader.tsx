@@ -355,13 +355,78 @@ const SynchronizedReader = memo(
 
     useEffect(() => {
       if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
+
       if (
-        realtimeEvent.table === "session_reader_state" ||
         realtimeEvent.table === "session_documents" ||
         realtimeEvent.table === "session_members"
       ) {
         void loadReaderState(true, false);
+        return;
       }
+
+      if (realtimeEvent.table !== "session_reader_state") return;
+      if (realtimeEvent.event === "DELETE") {
+        void loadReaderState(false, false);
+        return;
+      }
+
+      const remote = realtimeEvent.new;
+      const remoteDocumentId =
+        typeof remote.current_document_id === "string"
+          ? remote.current_document_id
+          : null;
+      const currentDocumentId = dataRef.current?.document?.id ?? null;
+
+      // Document switches/close require the authoritative reader payload
+      // (including its signed PDF URL); page movement does not.
+      if (remoteDocumentId !== currentDocumentId) {
+        void loadReaderState(false, false);
+        return;
+      }
+
+      const remotePage = remote.current_page;
+      if (
+        typeof remotePage !== "number" ||
+        !Number.isSafeInteger(remotePage) ||
+        remotePage < 1
+      ) {
+        return;
+      }
+
+      const remoteOffset =
+        typeof remote.current_offset === "number" &&
+        Number.isFinite(remote.current_offset)
+          ? Math.min(1, Math.max(0, remote.current_offset))
+          : 0;
+      const controllerId =
+        typeof remote.controller_user_id === "string"
+          ? remote.controller_user_id
+          : null;
+      const controllerEpoch =
+        typeof remote.controller_epoch === "number"
+          ? remote.controller_epoch
+          : 0;
+
+      if (controllerEpochRef.current !== controllerEpoch) {
+        lastRemoteSequence.current = 0;
+      }
+      controllerUserIdRef.current = controllerId;
+      controllerEpochRef.current = controllerEpoch;
+      pageRef.current = remotePage;
+      offsetRef.current = remoteOffset;
+      lastSavedPage.current = remotePage;
+      lastSavedOffset.current = remoteOffset;
+
+      setData((previous) => previous ? {
+        ...previous,
+        readerState: {
+          ...previous.readerState,
+          ...remote,
+        },
+      } : previous);
+      setCurrentPage(remotePage);
+      setCurrentOffset(remoteOffset);
+      setSyncStatus("synced");
     }, [realtimeEvent, sessionId, loadReaderState]);
     // Persist only the active reader controller's position.
     useEffect(() => {
