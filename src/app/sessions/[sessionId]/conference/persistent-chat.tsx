@@ -174,8 +174,6 @@ export default function PersistentChat({
 
     void initialize();
 
-    void initialize();
-
     const handleConferenceRealtime = () => {
       if (active) void loadMessages();
     };
