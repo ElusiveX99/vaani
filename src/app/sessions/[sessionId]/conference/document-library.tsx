@@ -27,10 +27,10 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const loadingRef=useRef(false);
+  const loadRequestRef = useRef(0);
 
   const load = useCallback(async () => {
-    if(loadingRef.current)return;loadingRef.current=true;
+    const requestId = ++loadRequestRef.current;
     try {
       const response = await fetch(`/api/sessions/${sessionId}/documents`, {
         cache: "no-store",
@@ -38,13 +38,16 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to load documents.");
+      if (requestId !== loadRequestRef.current) return;
       setDocuments((result.documents ?? []) as DocumentItem[]);
       setActiveDocumentId(result.activeDocumentId ?? null);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load documents.");
+      if (requestId === loadRequestRef.current) {
+        setError(err instanceof Error ? err.message : "Unable to load documents.");
+      }
     } finally {
-      loadingRef.current=false;setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
   }, [sessionId]);
 
