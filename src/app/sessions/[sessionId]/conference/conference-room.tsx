@@ -790,8 +790,7 @@ function ConferenceWorkspace({
           </p>
         </div>
 
-          {canManageDocuments && (
-            <button
+          <button
               type="button"
               onClick={() => setWorkspaceOpen((open) => !open)}
               aria-expanded={workspaceOpen}
@@ -801,11 +800,10 @@ function ConferenceWorkspace({
               <span>Workspace</span>
               <span className="text-white/45">{workspaceOpen ? "Close" : "PDFs"}</span>
             </button>
-          )}
         </div>
       </header>
 
-      {workspaceOpen && canManageDocuments && (
+      {workspaceOpen && (
         <div
           id="conference-workspace-panel"
           className="absolute right-3 top-[4.5rem] z-50 flex max-h-[min(72svh,38rem)] w-[min(94vw,30rem)] flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--conference-line)] bg-[#302a34] p-3 shadow-2xl"
@@ -820,7 +818,11 @@ function ConferenceWorkspace({
               Close
             </button>
           </div>
-          <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
+          <DocumentLibrary
+            sessionId={sessionId}
+            canControlReader={canControlReader}
+            canManageDocuments={canManageDocuments}
+          />
           <PdfUploader sessionId={sessionId} canManage={canManageDocuments} />
         </div>
       )}
