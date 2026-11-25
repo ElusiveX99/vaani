@@ -102,7 +102,7 @@ export default function ConferenceRealtimeProvider({
           table,
           filter: `${filterColumn}=eq.${sessionId}`,
         },
-        (payload) => {
+        (payload: { eventType: string; new: unknown; old: unknown }) => {
           const nextEvent: ConferenceRealtimeEvent = {
             sessionId,
             table,
@@ -115,7 +115,7 @@ export default function ConferenceRealtimeProvider({
       );
     }
 
-    channel.subscribe((channelStatus) => {
+    channel.subscribe((channelStatus: string) => {
       if (!active) return;
       if (channelStatus === "SUBSCRIBED") {
         setStatus("connected");
