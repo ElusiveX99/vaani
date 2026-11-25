@@ -44,7 +44,7 @@ export default function PersistentChat({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
+  const [connectionStatus, setConnectionStatus] = useState("");
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -84,6 +84,18 @@ export default function PersistentChat({
   useEffect(() => {
     onUnreadChange(unreadCount);
   }, [unreadCount, onUnreadChange]);
+
+  useEffect(() => {
+    if (!navigator.onLine) {
+      setConnectionStatus("You're offline. Messages will refresh when you're connected again.");
+    } else if (realtimeStatus === "connected") {
+      setConnectionStatus("");
+    } else if (realtimeStatus === "disconnected" || realtimeStatus === "reconnecting") {
+      setConnectionStatus("Live updates reconnecting. You can still send messages.");
+    } else {
+      setConnectionStatus("Connecting to live updates…");
+    }
+  }, [realtimeStatus]);
 
   useEffect(() => {
     let active = true;
@@ -514,7 +526,7 @@ export default function PersistentChat({
           className={`shrink-0 border-t px-3 py-1.5 text-[10px] ${error ? "border-red-400/10 bg-red-950/40 text-red-200" : "border-white/5 text-white/60"}`}
         >
           {error || connectionStatus}
-          {!error && connectionStatus && " · Messages refresh automatically"}
+
         </p>
       )}
 
