@@ -46,7 +46,7 @@ export default function PersistentChat({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [connectionStatus, setConnectionStatus] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -87,17 +87,25 @@ export default function PersistentChat({
     onUnreadChange(unreadCount);
   }, [unreadCount, onUnreadChange]);
 
+  const browserOnline = typeof navigator === "undefined" ? true : navigator.onLine;
+  const connectionStatus = !isOnline || !browserOnline
+    ? "You're offline. Messages will refresh when you're connected again."
+    : realtimeStatus === "connected"
+      ? ""
+      : realtimeStatus === "disconnected" || realtimeStatus === "reconnecting"
+        ? "Live updates reconnecting. You can still send messages."
+        : "Connecting to live updates…";
+
   useEffect(() => {
-    if (!navigator.onLine) {
-      setConnectionStatus("You're offline. Messages will refresh when you're connected again.");
-    } else if (realtimeStatus === "connected") {
-      setConnectionStatus("");
-    } else if (realtimeStatus === "disconnected" || realtimeStatus === "reconnecting") {
-      setConnectionStatus("Live updates reconnecting. You can still send messages.");
-    } else {
-      setConnectionStatus("Connecting to live updates…");
-    }
-  }, [realtimeStatus]);
+    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => setIsOnline(true);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -157,21 +165,6 @@ export default function PersistentChat({
       }
     }
 
-    function addMessage(message: Message) {
-      setMessages((previous) => {
-        if (previous.some((item) => item.id === message.id)) return previous;
-        return [...previous, message].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-      });
-
-      if (!openRef.current && message.sender_id !== currentUserIdRef.current) {
-        setUnreadCount((count) => Math.min(count + 1, 99));
-      }
-      if (openRef.current || shouldScrollRef.current) {
-        shouldScrollRef.current = true;
-      }
-    }
 
     async function initialize() {
       try {
@@ -205,11 +198,11 @@ export default function PersistentChat({
     document.addEventListener("visibilitychange", handleVisibility);
 
     const handleOffline = () => {
-      if (active) setConnectionStatus("You're offline. Messages will refresh when you're connected again.");
+      if (active) setIsOnline(false);
     };
     const handleOnline = () => {
       if (!active) return;
-      setConnectionStatus("Connection restored. Refreshing messages...");
+      setIsOnline(true);
       void loadMessages();
     };
     window.addEventListener("offline", handleOffline);
@@ -266,7 +259,6 @@ export default function PersistentChat({
 
   const activeChatRef = useRef(true);
   useEffect(() => {
-    activeChatRef.current = true;
     return () => { activeChatRef.current = false; };
   }, []);
 
