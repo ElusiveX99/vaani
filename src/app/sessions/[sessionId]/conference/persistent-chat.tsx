@@ -196,8 +196,6 @@ export default function PersistentChat({
     };
     window.addEventListener("offline", handleOffline);
     window.addEventListener("online", handleOnline);
-    if (typeof navigator !== "undefined" && !navigator.onLine) handleOffline();
-
     return () => {
       active = false;
       historyRequest += 1;
