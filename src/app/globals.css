@@ -128,6 +128,9 @@ html { scroll-padding-top: 5rem; }
   transition: opacity .18s ease;
 }
 .brand-lockup:hover { opacity: .82; }
+/* The inverse lockup is used over the deep-plum authentication panel. */
+.brand-lockup--inverse { color: #fffaf7; }
+.brand-lockup--inverse .brand-word { color: #fffaf7; }
 .brand-word {
   color: currentColor;
   font-family: var(--font-brand);
