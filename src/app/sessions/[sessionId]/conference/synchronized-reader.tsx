@@ -354,6 +354,34 @@ const SynchronizedReader = memo(
     }, [loadReaderState, realtimeStatus]);
 
     useEffect(() => {
+      const handleLocalDocumentMutation = (browserEvent: Event) => {
+        const detail = (browserEvent as CustomEvent<{
+          sessionId?: string;
+          stage?: string;
+        } | null>).detail;
+        if (
+          detail?.sessionId === sessionId &&
+          (detail.stage === "activated" ||
+            detail.stage === "closed" ||
+            detail.stage === "removed")
+        ) {
+          void loadReaderState(false, false);
+        }
+      };
+
+      window.addEventListener(
+        "vaani:conference-document-mutated",
+        handleLocalDocumentMutation
+      );
+      return () => {
+        window.removeEventListener(
+          "vaani:conference-document-mutated",
+          handleLocalDocumentMutation
+        );
+      };
+    }, [sessionId, loadReaderState]);
+
+    useEffect(() => {
       const handleRealtime = (browserEvent: Event) => {
         const realtimeEvent = (browserEvent as CustomEvent<{
           sessionId?: string;
