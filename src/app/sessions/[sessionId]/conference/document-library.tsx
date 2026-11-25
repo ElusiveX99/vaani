@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useConferenceRealtime } from "./conference-realtime-provider";
 import InlineFeedback from "@/components/inline-feedback";
 import { useVaaniDialog } from "@/components/interaction-provider";
 
@@ -48,43 +48,11 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     }
   }, [sessionId]);
 
+  const { revision: realtimeRevision } = useConferenceRealtime();
+
   useEffect(() => {
-    let active = true;
-    const supabase = createClient();
-    const initialLoad = window.setTimeout(() => {
-      if (active) void load();
-    }, 0);
-    const refresh = () => {
-      if (active) void load();
-    };
-
-    let realtimeConnected=false;
-    const fallbackRefresh=window.setInterval(()=>{if(active&&!realtimeConnected&&document.visibilityState==="visible")void load();},30000);
-
-    const channel = supabase
-      .channel(`session-document-library-${sessionId}`)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "session_documents",
-        filter: `session_id=eq.${sessionId}`,
-      }, refresh)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "session_reader_state",
-        filter: `session_id=eq.${sessionId}`,
-      }, refresh)
-      .subscribe(status=>{realtimeConnected=status==="SUBSCRIBED";if(realtimeConnected)void load();});
-
-    return () => {
-      active = false;
-      window.clearTimeout(initialLoad);
-      window.clearInterval(fallbackRefresh);
-      void supabase.removeChannel(channel);
-    };
-  }, [sessionId, load]);
-
+    void load();
+  }, [load, realtimeRevision]);
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
     setError("");
