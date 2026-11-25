@@ -80,7 +80,13 @@ export default function ConferenceRealtimeProvider({
   useEffect(() => {
     let active = true;
     const supabase = createClient();
-    const channel = supabase.channel(`conference-realtime:${sessionId}`);
+    // This Supabase project enforces private Realtime channels.
+    // The matching authorization policy is added in the migration
+    // 20261125150000_enable_private_conference_realtime.sql.
+    const channel = supabase.channel(
+      `conference-realtime:${sessionId}`,
+      { config: { private: true } }
+    );
 
     const publish = (nextEvent?: ConferenceRealtimeEvent) => {
       if (!active) return;
@@ -115,7 +121,10 @@ export default function ConferenceRealtimeProvider({
       );
     }
 
-    channel.subscribe((channelStatus: string) => {
+    channel.subscribe((channelStatus: string, error?: Error) => {
+      if (error) {
+        console.error("Conference Realtime subscription error:", error);
+      }
       if (!active) return;
       if (channelStatus === "SUBSCRIBED") {
         setStatus("connected");
