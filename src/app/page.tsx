@@ -70,7 +70,7 @@ export default function LandingPage() {
       <div id="main-content">
         <section className="overflow-hidden border-b border-[#e5ddd5] bg-[#fffdf9]">
           <div className="mx-auto grid w-[min(100%-2rem,1440px)] items-center gap-16 px-0 py-20 sm:py-24 md:gap-12 md:py-16 lg:items-start lg:grid-cols-[1.02fr_.98fr] lg:gap-20 lg:py-20 xl:py-24">
-            <div className="max-w-2xl">
+            <div className="max-w-2xl lg:-translate-y-3 xl:-translate-y-4">
               <div className="mb-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#80613f]">
                 <span className="h-px w-10 bg-gold" />
                 Gaayan & Vaani Paath
@@ -104,16 +104,9 @@ export default function LandingPage() {
                 </a>
               </div>
 
-              <div className="mt-11 flex flex-wrap gap-x-7 gap-y-2 text-xs font-medium text-[#756d73]">
-                <span>Live audio & video</span>
-                <span>•</span>
-                <span>Chat</span>
-                <span>•</span>
-                <span>Shared reading</span>
-              </div>
             </div>
 
-            <div className="relative mx-auto w-full max-w-[620px] lg:-translate-y-2">
+            <div className="relative mx-auto w-full max-w-[620px]">
               <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#f0e5e2] blur-3xl" aria-hidden="true" />
               <div className="absolute -bottom-20 -left-16 h-64 w-64 rounded-full bg-[#fffdf9]-soft blur-3xl" aria-hidden="true" />
 
