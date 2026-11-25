@@ -40,13 +40,13 @@ type Props = {
 };
 
 const REALTIME_TABLES = [
-  "session_documents",
-  "session_reader_state",
-  "session_messages",
-  "session_members",
-  "session_notifications",
-  "session_join_requests",
-  "sessions",
+  { table: "session_documents", filterColumn: "session_id" },
+  { table: "session_reader_state", filterColumn: "session_id" },
+  { table: "session_messages", filterColumn: "session_id" },
+  { table: "session_members", filterColumn: "session_id" },
+  { table: "session_notifications", filterColumn: "session_id" },
+  { table: "session_join_requests", filterColumn: "session_id" },
+  { table: "sessions", filterColumn: "id" },
 ] as const;
 
 export default function ConferenceRealtimeProvider({
@@ -69,14 +69,14 @@ export default function ConferenceRealtimeProvider({
 
     const channel = supabase.channel(`conference-realtime-${sessionId}`);
 
-    for (const table of REALTIME_TABLES) {
+    for (const { table, filterColumn } of REALTIME_TABLES) {
       channel.on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table,
-          filter: `session_id=eq.${sessionId}`,
+          filter: `${filterColumn}=eq.${sessionId}`,
         },
         bump
       );
