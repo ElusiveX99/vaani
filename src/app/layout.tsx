@@ -78,15 +78,6 @@ export const metadata: Metadata = {
       "A gathering space for Sakhis to come together for Shree Hit Chaturasi Ji gaayan, pada gaayan, and shared Vaani paath.",
     images: ["/opengraph-image?v=20261124-experience02"],
   },
-  icons: {
-    icon: [
-      { url: "/icon.svg?v=20261123-brand01", type: "image/svg+xml", sizes: "any" },
-      { url: "/pwa-icons/192", type: "image/png", sizes: "192x192" },
-      { url: "/pwa-icons/512", type: "image/png", sizes: "512x512" },
-    ],
-    shortcut: "/icon.svg?v=20261123-brand01",
-    apple: "/pwa-icons/180?v=20261123-brand01",
-  },
   appleWebApp: {
     capable: true,
     title: "Vaani",
