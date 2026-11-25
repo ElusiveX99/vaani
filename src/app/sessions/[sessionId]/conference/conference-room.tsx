@@ -955,6 +955,7 @@ function ConferenceWorkspace({
           <PersistentChat
             sessionId={sessionId}
             open={chatOpen}
+            onClose={() => setChatOpen(false)}
             onUnreadChange={setChatUnreadCount}
           />
 
