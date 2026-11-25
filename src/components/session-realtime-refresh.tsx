@@ -38,7 +38,18 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
       if (sessionId) {
         next = next
           .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `id=eq.${sessionId}` }, refresh)
-          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, (payload) => {
+            window.dispatchEvent(new CustomEvent("vaani:conference-realtime", {
+              detail: {
+                sessionId,
+                table: "session_members",
+                event: payload.eventType,
+                new: payload.new,
+                old: payload.old,
+              },
+            }));
+            refresh();
+          })
           .on("postgres_changes", { event: "*", schema: "public", table: "session_join_requests", filter: `session_id=eq.${sessionId}` }, refresh)
           .on("postgres_changes", { event: "*", schema: "public", table: "session_notifications", filter: `session_id=eq.${sessionId}` }, refresh);
       } else {
