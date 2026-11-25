@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
+import { useConferenceRealtime } from "./conference-realtime-provider";
 
 type Props = {
   sessionId: string;
@@ -45,6 +46,7 @@ export default function PersistentChat({
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
 
   const bottomRef = useRef<HTMLDivElement | null>(
     null
@@ -174,11 +176,6 @@ export default function PersistentChat({
 
     void initialize();
 
-    const handleConferenceRealtime = () => {
-      if (active) void loadMessages();
-    };
-    window.addEventListener("vaani:conference-realtime", handleConferenceRealtime);
-
     const handleVisibility = () => {
       if (active && document.visibilityState === "visible") void loadMessages();
     };
@@ -200,11 +197,88 @@ export default function PersistentChat({
       active = false;
       historyRequest += 1;
       document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("vaani:conference-realtime", handleConferenceRealtime);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
   }, [sessionId]);
+
+  useEffect(() => {
+    if (realtimeStatus !== "connected" || loading) return;
+    // Reconcile message history after the shared socket reconnects.
+    // Normal inserts are applied from their exact row payload below.
+    void (async () => {
+      const supabase = createClient();
+      const { data, error: queryError } = await supabase
+        .from("session_messages")
+        .select("id, session_id, sender_id, body, created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (queryError || !data) return;
+      const senderIds = [...new Set(data.map((message) => message.sender_id))];
+      const { data: profiles } = senderIds.length
+        ? await supabase.from("profiles")
+            .select("id, display_name, avatar_url, avatar_path")
+            .in("id", senderIds)
+        : { data: [] };
+      if (!activeChatRef.current) return;
+      const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const enriched = data.reverse().map((message) => {
+        const profile = profileMap.get(message.sender_id);
+        const avatarUrl = profile?.avatar_url || (profile?.avatar_path
+          ? profile.avatar_path.startsWith("http")
+            ? profile.avatar_path
+            : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl
+          : null);
+        return { ...message, sender_name: profile?.display_name || "Sakhi", avatar_url: avatarUrl };
+      }) as Message[];
+      setMessages((previous) => {
+        const merged = new Map(previous.filter((item) => !item.pending).map((item) => [item.id, item]));
+        for (const message of enriched) merged.set(message.id, { ...merged.get(message.id), ...message });
+        return [...merged.values()].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      });
+    })();
+  }, [realtimeStatus, sessionId, loading]);
+
+  const activeChatRef = useRef(true);
+  useEffect(() => {
+    activeChatRef.current = true;
+    return () => { activeChatRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId || realtimeEvent.table !== "session_messages") return;
+    if (realtimeEvent.event === "DELETE") {
+      const id = String(realtimeEvent.old.id ?? "");
+      if (id) setMessages((previous) => previous.filter((message) => message.id !== id));
+      return;
+    }
+    const row = realtimeEvent.new;
+    const id = String(row.id ?? "");
+    const senderId = String(row.sender_id ?? "");
+    if (!id || !senderId || typeof row.body !== "string" || typeof row.created_at !== "string") return;
+    void (async () => {
+      const supabase = createClient();
+      const { data: profile } = await supabase.from("profiles")
+        .select("display_name, avatar_url, avatar_path")
+        .eq("id", senderId)
+        .maybeSingle();
+      const avatarUrl = profile?.avatar_url || (profile?.avatar_path
+        ? profile.avatar_path.startsWith("http")
+          ? profile.avatar_path
+          : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl
+        : null);
+      addMessage({
+        id,
+        session_id: sessionId,
+        sender_id: senderId,
+        body: row.body as string,
+        created_at: row.created_at as string,
+        sender_name: profile?.display_name || "Sakhi",
+        avatar_url: avatarUrl,
+      });
+    })();
+  }, [realtimeEvent, sessionId]);
 
   useEffect(() => {
     if (!open || !shouldScrollRef.current) {
