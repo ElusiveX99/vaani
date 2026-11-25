@@ -86,8 +86,21 @@ export default function ModerationPanel({
 
     void refreshRoles();
 
-    const handleConferenceRealtime = () => {
-      if (active) void refreshRoles();
+    const handleConferenceRealtime = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        table?: string;
+        sessionId?: string;
+      } | null>).detail;
+      // Only membership events change this panel's data. A null payload
+      // is emitted on reconnect and triggers one authoritative refresh.
+      if (
+        active &&
+        (!detail ||
+          (detail.sessionId === sessionId &&
+            detail.table === "session_members"))
+      ) {
+        void refreshRoles();
+      }
     };
     window.addEventListener("vaani:conference-realtime", handleConferenceRealtime);
 
