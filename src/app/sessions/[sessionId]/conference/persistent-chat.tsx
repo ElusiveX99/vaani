@@ -17,6 +17,8 @@ type Props = {
   onUnreadChange: (count: number) => void;
 };
 
+type Profile = { id: string; display_name: string | null; avatar_url: string | null; avatar_path: string | null };
+
 type Message = {
   id: string;
   session_id: string;
@@ -101,7 +103,7 @@ export default function PersistentChat({
           ? await supabase.from("profiles").select("id, display_name, avatar_url, avatar_path").in("id", senderIds)
           : { data: [] };
         if (!active || request !== historyRequest) return;
-        const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+        const profileMap = new Map<string, Profile>(((profiles ?? []) as Profile[]).map((profile: Profile) => [profile.id, profile]));
         const enriched = rows.map((message) => ({
           ...message,
           sender_name: profileMap.get(message.sender_id)?.display_name || "Sakhi",
@@ -213,15 +215,16 @@ export default function PersistentChat({
         .order("created_at", { ascending: false })
         .limit(100);
       if (queryError || !data) return;
-      const senderIds = [...new Set(data.map((message) => message.sender_id))];
+      const rows = (data ?? []) as Message[];
+      const senderIds = [...new Set(rows.map((message: Message) => message.sender_id))];
       const { data: profiles } = senderIds.length
         ? await supabase.from("profiles")
             .select("id, display_name, avatar_url, avatar_path")
             .in("id", senderIds)
         : { data: [] };
       if (!activeChatRef.current) return;
-      const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-      const enriched = data.reverse().map((message) => {
+      const profileMap = new Map<string, Profile>(((profiles ?? []) as Profile[]).map((profile: Profile) => [profile.id, profile]));
+      const enriched = rows.reverse().map((message: Message) => {
         const profile = profileMap.get(message.sender_id);
         const avatarUrl = profile?.avatar_url || (profile?.avatar_path
           ? profile.avatar_path.startsWith("http")
