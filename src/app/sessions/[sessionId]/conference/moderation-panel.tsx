@@ -52,7 +52,7 @@ export default function ModerationPanel({
 
       if (!active || error) {refreshInFlight=false;return;}
 
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{ user_id: string; role: string; can_control_reader: boolean | null }>;
       const ids = rows.map((member) => member.user_id);
       const { data: profiles, error: profileError } = ids.length
         ? await supabase.from("profiles")
