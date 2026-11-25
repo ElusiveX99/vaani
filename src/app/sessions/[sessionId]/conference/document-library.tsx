@@ -1,9 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import InlineFeedback from "@/components/inline-feedback";
-import { useVaaniDialog } from "@/components/interaction-provider";
 
 type DocumentItem = {
   id: string;
@@ -14,39 +12,32 @@ type DocumentItem = {
   display_order: number;
 };
 
-type Props = {
-  sessionId: string;
-  canControlReader: boolean;
-};
-
-export default function DocumentLibrary({ sessionId, canControlReader }: Props) {
-  const { confirm } = useVaaniDialog();
+export default function DocumentLibrary({
+  sessionId,
+  canControlReader,
+}: { sessionId: string; canControlReader: boolean }) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [libraryDocuments, setLibraryDocuments] = useState<Array<{id:string;title:string;description:string|null;size_bytes:number}>>([]);
-  const [libraryLoading, setLibraryLoading] = useState(false);
-  const loadingRef=useRef(false);
 
   const load = useCallback(async () => {
-    if(loadingRef.current)return;loadingRef.current=true;
     try {
       const response = await fetch(`/api/sessions/${sessionId}/documents`, {
         cache: "no-store",
         credentials: "same-origin",
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Unable to load documents.");
+      if (!response.ok) throw new Error(result.error || "Unable to load the PDF library.");
       setDocuments((result.documents ?? []) as DocumentItem[]);
       setActiveDocumentId(result.activeDocumentId ?? null);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load documents.");
+      setError(err instanceof Error ? err.message : "Unable to load the PDF library.");
     } finally {
-      loadingRef.current=false;setLoading(false);
+      setLoading(false);
     }
   }, [sessionId]);
 
@@ -56,12 +47,10 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     const initialLoad = window.setTimeout(() => {
       if (active) void load();
     }, 0);
+
     const refresh = () => {
       if (active) void load();
     };
-
-    let realtimeConnected=false;
-    const fallbackRefresh=window.setInterval(()=>{if(active&&!realtimeConnected&&document.visibilityState==="visible")void load();},30000);
 
     const channel = supabase
       .channel(`session-document-library-${sessionId}`)
@@ -77,52 +66,14 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
         table: "session_reader_state",
         filter: `session_id=eq.${sessionId}`,
       }, refresh)
-      .subscribe(status=>{realtimeConnected=status==="SUBSCRIBED";if(realtimeConnected)void load();});
+      .subscribe();
 
     return () => {
       active = false;
       window.clearTimeout(initialLoad);
-      window.clearInterval(fallbackRefresh);
       void supabase.removeChannel(channel);
     };
   }, [sessionId, load]);
-
-  async function loadLibrary() {
-    setLibraryLoading(true);
-    try {
-      const response = await fetch("/api/sessions/" + sessionId + "/library", { cache: "no-store", credentials: "same-origin" });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Unable to load the Vaani Library.");
-      setLibraryDocuments(result.documents ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load the Vaani Library.");
-    } finally {
-      setLibraryLoading(false);
-    }
-  }
-
-  async function addLibraryDocument(libraryDocumentId: string) {
-    setBusyId(libraryDocumentId);
-    setError("");
-    setNotice("");
-    try {
-      const response = await fetch("/api/sessions/" + sessionId + "/library", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        cache: "no-store",
-        body: JSON.stringify({ libraryDocumentId }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Unable to add the Library PDF.");
-      setNotice("Library PDF added to this session.");
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to add the Library PDF.");
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
@@ -137,20 +88,20 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
         body: JSON.stringify({ documentId }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Unable to update the viewer.");
+      if (!response.ok) throw new Error(result.error || "Unable to update the reader.");
       setActiveDocumentId(documentId);
       setNotice(documentId ? "PDF opened." : "Viewer closed.");
       window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update the viewer.");
+      setError(err instanceof Error ? err.message : "Unable to update the reader.");
     } finally {
       setBusyId(null);
     }
   }
 
   async function deleteDocument(document: DocumentItem) {
-    if (!(await confirm({ title: "Delete this PDF?", message: `“${document.title}” will be removed from this session. This cannot be undone.`, danger: true, confirmLabel: "Delete PDF" }))) return;
+    if (!window.confirm(`Permanently delete "${document.title}" from this session?`)) return;
     setBusyId(document.id);
     setError("");
     setNotice("");
@@ -164,7 +115,7 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to delete the PDF.");
-      setNotice(result.storageCleanupPending ? "PDF removed from the session. Private storage cleanup is pending." : "PDF deleted.");
+      setNotice("PDF deleted.");
       window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
       await load();
     } catch (err) {
@@ -180,84 +131,47 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   }
 
   return (
-    <details className="conference-workspace min-w-0 rounded-xl">
-      <summary onClick={() => { if (canControlReader) void loadLibrary(); }} className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-        <span className="text-xs font-semibold">PDF library</span>
-        <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/70">
-          {documents.length}
-        </span>
+    <details className="min-w-0 rounded-lg border border-white/10 bg-[#202020] text-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+        <span className="min-w-0 truncate text-xs font-medium">PDF library</span>
+        <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/65">{documents.length} files</span>
       </summary>
-
-      <div className="max-h-[60svh] space-y-2 overflow-y-auto border-t border-[var(--conference-line)] p-2.5 sm:max-h-96">
-        {canControlReader && (
-          <section className="rounded-lg border border-[var(--conference-line)] bg-white/[0.03] p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/45">Vaani Library</p>
-              {libraryLoading && <span className="text-[10px] text-white/40">Loading…</span>}
-            </div>
-            {libraryDocuments.length > 0 ? (
-              <div className="mt-2 space-y-1.5">
-                {libraryDocuments.map((doc) => (
-                  <button key={doc.id} type="button" disabled={busyId !== null} onClick={() => void addLibraryDocument(doc.id)}
-                    className="flex w-full min-h-9 items-center justify-between gap-2 rounded-md bg-white/[0.06] px-2.5 py-2 text-left text-[10px] text-white/75 hover:bg-white/[0.1] disabled:opacity-40">
-                    <span className="min-w-0 truncate">{doc.title}</span>
-                    <span className="shrink-0 text-white/35">Add</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-[10px] text-white/40">No published Library PDFs are available.</p>
-            )}
-          </section>
-        )}
-
+      <div className="max-h-72 space-y-2 overflow-y-auto border-t border-white/10 p-3">
         {loading ? (
-          <p className="py-3 text-center text-xs text-white/50">Loading…</p>
+          <p className="py-3 text-center text-xs text-white/45">Loading library...</p>
         ) : documents.length === 0 ? (
-          <p className="py-3 text-center text-xs text-white/50">No PDFs yet.</p>
+          <p className="py-3 text-center text-xs text-white/45">No PDFs uploaded to this session yet.</p>
         ) : (
           documents.map((document) => {
             const isActive = activeDocumentId === document.id;
-            const busy = busyId === document.id || (isActive && busyId === "none");
+            const busy = busyId === document.id;
             return (
-              <article key={document.id} className="min-w-0 rounded-lg border border-[var(--conference-line)] bg-black/10 p-3">
-                <div className="min-w-0">
-                  <p className="break-words text-xs font-medium leading-5 text-white [overflow-wrap:anywhere]">
-                    {document.title}
-                  </p>
-                  <p className="mt-1 text-[10px] text-white/45">
-                    {formatSize(document.size_bytes)} · {new Date(document.created_at).toLocaleDateString("en-IN")}
-                  </p>
-                  {isActive && <p className="mt-1 text-[10px] font-medium text-[#c7d8c5]">In viewer</p>}
+              <article key={document.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-white">{document.title}</p>
+                  <p className="mt-1 text-[10px] text-white/40">{formatSize(document.size_bytes)} · {new Date(document.created_at).toLocaleDateString()}</p>
+                  {isActive && <p className="mt-1 text-[10px] font-medium text-emerald-300">Currently shared</p>}
                 </div>
-
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {canControlReader && (
-                    <button
-                      type="button"
-                      disabled={busyId !== null}
-                      onClick={() => void updateActiveDocument(isActive ? null : document.id)}
-                      className="min-h-8 rounded-md bg-[var(--conference-accent)] px-2.5 py-1.5 text-[10px] font-semibold text-white hover:brightness-110 disabled:opacity-40"
-                    >
-                      {busy ? "Please wait…" : isActive ? "Close viewer" : "Open"}
+                <div className="flex flex-wrap gap-1.5">
+                  {canControlReader && (isActive ? (
+                    <button type="button" disabled={busyId !== null} onClick={() => void updateActiveDocument(null)} className="rounded-md bg-white/10 px-2.5 py-1.5 text-[10px] font-medium hover:bg-white/15 disabled:opacity-40">
+                      {busyId === "none" ? "Working..." : "Remove from viewer"}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={busyId !== null}
-                    onClick={() => void deleteDocument(document)}
-                    className="min-h-8 rounded-md bg-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-white/75 hover:bg-red-500/20 hover:text-red-100 disabled:opacity-40"
-                  >
-                    {busyId === document.id ? "Please wait…" : "Delete"}
+                  ) : (
+                    <button type="button" disabled={busyId !== null} onClick={() => void updateActiveDocument(document.id)} className="rounded-md bg-blue-600 px-2.5 py-1.5 text-[10px] font-medium text-white hover:bg-blue-500 disabled:opacity-40">
+                      {busy ? "Opening..." : "Open for everyone"}
+                    </button>
+                  ))}
+                  <button type="button" disabled={busyId !== null} onClick={() => void deleteDocument(document)} className="rounded-md bg-red-500/10 px-2.5 py-1.5 text-[10px] font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-40">
+                    {busy ? "Working..." : "Delete"}
                   </button>
                 </div>
               </article>
             );
           })
         )}
-
-        {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
-        {notice && <InlineFeedback tone="success">{notice}</InlineFeedback>}
+        {error && <p role="alert" className="rounded-md bg-red-950/40 px-3 py-2 text-[11px] text-red-200">{error}</p>}
+        {notice && <p role="status" className="rounded-md bg-emerald-950/30 px-3 py-2 text-[11px] text-emerald-200">{notice}</p>}
       </div>
     </details>
   );
