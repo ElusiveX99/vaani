@@ -59,6 +59,27 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   }, [load, realtimeStatus === "connected"]);
 
   useEffect(() => {
+    const handleLocalDocumentMutation = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        stage?: string;
+      } | null>).detail;
+      if (detail?.sessionId === sessionId) void load();
+    };
+
+    window.addEventListener(
+      "vaani:conference-document-mutated",
+      handleLocalDocumentMutation
+    );
+    return () => {
+      window.removeEventListener(
+        "vaani:conference-document-mutated",
+        handleLocalDocumentMutation
+      );
+    };
+  }, [sessionId, load]);
+
+  useEffect(() => {
     // Consume each database event synchronously. React state can batch
     // consecutive provider updates; a direct event listener prevents a
     // document INSERT followed by a reader-state UPDATE from hiding the
@@ -114,7 +135,15 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       if (!response.ok) throw new Error(result.error || "Unable to update the viewer.");
       setActiveDocumentId(documentId);
       setNotice(documentId ? "PDF opened." : "Viewer closed.");
-      window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
+      window.dispatchEvent(
+        new CustomEvent("vaani:conference-document-mutated", {
+          detail: {
+            sessionId,
+            documentId,
+            stage: documentId ? "activated" : "closed",
+          },
+        })
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update the viewer.");
@@ -139,7 +168,15 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to delete the PDF.");
       setNotice(result.storageCleanupPending ? "PDF removed from the session. Private storage cleanup is pending." : "PDF deleted.");
-      window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
+      window.dispatchEvent(
+        new CustomEvent("vaani:conference-document-mutated", {
+          detail: {
+            sessionId,
+            documentId: document.id,
+            stage: "removed",
+          },
+        })
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to delete the PDF.");
