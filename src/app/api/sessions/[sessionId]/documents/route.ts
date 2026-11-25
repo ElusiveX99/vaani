@@ -20,7 +20,7 @@ function hasValidOrigin(request: Request) {
   return Boolean(origin) && origin === new URL(request.url).origin;
 }
 
-async function getContext(sessionId: string) {
+async function getAcceptedContext(sessionId: string) {
   const supabase = await createClient();
   const { data: auth, error: authError } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
@@ -41,11 +41,22 @@ async function getContext(sessionId: string) {
     return { response: json({ error: "Unable to verify permissions." }, 500) };
   }
 
-  if (!membership || !["organizer", "in_charge", "admin"].includes(membership.role)) {
-    return { response: json({ error: "You cannot manage this session library." }, 403) };
+  if (!membership) {
+    return { response: json({ error: "You are not an accepted member of this session." }, 403) };
   }
 
   return { supabase, userId, membership };
+}
+
+async function getContext(sessionId: string) {
+  const auth = await getAcceptedContext(sessionId);
+  if ("response" in auth) return auth;
+
+  if (!["organizer", "in_charge", "admin"].includes(auth.membership.role)) {
+    return { response: json({ error: "You cannot manage this session library." }, 403) };
+  }
+
+  return auth;
 }
 
 export async function GET(
@@ -55,7 +66,9 @@ export async function GET(
   const { sessionId } = await context.params;
   if (!isUuid(sessionId)) return json({ error: "Invalid session ID." }, 400);
 
-  const auth = await getContext(sessionId);
+  // Every accepted conference member may view the shared PDF library.
+  // Mutating operations continue to use the manager-only getContext below.
+  const auth = await getAcceptedContext(sessionId);
   if ("response" in auth) return auth.response;
 
   const { data: documents, error: documentsError } = await auth.supabase
@@ -222,8 +235,11 @@ export async function DELETE(
   }
 
   const wasActive = readerState?.current_document_id === document.id;
+
+  // Detach the active PDF first so every reader receives the reader-state
+  // UPDATE. This is also safe when the document is not currently open.
   if (wasActive) {
-    const { error: detachError } = await auth.supabase
+    const { data: detached, error: detachError } = await auth.supabase
       .from("session_reader_state")
       .update({
         current_document_id: null,
@@ -233,20 +249,31 @@ export async function DELETE(
         updated_at: new Date().toISOString(),
       })
       .eq("session_id", sessionId)
-      .eq("current_document_id", document.id);
+      .eq("current_document_id", document.id)
+      .select("session_id")
+      .maybeSingle();
 
-    if (detachError) {
+    if (detachError || !detached) {
       console.error("Could not detach document before deletion:", detachError);
       return json({ error: "Unable to remove the document from the reader." }, 500);
     }
   }
 
-  const { error: storageError } = await auth.supabase.storage
-    .from("session-pdfs")
-    .remove([document.storage_path]);
+  // Use the existing is_active column as the library-removal event.
+  // UPDATE events retain session_id and pass the session filter reliably;
+  // hard DELETE payloads under REPLICA IDENTITY DEFAULT may contain only
+  // the primary key, which cannot satisfy this channel's session_id filter.
+  const { data: deactivated, error: deactivateError } = await auth.supabase
+    .from("session_documents")
+    .update({ is_active: false })
+    .eq("id", document.id)
+    .eq("session_id", sessionId)
+    .eq("is_active", true)
+    .select("id")
+    .maybeSingle();
 
-  if (storageError) {
-    console.error("PDF storage deletion failed:", storageError);
+  if (deactivateError || !deactivated) {
+    console.error("PDF library deactivation failed:", deactivateError);
 
     if (wasActive) {
       const { error: restoreError } = await auth.supabase
@@ -262,25 +289,27 @@ export async function DELETE(
         .is("current_document_id", null);
 
       if (restoreError) {
-        console.error("Reader state rollback after failed PDF storage deletion also failed:", restoreError);
+        console.error("Reader state rollback after failed deactivation also failed:", restoreError);
       }
     }
 
-    return json({ error: "The PDF could not be removed from storage. The reader was restored; please retry." }, 500);
+    return json({ error: "Unable to remove the PDF from the session library." }, 500);
   }
 
-  const { error: deleteError } = await auth.supabase
-    .from("session_documents")
-    .delete()
-    .eq("id", document.id)
-    .eq("session_id", sessionId);
+  // The document is already removed from every participant's active library.
+  // Storage cleanup is secondary and must not reverse the realtime removal.
+  const { error: storageError } = await auth.supabase.storage
+    .from("session-pdfs")
+    .remove([document.storage_path]);
 
-  if (deleteError) {
-    console.error("PDF metadata deletion failed after storage removal:", deleteError);
+  if (storageError) {
+    console.error("PDF storage cleanup pending:", storageError);
     return json({
-      error: "The PDF file was removed, but its session record remains. Retry deletion to finish cleanup.",
-    }, 500);
+      success: true,
+      removedActiveDocument: wasActive,
+      storageCleanupPending: true,
+    });
   }
 
-  return json({ success: true, removedActiveDocument: wasActive });
+  return json({ success: true, removedActiveDocument: wasActive, storageCleanupPending: false });
 }

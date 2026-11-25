@@ -366,12 +366,6 @@ function ConferenceWorkspace({
   const [membershipRole, setMembershipRole] = useState("participant");
   const [membershipCanControlReader, setMembershipCanControlReader] = useState(false);
   const [connectionState, setConnectionState] = useState(room.state);
-  const [, setAudioStateVersion] = useState(0);
-
-  const updateConnectionState = useCallback(() => {
-    setConnectionState(room.state);
-  }, [room]);
-
   const { status: realtimeStatus } = useConferenceRealtime();
 
   useEffect(() => {
@@ -482,6 +476,69 @@ function ConferenceWorkspace({
       },
       []
     );
+
+  // The reader component is intentionally unmounted when no document is
+  // available. Keep this parent-level listener mounted so a later upload or
+  // remote document selection can mount the reader again.
+  useEffect(() => {
+    const handleLocalDocumentMutation = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        stage?: string;
+      } | null>).detail;
+      if (
+        detail?.sessionId === sessionId &&
+        (detail.stage === "uploaded" || detail.stage === "activated")
+      ) {
+        setReaderAvailable(true);
+      }
+    };
+
+    const handleRealtimeDocumentChange = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        table?: string;
+        event?: string;
+        new?: Record<string, unknown>;
+      } | null>).detail;
+      if (!detail || detail.sessionId !== sessionId) return;
+
+      if (
+        detail.table === "session_documents" &&
+        detail.event === "INSERT"
+      ) {
+        setReaderAvailable(true);
+        return;
+      }
+
+      if (
+        detail.table === "session_reader_state" &&
+        typeof detail.new?.current_document_id === "string"
+      ) {
+        setReaderAvailable(true);
+      }
+    };
+
+    window.addEventListener(
+      "vaani:conference-document-mutated",
+      handleLocalDocumentMutation
+    );
+    window.addEventListener(
+      "vaani:conference-realtime",
+      handleRealtimeDocumentChange
+    );
+
+    return () => {
+      window.removeEventListener(
+        "vaani:conference-document-mutated",
+        handleLocalDocumentMutation
+      );
+      window.removeEventListener(
+        "vaani:conference-realtime",
+        handleRealtimeDocumentChange
+      );
+    };
+  }, [sessionId]);
 
   const trackSources = useMemo(
     () => [
@@ -790,8 +847,7 @@ function ConferenceWorkspace({
           </p>
         </div>
 
-          {canManageDocuments && (
-            <button
+          <button
               type="button"
               onClick={() => setWorkspaceOpen((open) => !open)}
               aria-expanded={workspaceOpen}
@@ -801,11 +857,10 @@ function ConferenceWorkspace({
               <span>Workspace</span>
               <span className="text-white/45">{workspaceOpen ? "Close" : "PDFs"}</span>
             </button>
-          )}
         </div>
       </header>
 
-      {workspaceOpen && canManageDocuments && (
+      {workspaceOpen && (
         <div
           id="conference-workspace-panel"
           className="absolute right-3 top-[4.5rem] z-50 flex max-h-[min(72svh,38rem)] w-[min(94vw,30rem)] flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--conference-line)] bg-[#302a34] p-3 shadow-2xl"
@@ -820,7 +875,11 @@ function ConferenceWorkspace({
               Close
             </button>
           </div>
-          <DocumentLibrary sessionId={sessionId} canControlReader={canControlReader} />
+          <DocumentLibrary
+            sessionId={sessionId}
+            canControlReader={canControlReader}
+            canManageDocuments={canManageDocuments}
+          />
           <PdfUploader sessionId={sessionId} canManage={canManageDocuments} />
         </div>
       )}
@@ -890,6 +949,7 @@ function ConferenceWorkspace({
           <PersistentChat
             sessionId={sessionId}
             open={chatOpen}
+            onClose={() => setChatOpen(false)}
             onUnreadChange={setChatUnreadCount}
           />
 

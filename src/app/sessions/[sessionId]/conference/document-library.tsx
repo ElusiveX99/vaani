@@ -17,9 +17,10 @@ type DocumentItem = {
 type Props = {
   sessionId: string;
   canControlReader: boolean;
+  canManageDocuments: boolean;
 };
 
-export default function DocumentLibrary({ sessionId, canControlReader }: Props) {
+export default function DocumentLibrary({ sessionId, canControlReader, canManageDocuments }: Props) {
   const { confirm } = useVaaniDialog();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
@@ -51,22 +52,78 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     }
   }, [sessionId]);
 
-  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
+  const { status: realtimeStatus } = useConferenceRealtime();
+  const isRealtimeConnected = realtimeStatus === "connected";
 
   useEffect(() => {
-    // Initial load and reconnect reconciliation.
-    void load();
-  }, [load, realtimeStatus === "connected"]);
+    // Initial load and reconnect reconciliation. Defer the request to the
+    // next frame so the effect subscribes to an external lifecycle rather
+    // than synchronously cascading a render.
+    const frame = window.requestAnimationFrame(() => void load());
+    return () => window.cancelAnimationFrame(frame);
+  }, [load, isRealtimeConnected]);
 
   useEffect(() => {
-    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
-    if (
-      realtimeEvent.table === "session_documents" ||
-      realtimeEvent.table === "session_reader_state"
-    ) {
-      void load();
-    }
-  }, [realtimeEvent, sessionId, load]);
+    const handleLocalDocumentMutation = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        stage?: string;
+      } | null>).detail;
+      if (detail?.sessionId === sessionId) void load();
+    };
+
+    window.addEventListener(
+      "vaani:conference-document-mutated",
+      handleLocalDocumentMutation
+    );
+    return () => {
+      window.removeEventListener(
+        "vaani:conference-document-mutated",
+        handleLocalDocumentMutation
+      );
+    };
+  }, [sessionId, load]);
+
+  useEffect(() => {
+    // Consume each database event synchronously. React state can batch
+    // consecutive provider updates; a direct event listener prevents a
+    // document INSERT followed by a reader-state UPDATE from hiding the
+    // document-list refresh.
+    const handleConferenceRealtime = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        table?: string;
+      } | null>).detail;
+
+      // A null detail is the provider's successful-subscription/reconnect
+      // reconciliation signal.
+      if (!detail) {
+        void load();
+        return;
+      }
+
+      if (detail.sessionId !== sessionId) return;
+
+      if (
+        detail.table === "session_documents" ||
+        detail.table === "session_reader_state"
+      ) {
+        void load();
+      }
+    };
+
+    window.addEventListener(
+      "vaani:conference-realtime",
+      handleConferenceRealtime
+    );
+
+    return () => {
+      window.removeEventListener(
+        "vaani:conference-realtime",
+        handleConferenceRealtime
+      );
+    };
+  }, [sessionId, load]);
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
     setError("");
@@ -83,7 +140,15 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       if (!response.ok) throw new Error(result.error || "Unable to update the viewer.");
       setActiveDocumentId(documentId);
       setNotice(documentId ? "PDF opened." : "Viewer closed.");
-      window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
+      window.dispatchEvent(
+        new CustomEvent("vaani:conference-document-mutated", {
+          detail: {
+            sessionId,
+            documentId,
+            stage: documentId ? "activated" : "closed",
+          },
+        })
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update the viewer.");
@@ -108,7 +173,15 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to delete the PDF.");
       setNotice(result.storageCleanupPending ? "PDF removed from the session. Private storage cleanup is pending." : "PDF deleted.");
-      window.dispatchEvent(new CustomEvent("vaani:reader-refresh"));
+      window.dispatchEvent(
+        new CustomEvent("vaani:conference-document-mutated", {
+          detail: {
+            sessionId,
+            documentId: document.id,
+            stage: "removed",
+          },
+        })
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to delete the PDF.");
@@ -163,14 +236,16 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
                       {busy ? "Please wait…" : isActive ? "Close viewer" : "Open"}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    disabled={busyId !== null}
-                    onClick={() => void deleteDocument(document)}
-                    className="min-h-8 rounded-md bg-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-white/75 hover:bg-red-500/20 hover:text-red-100 disabled:opacity-40"
-                  >
-                    {busyId === document.id ? "Please wait…" : "Delete"}
-                  </button>
+                  {canManageDocuments && (
+                    <button
+                                        type="button"
+                                        disabled={busyId !== null}
+                                        onClick={() => void deleteDocument(document)}
+                                        className="min-h-8 rounded-md bg-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-white/75 hover:bg-red-500/20 hover:text-red-100 disabled:opacity-40"
+                                      >
+                                        {busyId === document.id ? "Please wait…" : "Delete"}
+                                      </button>
+                  )}
                 </div>
               </article>
             );

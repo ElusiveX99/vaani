@@ -27,14 +27,29 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
       const { data: auth } = await supabase.auth.getUser();
       if (!active || !auth.user?.id) return;
 
+      // This project enforces private Realtime channels. Keep session
+      // page and home refresh subscriptions within the same authorization
+      // model as conference channels.
       let next = supabase.channel(
-        sessionId ? `session-page-updates-${sessionId}` : `user-gathering-updates-${auth.user.id}`
+        sessionId ? `session-page-updates-${sessionId}` : `user-gathering-updates-${auth.user.id}`,
+        { config: { private: true } }
       );
 
       if (sessionId) {
         next = next
           .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `id=eq.${sessionId}` }, refresh)
-          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, (payload) => {
+            window.dispatchEvent(new CustomEvent("vaani:conference-realtime", {
+              detail: {
+                sessionId,
+                table: "session_members",
+                event: payload.eventType,
+                new: payload.new,
+                old: payload.old,
+              },
+            }));
+            refresh();
+          })
           .on("postgres_changes", { event: "*", schema: "public", table: "session_join_requests", filter: `session_id=eq.${sessionId}` }, refresh)
           .on("postgres_changes", { event: "*", schema: "public", table: "session_notifications", filter: `session_id=eq.${sessionId}` }, refresh);
       } else {

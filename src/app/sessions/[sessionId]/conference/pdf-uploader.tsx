@@ -180,6 +180,7 @@ export default function PdfUploader({
 
     let storagePath = "";
     let databaseRecordCreated = false;
+    let documentRecordId = "";
 
     try {
       // Validate the PDF file signature.
@@ -247,6 +248,20 @@ export default function PdfUploader({
       }
 
       databaseRecordCreated = true;
+      documentRecordId = document.id;
+
+      // Update this browser immediately. Realtime delivers the same change
+      // to other participants, but the uploader must not depend on its own
+      // WebSocket echo to refresh the local library.
+      window.dispatchEvent(
+        new CustomEvent("vaani:conference-document-mutated", {
+          detail: {
+            sessionId,
+            documentId: document.id,
+            stage: "uploaded",
+          },
+        })
+      );
 
       // Make the newly uploaded PDF the active reader document.
       setStage("switching");
@@ -282,9 +297,15 @@ export default function PdfUploader({
         );
       }
 
-      // Ask every local reader component to reload its state.
+      // Apply the active-document change to this browser immediately.
       window.dispatchEvent(
-        new CustomEvent("vaani:reader-refresh")
+        new CustomEvent("vaani:conference-document-mutated", {
+          detail: {
+            sessionId,
+            documentId: document.id,
+            stage: "activated",
+          },
+        })
       );
 
       setMessage("PDF uploaded and opened successfully.");
@@ -302,9 +323,17 @@ export default function PdfUploader({
           `PDF uploaded, but could not switch the reader: ${errorMessage}`
         );
 
-        // Refresh to preserve the actual server-side reader state.
+        // The metadata row is real even if reader activation failed.
+        // Reconcile the library locally and let the reader keep its
+        // authoritative server state until a later successful selection.
         window.dispatchEvent(
-          new CustomEvent("vaani:reader-refresh")
+          new CustomEvent("vaani:conference-document-mutated", {
+            detail: {
+              sessionId,
+              documentId: documentRecordId,
+              stage: "uploaded",
+            },
+          })
         );
       } else {
         setMessage(`PDF upload failed: ${errorMessage}`);

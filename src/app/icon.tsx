@@ -7,7 +7,7 @@ export const contentType = "image/png";
 export default function Icon() {
   return new ImageResponse(
     <div style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "transparent" }}>
-      <svg width="512" height="512" viewBox="0 0 160 160" fill="none"><g stroke="#593B53" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="512" height="512" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="76" stroke="#C5A07D" strokeWidth="3"/><circle cx="80" cy="80" r="71.5" stroke="#593B53" strokeOpacity=".55" strokeWidth="1.2"/><g stroke="#593B53" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round">
 <path d="M80 13 C63 29 59 45 68 61 C72 68 77 73 80 76 C83 73 88 68 92 61 C101 45 97 29 80 13 Z" fill="#593B53"/><path d="M68 69 C48 49 29 49 20 63 C10 79 24 95 43 96 C54 97 63 89 71 80 C70 76 69 72 68 69 Z" fill="#AD7D83"/><path d="M92 69 C112 49 131 49 140 63 C150 79 136 95 117 96 C106 97 97 89 89 80 C90 76 91 72 92 69 Z" fill="#AD7D83"/>
 <path d="M70 84 C53 75 38 80 34 94 C30 108 43 120 59 117 C69 115 75 106 77 96 C75 91 73 87 70 84 Z" fill="#E7D4D0"/><path d="M90 84 C107 75 122 80 126 94 C130 108 117 120 101 117 C91 115 85 106 83 96 C85 91 87 87 90 84 Z" fill="#E7D4D0"/><path d="M80 91 C67 103 68 118 80 145 C92 118 93 103 80 91 Z" fill="#593B53"/>
 <path d="M76 82 C69 85 66 92 68 101 C69 108 73 114 78 117 C80 118 81 116 81 112 L81 89 C81 84 79 81 76 82 Z" fill="#FFFDF9" stroke="none"/><path d="M84 82 C91 85 94 92 92 101 C91 108 87 114 82 117 C80 118 79 116 79 112 L79 89 C79 84 81 81 84 82 Z" fill="#FFFDF9" stroke="none"/>

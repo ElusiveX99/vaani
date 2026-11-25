@@ -68,9 +68,6 @@ type SyncStatus =
   | "synced"
   | "error";
 
-const URL_REFRESH_INTERVAL =
-  5.5 * 60 * 60 * 1000;
-
 const PAGE_SAVE_DELAY = 1000;
 
 const SynchronizedReader = memo(
@@ -352,6 +349,34 @@ const SynchronizedReader = memo(
     useEffect(() => {
       void loadReaderState();
     }, [loadReaderState, realtimeStatus]);
+
+    useEffect(() => {
+      const handleLocalDocumentMutation = (browserEvent: Event) => {
+        const detail = (browserEvent as CustomEvent<{
+          sessionId?: string;
+          stage?: string;
+        } | null>).detail;
+        if (
+          detail?.sessionId === sessionId &&
+          (detail.stage === "activated" ||
+            detail.stage === "closed" ||
+            detail.stage === "removed")
+        ) {
+          void loadReaderState(false, false);
+        }
+      };
+
+      window.addEventListener(
+        "vaani:conference-document-mutated",
+        handleLocalDocumentMutation
+      );
+      return () => {
+        window.removeEventListener(
+          "vaani:conference-document-mutated",
+          handleLocalDocumentMutation
+        );
+      };
+    }, [sessionId, loadReaderState]);
 
     useEffect(() => {
       const handleRealtime = (browserEvent: Event) => {
