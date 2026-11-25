@@ -483,6 +483,69 @@ function ConferenceWorkspace({
       []
     );
 
+  // The reader component is intentionally unmounted when no document is
+  // available. Keep this parent-level listener mounted so a later upload or
+  // remote document selection can mount the reader again.
+  useEffect(() => {
+    const handleLocalDocumentMutation = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        stage?: string;
+      } | null>).detail;
+      if (
+        detail?.sessionId === sessionId &&
+        (detail.stage === "uploaded" || detail.stage === "activated")
+      ) {
+        setReaderAvailable(true);
+      }
+    };
+
+    const handleRealtimeDocumentChange = (browserEvent: Event) => {
+      const detail = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        table?: string;
+        event?: string;
+        new?: Record<string, unknown>;
+      } | null>).detail;
+      if (!detail || detail.sessionId !== sessionId) return;
+
+      if (
+        detail.table === "session_documents" &&
+        detail.event === "INSERT"
+      ) {
+        setReaderAvailable(true);
+        return;
+      }
+
+      if (
+        detail.table === "session_reader_state" &&
+        typeof detail.new?.current_document_id === "string"
+      ) {
+        setReaderAvailable(true);
+      }
+    };
+
+    window.addEventListener(
+      "vaani:conference-document-mutated",
+      handleLocalDocumentMutation
+    );
+    window.addEventListener(
+      "vaani:conference-realtime",
+      handleRealtimeDocumentChange
+    );
+
+    return () => {
+      window.removeEventListener(
+        "vaani:conference-document-mutated",
+        handleLocalDocumentMutation
+      );
+      window.removeEventListener(
+        "vaani:conference-realtime",
+        handleRealtimeDocumentChange
+      );
+    };
+  }, [sessionId]);
+
   const trackSources = useMemo(
     () => [
       {
