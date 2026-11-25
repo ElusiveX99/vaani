@@ -110,7 +110,7 @@ export default function LandingPage() {
               <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#f0e5e2] blur-3xl" aria-hidden="true" />
               <div className="absolute -bottom-20 -left-16 h-64 w-64 rounded-full bg-[#fffdf9]-soft blur-3xl" aria-hidden="true" />
 
-              <div className="relative overflow-hidden rounded-2xl border border-[#e5ddd5] bg-white shadow-[0_24px_80px_rgba(48,35,45,.10)] max-sm:scale-[0.88] max-sm:origin-top">
+              <div className="relative mx-auto w-[min(100%,520px)] overflow-hidden rounded-2xl border border-[#e5ddd5] bg-white shadow-[0_24px_80px_rgba(48,35,45,.10)] sm:w-full sm:max-w-[620px]">
                 <div className="flex items-center justify-between border-b border-[#e5ddd5] px-5 py-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#80613f]">
