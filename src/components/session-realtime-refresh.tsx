@@ -27,8 +27,12 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
       const { data: auth } = await supabase.auth.getUser();
       if (!active || !auth.user?.id) return;
 
+      // This project enforces private Realtime channels. Keep session
+      // page and home refresh subscriptions within the same authorization
+      // model as conference channels.
       let next = supabase.channel(
-        sessionId ? `session-page-updates-${sessionId}` : `user-gathering-updates-${auth.user.id}`
+        sessionId ? `session-page-updates-${sessionId}` : `user-gathering-updates-${auth.user.id}`,
+        { config: { private: true } }
       );
 
       if (sessionId) {
