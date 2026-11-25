@@ -48,7 +48,7 @@ export default function PersistentChat({
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
+  const { status: realtimeStatus } = useConferenceRealtime();
 
   const bottomRef = useRef<HTMLDivElement | null>(
     null
@@ -248,7 +248,15 @@ export default function PersistentChat({
   }, []);
 
   useEffect(() => {
-    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId || realtimeEvent.table !== "session_messages") return;
+    const handleRealtime = (browserEvent: Event) => {
+      const realtimeEvent = (browserEvent as CustomEvent<{
+        sessionId?: string;
+        table?: string;
+        event?: string;
+        new: Record<string, unknown>;
+        old: Record<string, unknown>;
+      } | null>).detail;
+      if (!realtimeEvent || realtimeEvent.sessionId !== sessionId || realtimeEvent.table !== "session_messages") return;
     if (realtimeEvent.event === "DELETE") {
       const id = String(realtimeEvent.old.id ?? "");
       if (id) setMessages((previous) => previous.filter((message) => message.id !== id));
@@ -291,7 +299,10 @@ export default function PersistentChat({
         setUnreadCount((count) => Math.min(count + 1, 99));
       }
     })();
-  }, [realtimeEvent, sessionId]);
+    };
+    window.addEventListener("vaani:conference-realtime", handleRealtime);
+    return () => window.removeEventListener("vaani:conference-realtime", handleRealtime);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!open || !shouldScrollRef.current) {
