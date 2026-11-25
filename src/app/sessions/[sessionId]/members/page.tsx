@@ -90,7 +90,7 @@ export default async function SessionMembersPage({ params }: PageProps) {
             can_control_reader: member.can_control_reader === true,
           }))}
           showAll
-          localRole={membership.role}
+          localRole={membership?.role ?? "participant"}
         />
       </div>
     </main>
