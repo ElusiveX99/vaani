@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   applicationName: "Vaani",
   icons: {
     icon: [
-      { url: "/brand/favicon.svg", type: "image/svg+xml" },
+      { url: "/brand/favicon.svg?v=20261125", type: "image/svg+xml" },
       { url: "/icon", type: "image/png", sizes: "512x512" },
     ],
     apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
