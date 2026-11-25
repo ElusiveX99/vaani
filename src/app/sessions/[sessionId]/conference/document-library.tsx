@@ -17,9 +17,10 @@ type DocumentItem = {
 type Props = {
   sessionId: string;
   canControlReader: boolean;
+  canManageDocuments: boolean;
 };
 
-export default function DocumentLibrary({ sessionId, canControlReader }: Props) {
+export default function DocumentLibrary({ sessionId, canControlReader, canManageDocuments }: Props) {
   const { confirm } = useVaaniDialog();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
@@ -231,14 +232,16 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
                       {busy ? "Please wait…" : isActive ? "Close viewer" : "Open"}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    disabled={busyId !== null}
-                    onClick={() => void deleteDocument(document)}
-                    className="min-h-8 rounded-md bg-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-white/75 hover:bg-red-500/20 hover:text-red-100 disabled:opacity-40"
-                  >
-                    {busyId === document.id ? "Please wait…" : "Delete"}
-                  </button>
+                  {canManageDocuments && (
+                    <button
+                                        type="button"
+                                        disabled={busyId !== null}
+                                        onClick={() => void deleteDocument(document)}
+                                        className="min-h-8 rounded-md bg-white/[0.07] px-2.5 py-1.5 text-[10px] font-medium text-white/75 hover:bg-red-500/20 hover:text-red-100 disabled:opacity-40"
+                                      >
+                                        {busyId === document.id ? "Please wait…" : "Delete"}
+                                      </button>
+                  )}
                 </div>
               </article>
             );
