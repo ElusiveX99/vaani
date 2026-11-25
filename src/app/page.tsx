@@ -69,9 +69,9 @@ export default function LandingPage() {
 
       <div id="main-content">
         <section className="overflow-hidden border-b border-[#e5ddd5] bg-[#fffdf9]">
-          <div className="mx-auto grid w-[min(100%-2rem,1440px)] items-center gap-12 px-0 py-16 sm:py-20 lg:grid-cols-[1.02fr_.98fr] lg:gap-20 lg:py-28">
+          <div className="mx-auto grid w-[min(100%-2rem,1440px)] items-center gap-16 px-0 py-20 sm:py-24 md:gap-12 md:py-16 lg:items-start lg:grid-cols-[1.02fr_.98fr] lg:gap-20 lg:py-20 xl:py-24">
             <div className="max-w-2xl">
-              <div className="mb-7 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#80613f]">
+              <div className="mb-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#80613f]">
                 <span className="h-px w-10 bg-gold" />
                 Gaayan & Vaani Paath
               </div>
@@ -84,11 +84,11 @@ export default function LandingPage() {
                 together.
               </h1>
 
-              <p className="mt-8 max-w-xl text-[1.02rem] leading-8 text-[#756d73] sm:text-[1.08rem]">
+              <p className="mt-9 max-w-xl text-[1.02rem] leading-8 text-[#756d73] sm:text-[1.08rem]">
                 A shared place for Sakhis to meet live, sing, and follow the same Vaani — from the invitation to the reading.
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-5">
+              <div className="mt-9 flex flex-wrap items-center gap-5">
                 <Link
                   href="/signup"
                   className="inline-flex min-h-12 items-center rounded-lg bg-[#593b53] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(57,42,57,.14)] transition hover:-translate-y-0.5 hover:bg-[#593b53]-deep"
@@ -104,7 +104,7 @@ export default function LandingPage() {
                 </a>
               </div>
 
-              <div className="mt-10 flex flex-wrap gap-x-7 gap-y-2 text-xs font-medium text-[#756d73]">
+              <div className="mt-11 flex flex-wrap gap-x-7 gap-y-2 text-xs font-medium text-[#756d73]">
                 <span>Live audio & video</span>
                 <span>•</span>
                 <span>Chat</span>
