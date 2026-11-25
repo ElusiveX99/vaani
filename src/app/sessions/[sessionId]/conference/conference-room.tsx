@@ -366,12 +366,6 @@ function ConferenceWorkspace({
   const [membershipRole, setMembershipRole] = useState("participant");
   const [membershipCanControlReader, setMembershipCanControlReader] = useState(false);
   const [connectionState, setConnectionState] = useState(room.state);
-  const [, setAudioStateVersion] = useState(0);
-
-  const updateConnectionState = useCallback(() => {
-    setConnectionState(room.state);
-  }, [room]);
-
   const { status: realtimeStatus } = useConferenceRealtime();
 
   useEffect(() => {
