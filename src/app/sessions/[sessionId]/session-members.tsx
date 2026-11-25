@@ -79,6 +79,12 @@ export default function SessionMembers({
       })));
     };
 
+    const handleLocalMutation = (event: Event) => {
+      const detail = (event as CustomEvent<{ sessionId?: string } | null>).detail;
+      if (detail?.sessionId === sessionId) void refresh();
+    };
+    window.addEventListener("vaani:session-members-mutated", handleLocalMutation);
+
     const handleRealtime = (event: Event) => {
       const detail = (event as CustomEvent<{
         sessionId?: string;
@@ -93,6 +99,7 @@ export default function SessionMembers({
     return () => {
       active = false;
       window.removeEventListener("vaani:conference-realtime", handleRealtime);
+      window.removeEventListener("vaani:session-members-mutated", handleLocalMutation);
     };
   }, [sessionId]);
 
