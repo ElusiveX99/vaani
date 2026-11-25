@@ -6,46 +6,251 @@ export const contentType = "image/png";
 
 export default function Image() {
   return new ImageResponse(
-    <div style={{display:"flex",position:"relative",width:"100%",height:"100%",overflow:"hidden",background:"#f5f2ec",color:"#3f2d3b",fontFamily:"Georgia, serif"}}>
-      <div style={{position:"absolute",right:-220,top:-280,width:760,height:760,borderRadius:380,background:"#593b53",display:"flex"}} />
-      <div style={{position:"absolute",left:-180,bottom:-330,width:560,height:560,borderRadius:280,background:"#ead9d0",display:"flex"}} />
-      <div style={{display:"flex",flexDirection:"column",width:"53%",padding:"62px 0 48px 76px",zIndex:2}}>
-        <div style={{display:"flex",alignItems:"center",gap:13,color:"#8b5d70",fontFamily:"Arial",fontSize:14,fontWeight:700,letterSpacing:4}}>
-          <div style={{width:38,height:2,background:"#b78a5e",display:"flex"}} /> SAKHI SANG
+    <div
+      style={{
+        display: "flex",
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        backgroundColor: "#fffdf9",
+        color: "#29242a",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 610,
+          height: 610,
+          right: -74,
+          top: 10,
+          borderRadius: 305,
+          backgroundColor: "#f6f3ee",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 452,
+          height: 452,
+          right: 6,
+          top: 89,
+          borderRadius: 226,
+          border: "1px solid #e4d8d3",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 370,
+          height: 370,
+          right: 47,
+          top: 130,
+          borderRadius: 185,
+          border: "1px solid #d9c6c2",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 284,
+          height: 284,
+          right: 90,
+          top: 173,
+          borderRadius: 142,
+          border: "1px solid #c9a99f",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 176,
+          height: 176,
+          right: 144,
+          top: 227,
+          borderRadius: 88,
+          backgroundColor: "#eadbd6",
+          border: "1px solid #d8c2bc",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 92,
+          height: 92,
+          right: 186,
+          top: 269,
+          borderRadius: 46,
+          backgroundColor: "#593b53",
+          opacity: 0.94,
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 14,
+          height: 14,
+          right: 225,
+          top: 308,
+          borderRadius: 7,
+          backgroundColor: "#c5a07d",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 10,
+          height: 10,
+          right: 112,
+          top: 178,
+          borderRadius: 5,
+          backgroundColor: "#ad7d83",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          width: 8,
+          height: 8,
+          right: 426,
+          top: 434,
+          borderRadius: 4,
+          backgroundColor: "#c5a07d",
+        }}
+      />
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          position: "absolute",
+          left: 82,
+          top: 52,
+          zIndex: 2,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <span
+            style={{
+              color: "#593b53",
+              fontFamily: "Georgia, serif",
+              fontSize: 48,
+              fontWeight: 500,
+              letterSpacing: -2,
+              lineHeight: 1,
+            }}
+          >
+            Vaani
+          </span>
+          <div
+            style={{
+              display: "flex",
+              width: 1,
+              height: 38,
+              backgroundColor: "#d9c9c2",
+            }}
+          />
+          <span
+            style={{
+              color: "#80613f",
+              fontSize: 15,
+              fontWeight: 700,
+              letterSpacing: 2.2,
+            }}
+          >
+            GAAYAN & VAANI PAATH
+          </span>
         </div>
-        <div style={{display:"flex",marginTop:24,fontSize:84,lineHeight:.9,fontWeight:500,letterSpacing:-4}}>Vaani</div>
-        <div style={{display:"flex",marginTop:26,fontSize:42,lineHeight:1.03,color:"#593b53",fontWeight:500}}>
-          Gaayan and Vaani Paath,<br/><span style={{color:"#ad6875",fontStyle:"italic"}}>together.</span>
-        </div>
-        <div style={{display:"flex",marginTop:21,maxWidth:520,fontFamily:"Arial",fontSize:16,lineHeight:1.42,color:"#71676d"}}>
-          A shared place for Sakhis to meet live, sing, and follow the same Vaani.
-        </div>
-        <div style={{display:"flex",marginTop:29,gap:20,fontFamily:"Arial",fontSize:12,fontWeight:700,color:"#593b53"}}>
-          <span>LIVE GATHERINGS</span><span style={{color:"#b78a5e"}}>•</span><span>SHARED READING</span><span style={{color:"#b78a5e"}}>•</span><span>CHAT</span>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            marginTop: 55,
+            width: 690,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              color: "#80613f",
+              fontSize: 16,
+              fontWeight: 700,
+              letterSpacing: 3,
+              marginBottom: 18,
+            }}
+          >
+            A SHARED SPACE FOR SAKHIS
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              color: "#593b53",
+              fontFamily: "Georgia, serif",
+              fontSize: 69,
+              fontWeight: 500,
+              letterSpacing: -2.8,
+              lineHeight: 1.02,
+            }}
+          >
+            <div>Gaayan and</div>
+            <div style={{ display: "flex", color: "#ad7d83" }}>Vaani Paath,</div>
+            <div>together.</div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              width: 650,
+              marginTop: 25,
+              color: "#756d73",
+              fontSize: 23,
+              lineHeight: 1.42,
+              letterSpacing: 0.05,
+            }}
+          >
+            A shared place for Sakhis to meet live, sing, and follow the same
+            Vaani — from the invitation to the reading.
+          </div>
         </div>
       </div>
-      <div style={{display:"flex",position:"absolute",right:43,top:68,width:535,height:494,borderRadius:25,background:"#241f25",border:"1px solid #5b4658",boxShadow:"0 28px 80px rgba(44,27,40,.28)",flexDirection:"column",overflow:"hidden",zIndex:3,fontFamily:"Arial"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 21px",borderBottom:"1px solid #40363f"}}>
-          <div style={{display:"flex",flexDirection:"column"}}><span style={{color:"#f6f0e8",fontFamily:"Georgia",fontSize:23}}>Vaani</span><span style={{color:"#a69aa4",fontSize:10,marginTop:5}}>Live session</span></div>
-          <div style={{display:"flex",padding:"7px 11px",borderRadius:999,background:"#3b2938",color:"#e9d9de",fontSize:10,fontWeight:700}}>LIVE · TOGETHER</div>
-        </div>
-        <div style={{display:"flex",flex:1,padding:15,gap:12}}>
-          <div style={{display:"flex",flex:1,borderRadius:13,background:"#312a33",padding:13,flexDirection:"column"}}>
-            <div style={{display:"flex",justifyContent:"space-between",color:"#968b94",fontSize:9,fontWeight:700,letterSpacing:1.3}}><span>SHARED READING</span><span>PAGE 18</span></div>
-            <div style={{display:"flex",flex:1,marginTop:12,borderRadius:10,background:"#f8f1e7",padding:"20px 22px",flexDirection:"column",color:"#4c3a43"}}>
-              <div style={{width:105,height:5,borderRadius:4,background:"#b89b8e",display:"flex"}} />
-              <div style={{display:"flex",marginTop:20,fontSize:17,lineHeight:1.7}}>Shared Vaani<br/>reading position</div>
-              <div style={{height:1,background:"#d8c9bd",marginTop:14,display:"flex"}} />
-              <div style={{display:"flex",marginTop:12,fontSize:10,color:"#786a70"}}>Everyone follows the same place.</div>
-            </div>
-          </div>
-          <div style={{display:"flex",width:132,flexDirection:"column",gap:9}}>
-            <div style={{display:"flex",gap:7}}><div style={{width:62,height:48,borderRadius:8,background:"#584c58",display:"flex"}}/><div style={{width:62,height:48,borderRadius:8,background:"#443a45",display:"flex"}}/></div>
-            <div style={{display:"flex",gap:7}}><div style={{width:62,height:48,borderRadius:8,background:"#514650",display:"flex"}}/><div style={{width:62,height:48,borderRadius:8,background:"#3e353f",display:"flex"}}/></div>
-            <div style={{display:"flex",flex:1,borderRadius:10,background:"#312a33",padding:11,flexDirection:"column"}}><span style={{color:"#968b94",fontSize:9,fontWeight:700}}>CHAT</span><span style={{marginTop:13,color:"#ded4dc",fontSize:10}}>Reading together.</span><span style={{marginTop:9,color:"#bdaeb9",fontSize:10}}>Jai Shri Krishna</span></div>
-          </div>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 17px",borderTop:"1px solid #40363f",fontSize:9,color:"#9c9199"}}><span>Audio · Video · Chat · Reader</span><span style={{color:"#d8b2bb"}}>Vaani</span></div>
+
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          left: 82,
+          right: 82,
+          bottom: 35,
+          height: 1,
+          backgroundColor: "#e5ddd5",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          left: 82,
+          bottom: 13,
+          color: "#9a8588",
+          fontSize: 13,
+          letterSpacing: 1.4,
+          fontWeight: 600,
+        }}
+      >
+        VAANI
       </div>
     </div>,
     size,
