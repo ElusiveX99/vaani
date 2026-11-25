@@ -53,11 +53,15 @@ export default function DocumentLibrary({ sessionId, canControlReader, canManage
   }, [sessionId]);
 
   const { status: realtimeStatus } = useConferenceRealtime();
+  const isRealtimeConnected = realtimeStatus === "connected";
 
   useEffect(() => {
-    // Initial load and reconnect reconciliation.
-    void load();
-  }, [load, realtimeStatus === "connected"]);
+    // Initial load and reconnect reconciliation. Defer the request to the
+    // next frame so the effect subscribes to an external lifecycle rather
+    // than synchronously cascading a render.
+    const frame = window.requestAnimationFrame(() => void load());
+    return () => window.cancelAnimationFrame(frame);
+  }, [load, isRealtimeConnected]);
 
   useEffect(() => {
     const handleLocalDocumentMutation = (browserEvent: Event) => {
