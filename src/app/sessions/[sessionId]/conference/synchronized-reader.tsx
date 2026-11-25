@@ -123,7 +123,7 @@ const SynchronizedReader = memo(
     const loadRequestId = useRef(0);
     const lastUrlRefreshAt = useRef(0);
 
-    const { revision: realtimeRevision } = useConferenceRealtime();
+    const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
 
     const loadReaderState = useCallback(
       async (
