@@ -41,7 +41,7 @@ export default function ModerationPanel({
     let active = true;
     const supabase = createClient();
 
-    let realtimeConnected=false;let refreshInFlight=false;
+    let refreshInFlight = false;
     const refreshRoles = async () => {
       if(refreshInFlight)return;refreshInFlight=true;
       const { data, error } = await supabase
