@@ -14,6 +14,7 @@ import { useConferenceRealtime } from "./conference-realtime-provider";
 type Props = {
   sessionId: string;
   open: boolean;
+  onClose: () => void;
   onUnreadChange: (count: number) => void;
 };
 
@@ -35,6 +36,7 @@ const MAX_MESSAGE_LENGTH = 2000;
 export default function PersistentChat({
   sessionId,
   open,
+  onClose,
   onUnreadChange,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>(
@@ -425,24 +427,29 @@ export default function PersistentChat({
       aria-hidden={!open}
       inert={!open}
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-white/[0.08] bg-[linear-gradient(115deg,rgba(112,78,105,.34),rgba(40,33,43,.18))] px-5 py-4">
-        <div>
-          <p className="font-display text-xl leading-none text-[#f8f0f2]">
-            Gathering chat
-          </p>
-          <p className="mt-1.5 text-[10px] tracking-[.12em] text-[#c6b4c2]/65">
-            SHARED WITH THIS GATHERING
-          </p>
-
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.08] bg-[linear-gradient(115deg,rgba(112,78,105,.38),rgba(40,33,43,.2))] px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-[#c5a07d]/20 bg-[#c5a07d]/[0.08] text-lg text-[#d9bd9b]" aria-hidden="true">✦</span>
+          <div className="min-w-0">
+            <p className="font-display text-[1.35rem] leading-none text-[#fff8fc]">Gathering chat</p>
+            <p className="mt-1.5 text-[9px] font-semibold tracking-[.16em] text-[#c6b4c2]/65">SHARED WITH THIS GATHERING</p>
+          </div>
         </div>
-
-        {unreadCount > 0 && !open && (
-          <span className="rounded-full bg-[#76516b] px-2 py-0.5 text-[10px] font-semibold text-white">
-            {unreadCount > 99
-              ? "99+"
-              : unreadCount}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {unreadCount > 0 && !open && (
+            <span className="rounded-full bg-[#76516b] px-2 py-1 text-[10px] font-semibold text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close gathering chat"
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-lg text-white/60 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d6b5cc]"
+          >
+            ×
+          </button>
+        </div>
       </header>
 
       <div
