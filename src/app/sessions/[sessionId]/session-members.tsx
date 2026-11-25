@@ -40,7 +40,7 @@ export default function SessionMembers({
 
       if (!active || error) return;
 
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<Pick<Member, "user_id" | "role" | "status">>;
       const ids = [...new Set(rows.map((member) => member.user_id))];
       let profilesById = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
