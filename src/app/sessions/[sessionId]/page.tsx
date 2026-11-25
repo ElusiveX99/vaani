@@ -67,6 +67,7 @@ type Membership = {
   user_id: string;
   role: string;
   status: string;
+  can_control_reader?: boolean;
 };
 
 type Profile = {
@@ -231,7 +232,7 @@ async function SessionContent({ params, searchParams }: PageProps) {
     });
 
   const [ownMembershipResult,ownJoinRequestResult]=await Promise.all([
-    supabase.from("session_members").select("user_id,role,status").eq("session_id",session.id).eq("user_id",userId).maybeSingle(),
+    supabase.from("session_members").select("user_id,role,status,can_control_reader").eq("session_id",session.id).eq("user_id",userId).maybeSingle(),
     session.waiting_room_enabled
       ? supabase.from("session_join_requests").select("id").eq("session_id",session.id).eq("user_id",userId).eq("status","pending").maybeSingle()
       : Promise.resolve({data:null,error:null}),
@@ -696,7 +697,9 @@ async function SessionContent({ params, searchParams }: PageProps) {
               ...member,
               display_name: profileMap.get(member.user_id)?.display_name ?? "Vaani member",
               avatar_url: profileMap.get(member.user_id)?.avatar_url ?? null,
+              can_control_reader: member.can_control_reader === true,
             }))}
+            localRole={ownMembership?.role ?? "participant"}
           />
         )}
 
