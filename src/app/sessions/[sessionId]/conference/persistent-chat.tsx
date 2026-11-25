@@ -164,38 +164,6 @@ export default function PersistentChat({
         // or publication is unavailable.
         await loadMessages();
 
-        channel = supabase
-          .channel(`session-chat-${sessionId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "session_messages",
-              filter: `session_id=eq.${sessionId}`,
-            },
-            (payload) => {
-              if (active) addMessage(payload.new as Message);
-            }
-          )
-          .subscribe((status) => {
-            if (!active) return;
-            if (status === "SUBSCRIBED") {
-              realtimeConnected = true;
-              setConnectionStatus("");
-              void loadMessages();
-            } else if (
-              status === "CHANNEL_ERROR" ||
-              status === "TIMED_OUT" ||
-              status === "CLOSED"
-            ) {
-              realtimeConnected = false;
-              setConnectionStatus("Live updates paused");
-            } else if (status === "JOINING") {
-              realtimeConnected = false;
-              setConnectionStatus("Connecting...");
-            }
-          });
       } catch (err) {
         if (!active) return;
         console.error("Unable to initialize session chat:", err);
@@ -206,10 +174,13 @@ export default function PersistentChat({
 
     void initialize();
 
-    // Poll as a fallback and to recover messages missed during websocket drops.
-    const poll = window.setInterval(() => {
-      if (active && !realtimeConnected && document.visibilityState === "visible") void loadMessages();
-    }, 30000);
+    void initialize();
+
+    const handleConferenceRealtime = () => {
+      if (active) void loadMessages();
+    };
+    window.addEventListener("vaani:conference-realtime", handleConferenceRealtime);
+
     const handleVisibility = () => {
       if (active && document.visibilityState === "visible") void loadMessages();
     };
@@ -230,11 +201,10 @@ export default function PersistentChat({
     return () => {
       active = false;
       historyRequest += 1;
-      window.clearInterval(poll);
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("vaani:conference-realtime", handleConferenceRealtime);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
-      if (channel) void supabase.removeChannel(channel);
     };
   }, [sessionId]);
 
