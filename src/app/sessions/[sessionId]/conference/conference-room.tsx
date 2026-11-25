@@ -372,7 +372,7 @@ function ConferenceWorkspace({
     setConnectionState(room.state);
   }, [room]);
 
-  const { revision: realtimeRevision } = useConferenceRealtime();
+  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
 
   useEffect(() => {
     if (!localUserId) return;
