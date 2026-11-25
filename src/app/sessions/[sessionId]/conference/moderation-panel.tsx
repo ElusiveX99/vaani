@@ -327,7 +327,7 @@ export default function ModerationPanel({
                             type="button"
                             disabled={!trackSid || busy !== "" || !canModerateTarget}
                             onClick={() => moderate(targetUserId, participant.identity, "mute", trackSid)}
-                            className="rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-[#f0e7ef] transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-[#f0e7ef] transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Mute {connections.length > 1 ? "device" : "microphone"}
                           </button>
@@ -339,7 +339,7 @@ export default function ModerationPanel({
                           type="button"
                           disabled={busy !== ""}
                           onClick={() => moderate(targetUserId, connections[0]?.identity ?? "", "remove")}
-                          className="rounded-full border border-red-300/15 bg-red-400/[0.08] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-red-200 transition hover:bg-red-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-full border border-red-300/15 bg-red-400/[0.08] px-2.5 py-1.5 text-[10px] font-semibold text-red-200 transition hover:bg-red-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${targetUserId}-remove` ? "Removing…" : "Remove member"}
                         </button>
@@ -350,7 +350,7 @@ export default function ModerationPanel({
                           type="button"
                           disabled={busy !== ""}
                           onClick={() => setAdmin(targetUserId, targetRole !== "admin")}
-                          className="rounded-full border border-sky-300/15 bg-sky-400/[0.08] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-sky-100 transition hover:bg-sky-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-full border border-sky-300/15 bg-sky-400/[0.08] px-2.5 py-1.5 text-[10px] font-semibold text-sky-100 transition hover:bg-sky-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${targetUserId}-role` ? "Updating…" : targetRole === "admin" ? "Remove admin" : "Make admin"}
                         </button>
@@ -361,7 +361,7 @@ export default function ModerationPanel({
                           type="button"
                           disabled={busy !== ""}
                           onClick={() => updateReaderAccess(targetUserId, !readerAccess[targetUserId])}
-                          className="rounded-full border border-violet-300/15 bg-violet-400/[0.08] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-violet-100 transition hover:bg-violet-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-full border border-violet-300/15 bg-violet-400/[0.08] px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 transition hover:bg-violet-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${targetUserId}-reader` ? "Updating…" : readerAccess[targetUserId] ? "Revoke reader control" : "Allow reader control"}
                         </button>
@@ -371,7 +371,7 @@ export default function ModerationPanel({
                 );
               })}
               {managedMembers.length > 10 && (
-                <button type="button" onClick={() => setShowAllMembers((value) => !value)} className="w-full rounded-full border border-white/10 px-4 py-2.5 text-xs font-semibold text-white/75 transition hover:bg-white/[0.06]">
+                <button type="button" onClick={() => setShowAllMembers((value) => !value)} className="w-full rounded-full border border-white/10 px-3 py-2 text-[11px] font-semibold text-white/75 transition hover:bg-white/[0.06]">
                   {showAllMembers ? "Show fewer" : `Show all ${managedMembers.length} members`}
                 </button>
               )}
@@ -381,10 +381,16 @@ export default function ModerationPanel({
           {message && <div className="mt-4"><InlineFeedback tone="info">{message}</InlineFeedback></div>}
         </div>
 
-        <footer className="shrink-0 border-t border-white/[0.08] bg-[#1b171f] px-5 py-4">
-          <p className="text-[11px] leading-relaxed text-white/40">
-            Roles and reader permissions belong to session membership, even while a member is offline. Mute applies to a connected device; removing a member revokes their session access and disconnects their devices.
-          </p>
+        <footer className="shrink-0 border-t border-white/[0.08] bg-[#1b171f] px-4 py-3">
+          <details className="group">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-semibold text-white/65 transition hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d6b5cc]">
+              Control guide
+              <span aria-hidden="true" className="text-white/45 transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <p className="hidden pt-2 text-[11px] leading-relaxed text-white/45 group-open:block group-hover:block">
+              Roles and reader permissions belong to session membership, even while a member is offline. Mute applies to a connected device; removing a member revokes their session access and disconnects their devices.
+            </p>
+          </details>
         </footer>
       </aside>
     </div>
