@@ -378,7 +378,7 @@ const SynchronizedReader = memo(
         return;
       }
 
-      const remote = realtimeEvent.new;
+      const remote = realtimeEvent.new as NonNullable<ReaderData["readerState"]>;
       const remoteDocumentId =
         typeof remote.current_document_id === "string"
           ? remote.current_document_id
