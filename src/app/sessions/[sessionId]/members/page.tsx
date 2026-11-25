@@ -35,7 +35,7 @@ export default async function SessionMembersPage({ params }: PageProps) {
 
   const { data: memberRows, error: memberError } = await supabase
     .from("session_members")
-    .select("user_id,role,status")
+    .select("user_id,role,status,can_control_reader")
     .eq("session_id", sessionId)
     .eq("status", "accepted")
     .order("created_at", { ascending: true });
@@ -87,8 +87,10 @@ export default async function SessionMembersPage({ params }: PageProps) {
             ...member,
             display_name: profileMap.get(member.user_id)?.display_name ?? "Vaani member",
             avatar_url: profileMap.get(member.user_id)?.avatar_url ?? null,
+            can_control_reader: member.can_control_reader === true,
           }))}
           showAll
+          localRole={membership.role}
         />
       </div>
     </main>
