@@ -86,24 +86,14 @@ export default function ModerationPanel({
 
     void refreshRoles();
 
-    const channel = supabase
-      .channel(`session-member-roles-${sessionId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "session_members",
-          filter: `session_id=eq.${sessionId}`,
-        },
-        () => void refreshRoles()
-      )
-      .subscribe(status=>{realtimeConnected=status==="SUBSCRIBED";if(realtimeConnected)void refreshRoles();});
-    const fallback=window.setInterval(()=>{if(!realtimeConnected&&document.visibilityState==="visible")void refreshRoles();},30000);
+    const handleConferenceRealtime = () => {
+      if (active) void refreshRoles();
+    };
+    window.addEventListener("vaani:conference-realtime", handleConferenceRealtime);
+
     return () => {
       active = false;
-      window.clearInterval(fallback);
-      void supabase.removeChannel(channel);
+      window.removeEventListener("vaani:conference-realtime", handleConferenceRealtime);
     };
   }, [open, sessionId]);
 

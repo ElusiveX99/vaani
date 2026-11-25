@@ -10,7 +10,7 @@ import {
 import dynamic from "next/dynamic";
 import { useLocalParticipant, useRemoteParticipants, useRoomContext } from "@livekit/components-react";
 import { RoomEvent } from "livekit-client";
-import { createClient } from "@/lib/supabase/client";
+import { useConferenceRealtime } from "./conference-realtime-provider";
 
 const PdfReader = dynamic(
   () => import("./pdf-reader"),
@@ -122,6 +122,8 @@ const SynchronizedReader = memo(
     const documentGeneration = useRef(0);
     const loadRequestId = useRef(0);
     const lastUrlRefreshAt = useRef(0);
+
+    const { revision: realtimeRevision } = useConferenceRealtime();
 
     const loadReaderState = useCallback(
       async (
@@ -348,209 +350,8 @@ const SynchronizedReader = memo(
     }, [data?.canControl, data?.document?.id, personalPosition]);
 
     useEffect(() => {
-      let active = true;
-
-      const supabase = createClient();
-
       void loadReaderState();
-
-      const handleReaderRefresh = () => {
-        if (active) {
-          void loadReaderState(false, false);
-        }
-      };
-
-      const refreshUrlIfNeeded = () => {
-        if (
-          !active ||
-          document.visibilityState !== "visible" ||
-          Date.now() - lastUrlRefreshAt.current <
-            URL_REFRESH_INTERVAL
-        ) {
-          return;
-        }
-
-        void loadReaderState(true, true);
-      };
-
-      window.addEventListener(
-        "vaani:reader-refresh",
-        handleReaderRefresh
-      );
-
-      document.addEventListener(
-        "visibilitychange",
-        refreshUrlIfNeeded
-      );
-
-      const refreshInterval =
-        window.setInterval(
-          refreshUrlIfNeeded,
-          60 * 1000
-        );
-
-      // Realtime is the primary update path. This lightweight fallback makes
-      // document switches recover automatically if a client misses an event.
-      let stateRealtimeConnected = false;
-      const stateFallbackInterval = window.setInterval(() => {
-        if (active && !stateRealtimeConnected && document.visibilityState === "visible") {
-          void loadReaderState(true, false);
-        }
-      }, 30000);
-
-      const membershipChannel = supabase
-        .channel(`reader-membership-${sessionId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "session_members",
-            filter: `session_id=eq.${sessionId}`,
-          },
-          () => {
-            if (active) void loadReaderState(true, false);
-          }
-        )
-        .subscribe();
-
-      const channel = supabase
-        .channel(`reader-state-${sessionId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "session_reader_state",
-            filter: `session_id=eq.${sessionId}`,
-          },
-          (payload) => {
-            if (!active) return;
-
-            const newState = payload.new as {
-              current_document_id?: string | null;
-              current_page?: number;
-              current_offset?: number;
-              controller_user_id?: string | null;
-              controller_expires_at?: string | null;
-              controller_epoch?: number;
-              updated_at?: string | null;
-            };
-
-            const currentDocumentId =
-              dataRef.current?.document?.id ?? null;
-
-            if (
-              newState.current_document_id !==
-              currentDocumentId
-            ) {
-              void loadReaderState(false, false);
-              return;
-            }
-
-            const remotePage =
-              newState.current_page;
-
-            if (
-              typeof remotePage !== "number" ||
-              !Number.isSafeInteger(remotePage) ||
-              remotePage < 1
-            ) {
-              return;
-            }
-
-            const remoteOffset =
-              typeof newState.current_offset === "number"
-                ? Math.min(1, Math.max(0, newState.current_offset))
-                : 0;
-
-            const controllerId = newState.controller_user_id ?? null;
-            const controllerEpoch = newState.controller_epoch ?? 0;
-            const controllerChanged =
-              controllerId !== controllerUserIdRef.current ||
-              controllerEpoch !== controllerEpochRef.current;
-
-            const controllerHasPendingChange =
-              !controllerChanged &&
-              dataRef.current?.canControl === true &&
-              (pageRef.current !== lastSavedPage.current ||
-                offsetRef.current !== lastSavedOffset.current);
-
-            if (controllerHasPendingChange) return;
-
-            if (controllerEpochRef.current !== controllerEpoch) {
-              lastRemoteSequence.current = 0;
-            }
-            const leaseActive =
-              Boolean(newState.controller_expires_at) &&
-              new Date(newState.controller_expires_at as string).getTime() > Date.now();
-
-            const nextData = dataRef.current
-              ? {
-                  ...dataRef.current,
-                  canControl:
-                    dataRef.current?.canRequestControl === true && controllerId === localUserId && leaseActive,
-                  readerState: {
-                    ...dataRef.current.readerState,
-                    ...newState,
-                  },
-                }
-              : null;
-
-            controllerUserIdRef.current = controllerId;
-            controllerEpochRef.current = controllerEpoch;
-
-            if (nextData) {
-              dataRef.current = nextData;
-              setData(nextData);
-            }
-
-            pageRef.current = remotePage;
-            offsetRef.current = remoteOffset;
-            lastSavedPage.current = remotePage;
-            lastSavedOffset.current = remoteOffset;
-
-            setCurrentPage(remotePage);
-            setCurrentOffset(remoteOffset);
-            setSyncStatus("synced");
-            setError("");
-          }
-        )
-        .subscribe((status) => { stateRealtimeConnected = status === "SUBSCRIBED"; });
-
-      return () => {
-        active = false;
-
-        window.removeEventListener(
-          "vaani:reader-refresh",
-          handleReaderRefresh
-        );
-
-        document.removeEventListener(
-          "visibilitychange",
-          refreshUrlIfNeeded
-        );
-
-        window.clearInterval(refreshInterval);
-        window.clearInterval(stateFallbackInterval);
-
-        if (saveTimer.current) {
-          clearTimeout(saveTimer.current);
-          saveTimer.current = null;
-        }
-
-        documentGeneration.current += 1;
-        loadRequestId.current += 1;
-        if (broadcastTimer.current) {
-          clearTimeout(broadcastTimer.current);
-          broadcastTimer.current = null;
-        }
-
-        void supabase.removeChannel(channel);
-        void supabase.removeChannel(membershipChannel);
-      };
-    }, [sessionId, loadReaderState, localUserId]);
-
+    }, [loadReaderState, realtimeRevision]);
     // Persist only the active reader controller's position.
     useEffect(() => {
       const documentId = data?.document?.id;

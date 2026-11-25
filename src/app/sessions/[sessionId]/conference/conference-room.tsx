@@ -30,6 +30,7 @@ import DocumentLibrary from "./document-library";
 import ModerationPanel from "./moderation-panel";
 import PersistentChat from "./persistent-chat";
 import SynchronizedReader from "./synchronized-reader";
+import ConferenceRealtimeProvider, { useConferenceRealtime } from "./conference-realtime-provider";
 import { createClient } from "@/lib/supabase/client";
 import ProfileAvatar from "@/components/profile-avatar";
 import { getLiveKitUserId } from "@/lib/livekit/identity";
@@ -371,19 +372,7 @@ function ConferenceWorkspace({
     setConnectionState(room.state);
   }, [room]);
 
-  useEffect(() => {
-    room.on(RoomEvent.ConnectionStateChanged, updateConnectionState);
-    const refreshAudioState = () => setAudioStateVersion((value) => value + 1);
-    room.on(RoomEvent.ActiveSpeakersChanged, refreshAudioState);
-    room.on(RoomEvent.TrackMuted, refreshAudioState);
-    room.on(RoomEvent.TrackUnmuted, refreshAudioState);
-    return () => {
-      room.off(RoomEvent.ConnectionStateChanged, updateConnectionState);
-      room.off(RoomEvent.ActiveSpeakersChanged, refreshAudioState);
-      room.off(RoomEvent.TrackMuted, refreshAudioState);
-      room.off(RoomEvent.TrackUnmuted, refreshAudioState);
-    };
-  }, [room, updateConnectionState]);
+  const { revision: realtimeRevision } = useConferenceRealtime();
 
   useEffect(() => {
     if (!localUserId) return;
@@ -422,41 +411,8 @@ function ConferenceWorkspace({
     };
 
     void refreshRole();
-
-    let realtimeConnected = false;
-    const channel = supabase
-      .channel(`session-member-role-${sessionId}-${localUserId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "session_members",
-          filter: `session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const changed = (payload.new ?? payload.old) as { user_id?: string };
-          if (changed.user_id === localUserId) {
-            void refreshRole();
-          }
-        }
-      )
-      .subscribe((status) => {
-        realtimeConnected = status === "SUBSCRIBED";
-        if (realtimeConnected) void refreshRole();
-      });
-
-    const fallback = window.setInterval(() => {
-      if (!realtimeConnected && document.visibilityState === "visible") void refreshRole();
-    }, 30000);
-
-    return () => {
-      active = false;
-      window.clearInterval(fallback);
-      void supabase.removeChannel(channel);
-    };
-  }, [sessionId, localUserId, room, onMembershipRevoked]);
-
+    return () => { active = false; };
+  }, [sessionId, localUserId, room, onMembershipRevoked, realtimeRevision]);
   const isOrganizer = membershipRole === "organizer";
   const canManageParticipants =
     isOrganizer ||
@@ -1270,6 +1226,7 @@ export default function ConferenceRoom({
 
   return (
     <main className="flex h-screen h-[100dvh] flex-col overflow-hidden bg-[#111111] text-white">
+      <ConferenceRealtimeProvider sessionId={sessionId}>
       <LiveKitRoom
         serverUrl={
           credentials.serverUrl
@@ -1331,6 +1288,7 @@ export default function ConferenceRoom({
 
         <RoomAudioRenderer />
       </LiveKitRoom>
+      </ConferenceRealtimeProvider>
     </main>
   );
 }
