@@ -27,10 +27,10 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const loadingRef=useRef(false);
+  const loadRequestRef = useRef(0);
 
   const load = useCallback(async () => {
-    if(loadingRef.current)return;loadingRef.current=true;
+    const requestId = ++loadRequestRef.current;
     try {
       const response = await fetch(`/api/sessions/${sessionId}/documents`, {
         cache: "no-store",
@@ -38,21 +38,35 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to load documents.");
+      if (requestId !== loadRequestRef.current) return;
       setDocuments((result.documents ?? []) as DocumentItem[]);
       setActiveDocumentId(result.activeDocumentId ?? null);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load documents.");
+      if (requestId === loadRequestRef.current) {
+        setError(err instanceof Error ? err.message : "Unable to load documents.");
+      }
     } finally {
-      loadingRef.current=false;setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
   }, [sessionId]);
 
-  const { revision: realtimeRevision } = useConferenceRealtime();
+  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
 
   useEffect(() => {
+    // Initial load and reconnect reconciliation.
     void load();
-  }, [load, realtimeRevision]);
+  }, [load, realtimeStatus === "connected"]);
+
+  useEffect(() => {
+    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
+    if (
+      realtimeEvent.table === "session_documents" ||
+      realtimeEvent.table === "session_reader_state"
+    ) {
+      void load();
+    }
+  }, [realtimeEvent, sessionId, load]);
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
     setError("");

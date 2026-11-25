@@ -10,15 +10,33 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type ConferenceRealtimeStatus =
+export type ConferenceRealtimeStatus =
   | "connecting"
   | "connected"
   | "reconnecting"
   | "disconnected";
 
+export type ConferenceRealtimeTable =
+  | "session_documents"
+  | "session_reader_state"
+  | "session_messages"
+  | "session_members"
+  | "session_notifications"
+  | "session_join_requests"
+  | "sessions";
+
+export type ConferenceRealtimeEvent = {
+  sessionId: string;
+  table: ConferenceRealtimeTable;
+  event: "INSERT" | "UPDATE" | "DELETE";
+  new: Record<string, unknown>;
+  old: Record<string, unknown>;
+};
+
 type ConferenceRealtimeContextValue = {
-  revision: number;
   status: ConferenceRealtimeStatus;
+  event: ConferenceRealtimeEvent | null;
+  revision: number;
 };
 
 const ConferenceRealtimeContext =
@@ -53,21 +71,27 @@ export default function ConferenceRealtimeProvider({
   sessionId,
   children,
 }: Props) {
-  const [revision, setRevision] = useState(0);
   const [status, setStatus] =
     useState<ConferenceRealtimeStatus>("connecting");
+  const [event, setEvent] =
+    useState<ConferenceRealtimeEvent | null>(null);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
     const supabase = createClient();
+    const channel = supabase.channel(`conference-realtime:${sessionId}`);
 
-    const bump = () => {
+    const publish = (nextEvent?: ConferenceRealtimeEvent) => {
       if (!active) return;
-      setRevision((value) => value + 1);
-      window.dispatchEvent(new CustomEvent("vaani:conference-realtime"));
+      if (nextEvent) setEvent(nextEvent);
+      setRevision((current) => current + 1);
+      window.dispatchEvent(
+        new CustomEvent("vaani:conference-realtime", {
+          detail: nextEvent ?? null,
+        })
+      );
     };
-
-    const channel = supabase.channel(`conference-realtime-${sessionId}`);
 
     for (const { table, filterColumn } of REALTIME_TABLES) {
       channel.on(
@@ -78,16 +102,24 @@ export default function ConferenceRealtimeProvider({
           table,
           filter: `${filterColumn}=eq.${sessionId}`,
         },
-        bump
+        (payload: { eventType: string; new: unknown; old: unknown }) => {
+          const nextEvent: ConferenceRealtimeEvent = {
+            sessionId,
+            table,
+            event: payload.eventType as ConferenceRealtimeEvent["event"],
+            new: (payload.new ?? {}) as Record<string, unknown>,
+            old: (payload.old ?? {}) as Record<string, unknown>,
+          };
+          publish(nextEvent);
+        }
       );
     }
 
-    channel.subscribe((channelStatus) => {
+    channel.subscribe((channelStatus: string) => {
       if (!active) return;
-
       if (channelStatus === "SUBSCRIBED") {
         setStatus("connected");
-        bump();
+        publish();
       } else if (
         channelStatus === "CHANNEL_ERROR" ||
         channelStatus === "TIMED_OUT"
@@ -103,12 +135,8 @@ export default function ConferenceRealtimeProvider({
     const handleOffline = () => {
       if (active) setStatus("disconnected");
     };
-
     const handleOnline = () => {
-      if (active) {
-        setStatus("reconnecting");
-        bump();
-      }
+      if (active) setStatus("reconnecting");
     };
 
     window.addEventListener("offline", handleOffline);
@@ -123,8 +151,8 @@ export default function ConferenceRealtimeProvider({
   }, [sessionId]);
 
   const value = useMemo(
-    () => ({ revision, status }),
-    [revision, status]
+    () => ({ status, event, revision }),
+    [status, event, revision]
   );
 
   return (

@@ -52,7 +52,7 @@ export default function ModerationPanel({
 
       if (!active || error) {refreshInFlight=false;return;}
 
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{ user_id: string; role: string; can_control_reader: boolean | null }>;
       const ids = rows.map((member) => member.user_id);
       const { data: profiles, error: profileError } = ids.length
         ? await supabase.from("profiles")
@@ -86,8 +86,21 @@ export default function ModerationPanel({
 
     void refreshRoles();
 
-    const handleConferenceRealtime = () => {
-      if (active) void refreshRoles();
+    const handleConferenceRealtime = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        table?: string;
+        sessionId?: string;
+      } | null>).detail;
+      // Only membership events change this panel's data. A null payload
+      // is emitted on reconnect and triggers one authoritative refresh.
+      if (
+        active &&
+        (!detail ||
+          (detail.sessionId === sessionId &&
+            detail.table === "session_members"))
+      ) {
+        void refreshRoles();
+      }
     };
     window.addEventListener("vaani:conference-realtime", handleConferenceRealtime);
 
