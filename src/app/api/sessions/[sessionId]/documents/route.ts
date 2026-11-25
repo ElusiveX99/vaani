@@ -241,30 +241,30 @@ export async function DELETE(
     }
   }
 
-    const { error: storageError } = await auth.supabase.storage
-      .from("session-pdfs")
-      .remove([document.storage_path]);
+  const { error: storageError } = await auth.supabase.storage
+    .from("session-pdfs")
+    .remove([document.storage_path]);
 
   if (storageError) {
-      console.error("PDF storage deletion failed:", storageError);
+    console.error("PDF storage deletion failed:", storageError);
 
-      if (wasActive) {
-        const { error: restoreError } = await auth.supabase
-          .from("session_reader_state")
-          .update({
-            current_document_id: document.id,
-            current_page: readerState?.current_page ?? 1,
-            current_offset: readerState?.current_offset ?? 0,
-            updated_by: auth.userId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("session_id", sessionId)
-          .is("current_document_id", null);
+    if (wasActive) {
+      const { error: restoreError } = await auth.supabase
+        .from("session_reader_state")
+        .update({
+          current_document_id: document.id,
+          current_page: readerState?.current_page ?? 1,
+          current_offset: readerState?.current_offset ?? 0,
+          updated_by: auth.userId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("session_id", sessionId)
+        .is("current_document_id", null);
 
-        if (restoreError) {
-          console.error("Reader state rollback after failed PDF storage deletion also failed:", restoreError);
-        }
+      if (restoreError) {
+        console.error("Reader state rollback after failed PDF storage deletion also failed:", restoreError);
       }
+    }
 
     return json({ error: "The PDF could not be removed from storage. The reader was restored; please retry." }, 500);
   }
