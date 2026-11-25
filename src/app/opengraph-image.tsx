@@ -24,7 +24,7 @@ export default function Image() {
           position: "absolute",
           width: 610,
           height: 610,
-          right: -74,
+          right: -220,
           top: 10,
           borderRadius: 305,
           backgroundColor: "#f6f3ee",
@@ -36,7 +36,7 @@ export default function Image() {
           position: "absolute",
           width: 452,
           height: 452,
-          right: 6,
+          right: -140,
           top: 89,
           borderRadius: 226,
           border: "1px solid #e4d8d3",
@@ -48,7 +48,7 @@ export default function Image() {
           position: "absolute",
           width: 370,
           height: 370,
-          right: 47,
+          right: -100,
           top: 130,
           borderRadius: 185,
           border: "1px solid #d9c6c2",
@@ -60,7 +60,7 @@ export default function Image() {
           position: "absolute",
           width: 284,
           height: 284,
-          right: 90,
+          right: -60,
           top: 173,
           borderRadius: 142,
           border: "1px solid #c9a99f",
@@ -72,7 +72,7 @@ export default function Image() {
           position: "absolute",
           width: 176,
           height: 176,
-          right: 144,
+          right: -20,
           top: 227,
           borderRadius: 88,
           backgroundColor: "#eadbd6",
@@ -85,7 +85,7 @@ export default function Image() {
           position: "absolute",
           width: 92,
           height: 92,
-          right: 186,
+          right: 22,
           top: 269,
           borderRadius: 46,
           backgroundColor: "#593b53",
@@ -98,7 +98,7 @@ export default function Image() {
           position: "absolute",
           width: 14,
           height: 14,
-          right: 225,
+          right: 61,
           top: 308,
           borderRadius: 7,
           backgroundColor: "#c5a07d",
@@ -110,22 +110,10 @@ export default function Image() {
           position: "absolute",
           width: 10,
           height: 10,
-          right: 112,
+          right: -52,
           top: 178,
           borderRadius: 5,
           backgroundColor: "#ad7d83",
-        }}
-      />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          width: 8,
-          height: 8,
-          right: 426,
-          top: 434,
-          borderRadius: 4,
-          backgroundColor: "#c5a07d",
         }}
       />
 
@@ -163,9 +151,9 @@ export default function Image() {
           <span
             style={{
               color: "#80613f",
-              fontSize: 15,
+              fontSize: 17,
               fontWeight: 700,
-              letterSpacing: 2.2,
+              letterSpacing: 2,
             }}
           >
             GAAYAN & VAANI PAATH
@@ -184,9 +172,9 @@ export default function Image() {
             style={{
               display: "flex",
               color: "#80613f",
-              fontSize: 16,
+              fontSize: 17,
               fontWeight: 700,
-              letterSpacing: 3,
+              letterSpacing: 2.6,
               marginBottom: 18,
             }}
           >
@@ -213,7 +201,7 @@ export default function Image() {
           <div
             style={{
               display: "flex",
-              width: 650,
+              width: 630,
               marginTop: 25,
               color: "#756d73",
               fontSize: 23,
@@ -238,20 +226,6 @@ export default function Image() {
           backgroundColor: "#e5ddd5",
         }}
       />
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          left: 82,
-          bottom: 13,
-          color: "#9a8588",
-          fontSize: 13,
-          letterSpacing: 1.4,
-          fontWeight: 600,
-        }}
-      >
-        VAANI
-      </div>
     </div>,
     size,
   );
