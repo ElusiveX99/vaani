@@ -9,6 +9,7 @@ type Member = {
   user_id: string;
   role: string;
   status: string;
+  can_control_reader?: boolean;
   display_name: string;
   avatar_url: string | null;
 };
@@ -39,14 +40,14 @@ export default function SessionMembers({
     const refresh = async () => {
       const { data, error } = await supabase
         .from("session_members")
-        .select("user_id, role, status")
+        .select("user_id, role, status, can_control_reader")
         .eq("session_id", sessionId)
         .eq("status", "accepted")
         .order("created_at", { ascending: true });
 
       if (!active || error) return;
 
-      const rows = (data ?? []) as Array<Pick<Member, "user_id" | "role" | "status">>;
+      const rows = (data ?? []) as Array<Pick<Member, "user_id" | "role" | "status" | "can_control_reader">>;
       const ids = [...new Set(rows.map((member) => member.user_id))];
       let profilesById = new Map<string, { display_name: string | null; avatar_url: string | null }>();
 
@@ -74,6 +75,7 @@ export default function SessionMembers({
         ...member,
         display_name: profilesById.get(member.user_id)?.display_name || "Vaani member",
         avatar_url: profilesById.get(member.user_id)?.avatar_url || null,
+        can_control_reader: member.can_control_reader === true,
       })));
     };
 
@@ -125,6 +127,7 @@ export default function SessionMembers({
         setMembers((previous) => previous.map((member) => member.user_id !== userId ? member : {
           ...member,
           role: action === "admin" ? (enabled ? "admin" : "participant") : member.role,
+          can_control_reader: action === "reader" ? Boolean(enabled) : (action === "admin" && !enabled ? false : member.can_control_reader),
         }));
       }
       window.dispatchEvent(new CustomEvent("vaani:session-members-mutated", { detail: { sessionId } }));
@@ -169,8 +172,8 @@ export default function SessionMembers({
                     </button>
                   )}
                   {isOrganizer && member.role === "admin" && (
-                    <button type="button" disabled={busy !== ""} onClick={() => void runMemberAction(member.user_id, "reader", true)} className="button-secondary !min-h-8 !px-3 !py-1.5 text-xs disabled:opacity-40">
-                      Grant reader control
+                    <button type="button" disabled={busy !== ""} onClick={() => void runMemberAction(member.user_id, "reader", !member.can_control_reader)} className="button-secondary !min-h-8 !px-3 !py-1.5 text-xs disabled:opacity-40">
+                      {member.can_control_reader ? "Revoke reader control" : "Grant reader control"}
                     </button>
                   )}
                   {(isOrganizer || member.role === "participant") && (
