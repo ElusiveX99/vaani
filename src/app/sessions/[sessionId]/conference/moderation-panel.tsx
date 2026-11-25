@@ -248,45 +248,41 @@ export default function ModerationPanel({
 
   return (
     <div
-      className="absolute inset-0 z-50 flex justify-end bg-black/60"
+      className="absolute inset-0 z-50 flex justify-end bg-[#0d0a10]/65 p-0 backdrop-blur-[3px] sm:p-3"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <aside
         role="dialog"
         aria-modal="true"
         aria-labelledby="participants-panel-title"
-        className="flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#1b1b1b] text-white shadow-2xl"
+        className="flex h-full w-full max-w-[27rem] flex-col overflow-hidden rounded-none border border-[#b99baf]/15 bg-[#211c25] text-white shadow-[0_24px_90px_rgba(0,0,0,.55)] sm:rounded-[1.4rem]"
       >
-        <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-4">
-          <div>
-            <h2
-              id="participants-panel-title"
-              className="text-base font-semibold text-white"
+        <header className="shrink-0 border-b border-white/[0.08] bg-[linear-gradient(120deg,rgba(112,78,105,.32),rgba(40,33,43,.15))] px-5 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[.18em] text-[#c4a8bd]">GATHERING CONTROLS</p>
+              <h2 id="participants-panel-title" className="mt-2 font-display text-2xl leading-none text-[#fff8fc]">
+                Manage participants
+              </h2>
+              <p className="mt-2 text-xs text-[#c8bbc8]/65">
+                {remoteParticipants.length} connected device{remoteParticipants.length === 1 ? "" : "s"} · {managedMembers.length} other member{managedMembers.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close participants panel"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-lg text-white/65 transition hover:bg-white/10 hover:text-white"
             >
-              Manage participants
-            </h2>
-
-            <p className="mt-1 text-xs text-white/50">
-              {remoteParticipants.length} device{remoteParticipants.length === 1 ? "" : "s"} connected · {managedMembers.length} member{managedMembers.length === 1 ? "" : "s"}
-            </p>
+              ×
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close participants panel"
-            className="rounded-lg px-3 py-2 text-sm text-white/65 transition hover:bg-white/10 hover:text-white"
-          >
-            Close
-          </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
           {!rolesLoaded ? (
             <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-white/55">
               Loading session members…
@@ -297,7 +293,7 @@ export default function ModerationPanel({
               <p className="mt-2 text-xs text-white/45">Accepted members will appear here.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {visibleManagedMembers.map(([targetUserId, targetRole]) => {
                 const connections = connectedByUser.get(targetUserId) ?? [];
                 const canModerateTarget = isOrganizer || targetRole === "participant";
@@ -307,7 +303,7 @@ export default function ModerationPanel({
                 const avatarUrl = memberProfiles[targetUserId]?.avatarUrl || connections[0]?.attributes?.avatar_url || null;
 
                 return (
-                  <article key={targetUserId} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <article key={targetUserId} className="rounded-2xl border border-white/[0.09] bg-[linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.015))] p-4 shadow-[0_8px_24px_rgba(0,0,0,.12)]">
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <ProfileAvatar name={participantName} avatarUrl={avatarUrl} size="md" />
@@ -331,7 +327,7 @@ export default function ModerationPanel({
                             type="button"
                             disabled={!trackSid || busy !== "" || !canModerateTarget}
                             onClick={() => moderate(targetUserId, participant.identity, "mute", trackSid)}
-                            className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/85 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-[#f0e7ef] transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Mute {connections.length > 1 ? "device" : "microphone"}
                           </button>
@@ -343,7 +339,7 @@ export default function ModerationPanel({
                           type="button"
                           disabled={busy !== ""}
                           onClick={() => moderate(targetUserId, connections[0]?.identity ?? "", "remove")}
-                          className="rounded-lg bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-full border border-red-300/15 bg-red-400/[0.08] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-red-200 transition hover:bg-red-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${targetUserId}-remove` ? "Removing…" : "Remove member"}
                         </button>
@@ -354,7 +350,7 @@ export default function ModerationPanel({
                           type="button"
                           disabled={busy !== ""}
                           onClick={() => setAdmin(targetUserId, targetRole !== "admin")}
-                          className="rounded-lg bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-200 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-full border border-sky-300/15 bg-sky-400/[0.08] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-sky-100 transition hover:bg-sky-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${targetUserId}-role` ? "Updating…" : targetRole === "admin" ? "Remove admin" : "Make admin"}
                         </button>
@@ -365,7 +361,7 @@ export default function ModerationPanel({
                           type="button"
                           disabled={busy !== ""}
                           onClick={() => updateReaderAccess(targetUserId, !readerAccess[targetUserId])}
-                          className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded-full border border-violet-300/15 bg-violet-400/[0.08] px-3.5 py-2 text-[11px] font-semibold tracking-wide text-violet-100 transition hover:bg-violet-400/[0.15] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {busy === `${targetUserId}-reader` ? "Updating…" : readerAccess[targetUserId] ? "Revoke reader control" : "Allow reader control"}
                         </button>
@@ -375,7 +371,7 @@ export default function ModerationPanel({
                 );
               })}
               {managedMembers.length > 10 && (
-                <button type="button" onClick={() => setShowAllMembers((value) => !value)} className="w-full rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-white/75 hover:bg-white/10">
+                <button type="button" onClick={() => setShowAllMembers((value) => !value)} className="w-full rounded-full border border-white/10 px-4 py-2.5 text-xs font-semibold text-white/75 transition hover:bg-white/[0.06]">
                   {showAllMembers ? "Show fewer" : `Show all ${managedMembers.length} members`}
                 </button>
               )}
@@ -385,7 +381,7 @@ export default function ModerationPanel({
           {message && <div className="mt-4"><InlineFeedback tone="info">{message}</InlineFeedback></div>}
         </div>
 
-        <footer className="shrink-0 border-t border-white/10 px-4 py-3">
+        <footer className="shrink-0 border-t border-white/[0.08] bg-[#1b171f] px-5 py-4">
           <p className="text-[11px] leading-relaxed text-white/40">
             Roles and reader permissions belong to session membership, even while a member is offline. Mute applies to a connected device; removing a member revokes their session access and disconnects their devices.
           </p>
