@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,7 +39,7 @@ export default function SessionRealtimeRefresh({ sessionId }: Props) {
       if (sessionId) {
         next = next
           .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `id=eq.${sessionId}` }, refresh)
-          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, (payload) => {
+          .on("postgres_changes", { event: "*", schema: "public", table: "session_members", filter: `session_id=eq.${sessionId}` }, (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
             window.dispatchEvent(new CustomEvent("vaani:conference-realtime", {
               detail: {
                 sessionId,
