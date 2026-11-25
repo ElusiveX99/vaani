@@ -227,7 +227,7 @@ export async function GET(
     } = await supabase
       .from("session_documents")
       .select(
-        "id, title, storage_path, mime_type, size_bytes, library_document_id"
+        "id, title, storage_path, mime_type, size_bytes"
       )
       .eq("session_id", sessionId)
       .eq("is_active", true)
