@@ -268,7 +268,7 @@ export default function PersistentChat({
           ? profile.avatar_path
           : supabase.storage.from("profile-avatars").getPublicUrl(profile.avatar_path).data.publicUrl
         : null);
-      addMessage({
+      const incoming: Message = {
         id,
         session_id: sessionId,
         sender_id: senderId,
@@ -276,7 +276,19 @@ export default function PersistentChat({
         created_at: row.created_at as string,
         sender_name: profile?.display_name || "Sakhi",
         avatar_url: avatarUrl,
+      };
+      setMessages((previous) => {
+        const existingIndex = previous.findIndex((message) => message.id === id);
+        if (existingIndex >= 0) {
+          return previous.map((message) => message.id === id ? { ...message, ...incoming } : message);
+        }
+        return [...previous, incoming].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
       });
+      if (!openRef.current && senderId !== currentUserIdRef.current) {
+        setUnreadCount((count) => Math.min(count + 1, 99));
+      }
     })();
   }, [realtimeEvent, sessionId]);
 
