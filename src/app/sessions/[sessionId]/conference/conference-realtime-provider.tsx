@@ -62,9 +62,9 @@ export default function ConferenceRealtimeProvider({
     const supabase = createClient();
 
     const bump = () => {
-      if (active) {
-        setRevision((value) => value + 1);
-      }
+      if (!active) return;
+      setRevision((value) => value + 1);
+      window.dispatchEvent(new CustomEvent("vaani:conference-realtime"));
     };
 
     const channel = supabase.channel(`conference-realtime-${sessionId}`);
