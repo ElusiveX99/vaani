@@ -50,9 +50,8 @@ export default function PersistentChat({
   const [unreadCount, setUnreadCount] = useState(0);
   const { status: realtimeStatus } = useConferenceRealtime();
 
-  const bottomRef = useRef<HTMLDivElement | null>(
-    null
-  );
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const shouldScrollRef = useRef(true);
   const openRef = useRef(open);
@@ -71,6 +70,16 @@ export default function PersistentChat({
 
     return () => window.cancelAnimationFrame(frame);
   }, [open]);
+
+  // When the chat drawer is opened, place the caret in the composer so the
+  // participant can start typing immediately without an extra tap.
+  useEffect(() => {
+    if (!open || loading || !currentUserId) return;
+    const frame = window.requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, loading, currentUserId]);
 
   useEffect(() => {
     onUnreadChange(unreadCount);
@@ -396,7 +405,7 @@ export default function PersistentChat({
 
   return (
     <div
-      className={`absolute inset-x-3 bottom-3 top-3 z-40 flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#202020] shadow-2xl transition-[opacity,transform] duration-150 ${
+      className={`absolute right-3 top-3 bottom-3 z-40 flex min-h-0 w-[min(27rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-[1.35rem] border border-[#b99baf]/20 bg-[#211c25] shadow-[0_24px_80px_rgba(0,0,0,.48)] ring-1 ring-black/20 transition-[opacity,transform] duration-200 sm:right-4 sm:top-4 sm:bottom-4 ${
         open
           ? "visible translate-y-0 opacity-100"
           : "pointer-events-none invisible translate-y-2 opacity-0"
@@ -404,10 +413,13 @@ export default function PersistentChat({
       aria-hidden={!open}
       inert={!open}
     >
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-4">
+      <header className="flex shrink-0 items-center justify-between border-b border-white/[0.08] bg-[linear-gradient(115deg,rgba(112,78,105,.34),rgba(40,33,43,.18))] px-5 py-4">
         <div>
-          <p className="text-sm font-semibold text-white">
+          <p className="font-display text-xl leading-none text-[#f8f0f2]">
             Gathering chat
+          </p>
+          <p className="mt-1.5 text-[10px] tracking-[.12em] text-[#c6b4c2]/65">
+            SHARED WITH THIS GATHERING
           </p>
 
         </div>
@@ -423,7 +435,7 @@ export default function PersistentChat({
 
       <div
         onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3"
+        className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(111,76,103,.10),transparent_55%)] px-4 py-5 sm:px-5"
       >
         {loading ? (
           <div className="flex h-full flex-col justify-center gap-3 px-4" role="status" aria-label="Loading gathering messages">
@@ -437,7 +449,7 @@ export default function PersistentChat({
             <p className="mt-2 max-w-xs text-xs leading-6 text-white/35">Messages shared with the gathering will appear here.</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {messages.map((message) => {
               const own =
                 message.sender_id ===
@@ -455,8 +467,8 @@ export default function PersistentChat({
                   <div
                     className={`max-w-[85%] rounded-2xl px-3 py-2 ${
                       own
-                        ? "rounded-br-md bg-blue-600 text-white"
-                        : "rounded-bl-md bg-white/10 text-white/90"
+                        ? "rounded-br-md border-[#9a7893]/30 bg-[#674c65] text-[#fffafd]"
+                        : "rounded-bl-md border-white/[0.07] bg-[#302a34] text-[#f3edf2]"
                     }`}
                   >
                     {!own && (
@@ -466,7 +478,7 @@ export default function PersistentChat({
                       </div>
                     )}
 
-                    <p className="whitespace-pre-wrap break-words text-xs leading-relaxed">
+                    <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.65]">
                       {message.body}
                     </p>
 
@@ -508,9 +520,10 @@ export default function PersistentChat({
 
       <form
         onSubmit={sendMessage}
-        className="flex shrink-0 items-end gap-2 border-t border-white/10 p-3"
+        className="shrink-0 border-t border-white/[0.08] bg-[#1b171f] p-3.5 sm:p-4"
       >
         <textarea
+          ref={inputRef}
           value={input}
           onChange={(event) => {
             setInput(
@@ -536,7 +549,7 @@ export default function PersistentChat({
           disabled={
             sending || !currentUserId
           }
-          className="min-h-10 max-h-28 flex-1 resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white outline-none placeholder:text-white/30 focus:border-white/25 disabled:opacity-50"
+          className="min-h-11 max-h-32 min-w-0 flex-1 resize-none rounded-xl border border-[#8f728a]/25 bg-[#2c2630] px-4 py-3 text-[13px] leading-relaxed text-white outline-none placeholder:text-[#c8bac7]/40 transition focus:border-[#c19db8]/65 focus:ring-2 focus:ring-[#9b7892]/15 disabled:opacity-50"
         />
 
         <button
@@ -546,7 +559,7 @@ export default function PersistentChat({
             !input.trim() ||
             !currentUserId
           }
-          className="h-10 shrink-0 rounded-lg bg-blue-600 px-4 text-xs font-medium text-white transition hover:bg-[#89647e] disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-11 shrink-0 rounded-xl bg-[#8a6682] px-4 text-xs font-semibold tracking-wide text-white shadow-sm transition hover:bg-[#a17a98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d6b5cc] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {sending ? "..." : "Send"}
         </button>
