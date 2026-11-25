@@ -43,11 +43,43 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const { slug } = await params;
   if (/^[a-z0-9]{10}$/.test(slug)) {
     const query = await searchParams;
-    return generateInviteMetadata({
+    const metadata = await generateInviteMetadata({
       params: Promise.resolve({ token: slug }),
       searchParams: Promise.resolve({ error: query.error }),
     });
+    return {
+      ...metadata,
+      openGraph: metadata.openGraph ? {
+        ...metadata.openGraph,
+        images: [{ url: `/g/${slug}/opengraph-image`, width: 1200, height: 630, alt: "Vaani gathering invitation" }],
+      } : undefined,
+      twitter: metadata.twitter ? {
+        ...metadata.twitter,
+        images: [`/g/${slug}/opengraph-image`],
+      } : undefined,
+    };
   }
+
+  if (/^[a-f0-9]{32}$/.test(slug)) {
+    return {
+      title: "Vaani gathering",
+      robots: { index: false, follow: false },
+      openGraph: {
+        type: "website",
+        siteName: "Vaani",
+        title: "Vaani gathering",
+        description: "A shared gathering for Gaayan and Vaani Paath on Vaani.",
+        images: [{ url: `/g/${slug}/opengraph-image`, width: 1200, height: 630, alt: "Vaani gathering" }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Vaani gathering",
+        description: "A shared gathering for Gaayan and Vaani Paath on Vaani.",
+        images: [`/g/${slug}/opengraph-image`],
+      },
+    };
+  }
+
   return { title: "Gathering | Vaani", robots: { index: false, follow: false } };
 }
 
