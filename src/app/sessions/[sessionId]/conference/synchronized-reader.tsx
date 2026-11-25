@@ -68,9 +68,6 @@ type SyncStatus =
   | "synced"
   | "error";
 
-const URL_REFRESH_INTERVAL =
-  5.5 * 60 * 60 * 1000;
-
 const PAGE_SAVE_DELAY = 1000;
 
 const SynchronizedReader = memo(
