@@ -48,11 +48,22 @@ export default function DocumentLibrary({ sessionId, canControlReader }: Props) 
     }
   }, [sessionId]);
 
-  const { revision: realtimeRevision } = useConferenceRealtime();
+  const { event: realtimeEvent, status: realtimeStatus } = useConferenceRealtime();
 
   useEffect(() => {
+    // Initial load and reconnect reconciliation.
     void load();
-  }, [load, realtimeRevision]);
+  }, [load, realtimeStatus === "connected"]);
+
+  useEffect(() => {
+    if (!realtimeEvent || realtimeEvent.sessionId !== sessionId) return;
+    if (
+      realtimeEvent.table === "session_documents" ||
+      realtimeEvent.table === "session_reader_state"
+    ) {
+      void load();
+    }
+  }, [realtimeEvent, sessionId, load]);
   async function updateActiveDocument(documentId: string | null) {
     setBusyId(documentId ?? "none");
     setError("");
