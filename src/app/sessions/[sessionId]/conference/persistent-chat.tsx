@@ -77,9 +77,7 @@ export default function PersistentChat({
   useEffect(() => {
     let active = true;
     const supabase = createClient();
-    let channel: ReturnType<typeof supabase.channel> | null = null;
     let historyRequest = 0;
-    let realtimeConnected = false;
     let historyLoading = false;
 
     async function loadMessages() {
